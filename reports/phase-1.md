@@ -63,11 +63,15 @@ flutter run                 # Android device/emulator
 flutter run -d windows      # Windows 10/11 machine
 ```
 
-For the release hand-off checks:
+For the release hand-off checks, the pull request automatically runs
+`.github/workflows/phase-1-ci.yml`. It checks formatting, analysis, tests, source
+policy, a real ncnn model, Android arm64 and Windows. Successful Android and
+Windows test builds are attached to the workflow for 14 days, so the owner does
+not need a PC. The local equivalent is:
 
 ```sh
 RUN_ANDROID_BUILD=1 tool/verify_phase1.sh
-# On Windows, run the equivalent commands and: flutter build windows --debug
+# Windows is built by the pull-request workflow.
 ```
 
 The first native build fetches the exact pinned ncnn commit from GitHub. No

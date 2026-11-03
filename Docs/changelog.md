@@ -5,6 +5,11 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-03 — Phase 1 — Cloud verification for owner hand-off
+- Added pinned GitHub Actions checks for formatting, analysis, tests, prohibited
+  package policy, a real ncnn model run, and Android/Windows debug builds. Successful
+  builds are retained for 14 days so Phase 1 can be checked without owning a PC.
+
 ## 2026-11-03 — Phase 1 — Verification and native compatibility fixes
 - Verified the shared ncnn library on one-tile and nine-tile inputs, replaced the
   incompatible anime fallback with a matching permissive model, added Android
