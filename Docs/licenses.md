@@ -38,7 +38,7 @@ Windows.
 | package_info_plus | 10.2.2 | BSD-3-Clause | https://github.com/fluttercommunity/plus_plugins | About screen version |
 | shared_preferences | 2.5.6 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/shared_preferences | Onboarding and settings persistence |
 | path_provider | 2.1.6 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/path_provider | Models, temporary copies and fallback output folders |
-| image | 4.13.0 | MIT | https://github.com/brendan-duncan/image | Decode, orientation, compression and preview helpers |
+| image | 4.5.4 | MIT | https://github.com/brendan-duncan/image | Decode, orientation, compression and preview helpers |
 | flutter_native_splash | 2.4.8 | MIT | https://github.com/jonbhanson/flutter_native_splash | Theme-matched native splash generation |
 
 All listed repositories had activity within 18 months on the verification date.
