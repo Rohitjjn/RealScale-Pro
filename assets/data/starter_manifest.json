@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "waifu2x-photo-fallback",
+      "version": "1.0.0",
+      "name": "Compact photo model",
+      "engine": "ncnn",
+      "pack": "starter",
+      "minTier": "T0",
+      "nativeScales": [2],
+      "modes": ["upscale"],
+      "bestFor": ["photo"],
+      "speed": "veryFast",
+      "sizeBytes": 1107295,
+      "bundled": true,
+      "paramAsset": "assets/models_starter/scale2.0x_model.param",
+      "modelAsset": "assets/models_starter/scale2.0x_model.bin",
+      "sha256": "25a2bb25b29e43e63179aac216cd87690791243a436328506d4ef9fca88ee962",
+      "license": "MIT"
+    },
+    {
+      "id": "realcugan-anime-fallback",
+      "version": "1.0.0",
+      "name": "Compact anime model",
+      "engine": "ncnn",
+      "pack": "starter",
+      "minTier": "T0",
+      "nativeScales": [2],
+      "modes": ["upscale"],
+      "bestFor": ["anime"],
+      "speed": "veryFast",
+      "sizeBytes": 2554717,
+      "bundled": true,
+      "paramAsset": "assets/models_starter/up2x-no-denoise.param",
+      "modelAsset": "assets/models_starter/up2x-no-denoise.bin",
+      "sha256": "2b6f4db8fdc04336ac68ba954b4cd3b280beb5e7b6b0bcd97f769accc512cf4a",
+      "license": "MIT"
+    }
+  ]
+}

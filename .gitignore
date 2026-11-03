@@ -1,0 +1,26 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub/
+build/
+coverage/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Platform-local files
+android/local.properties
+android/key.properties
+windows/flutter/ephemeral/
+*.iml
+.idea/
+.vscode/
+
+# Downloaded model and job data
+models/
+downloads/
+temp/
+*.part
+
+# OS
+.DS_Store
+Thumbs.db
