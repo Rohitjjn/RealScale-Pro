@@ -5,11 +5,16 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-03 — Phase 2 — Model-source decisions
+- The owner approved carefully testing the older permissive CNN sources one by
+  one and required official GFPGAN despite its disclosed non-commercial component.
+  Nothing becomes downloadable until its exact files, checksums and runtime pass.
+
 ## 2026-11-03 — Phase 2 — Model and face reuse audit
 - Audited the planned CNN and face sources before copying code. Existing waifu2x
-  fallbacks remain safe; older CNN candidates need owner approval and exact-file
-  tests, while every current GFPGAN ncnn route is blocked by non-commercial,
-  GPL, missing or unverifiable model terms.
+  fallbacks remain safe; older CNN candidates require exact-file tests, while the
+  official GFPGAN route carries a non-commercial restriction and other routes are
+  blocked by GPL, missing or unverifiable model terms.
 
 ## 2026-11-03 — Phase 2 — Kickoff and task plan
 - Expanded Phase 2 into twelve small, testable tasks informed by the Phase 1

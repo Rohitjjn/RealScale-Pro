@@ -29,18 +29,21 @@ and native compatibility are verified. “Blocked” means it must not ship.
 | Candidate | Source state and license | Maintenance / delivery | Phase 2 decision |
 | --- | --- | --- | --- |
 | waifu2x upconv7 photo + anime | MIT repository distribution; exact bundled checksums already recorded | Upstream active 2026-04-13; files already pass the shared ncnn adapter | **Enabled** as the installed Starter fallbacks |
-| Real-ESRGAN ncnn models | Port repository is MIT; its release advertises anime-video, x4plus, x4plus-anime and realesrnet models | Latest release 0.2.0 (2022-04-24), last push 2024-05-10; exact individual files/checksums are not published in the source tree | **Held** pending stale-component owner approval, exact release-file audit and adapter tests |
-| Real-CUGAN ncnn models | MIT; model files are distributed in the source repository | Latest release 20220728; last push 2023-03-12; the Phase 1 graph was incompatible with the current thin adapter | **Held** pending stale-component owner approval and a compatible audited adapter |
-| RealSR ncnn DF2K models | MIT; two 33,424,520-byte model binaries plus parameter files are distributed in the source repository | Latest release 20220728; last push 2023-03-12 | **Held** pending stale-component owner approval, checksums and adapter tests |
-| Official GFPGAN v1.4 | Project states Apache-2.0 except bundled third-party components; its license includes an NVIDIA non-commercial use limitation | Last push 2024-07-26; official ncnn delivery is absent | **Blocked** because the complete reusable work is not permissively licensed under project rules |
+| Real-ESRGAN ncnn models | Port repository is MIT; its release advertises anime-video, x4plus, x4plus-anime and realesrnet models | Latest release 0.2.0 (2022-04-24), last push 2024-05-10; exact individual files/checksums are not published in the source tree | **Owner-approved for strict audit** on 3 November 2026; held until exact release files, checksums and adapter tests pass |
+| Real-CUGAN ncnn models | MIT; model files are distributed in the source repository | Latest release 20220728; last push 2023-03-12; the Phase 1 graph was incompatible with the current thin adapter | **Owner-approved for strict audit** on 3 November 2026; held until a compatible audited adapter passes |
+| RealSR ncnn DF2K models | MIT; two 33,424,520-byte model binaries plus parameter files are distributed in the source repository | Latest release 20220728; last push 2023-03-12 | **Owner-approved for strict audit** on 3 November 2026; held until checksums and adapter tests pass |
+| Official GFPGAN v1.4 | Project states Apache-2.0 except bundled third-party components; its license includes an NVIDIA non-commercial use limitation | Last push 2024-07-26; official ncnn delivery is absent | **Restricted exception approved by owner** on 3 November 2026 because face enhancement is required; use official files only and keep the non-commercial warning visible |
 | Qengineering GFPGAN ncnn port | Port code is BSD-3-Clause | Last push 2023-01-04; required weights come from an external Google Drive archive with no license or checksums in the repository | **Blocked** because the model-weight license cannot be verified |
 | Other GFPGAN ncnn forks | One active candidate is GPL-3.0; two candidates have no repository license | Activity varies | **Blocked** by GPL or missing license |
 | CodeFormer | Non-commercial model terms | Not applicable | **Blocked** unless the owner deliberately changes the commercial-license rule |
 
-The face requirement is therefore an escalation under `rules.md` §10: no
-maintained ncnn face-restoration candidate currently has a complete, verifiable,
-permissive source-and-weights chain. Face code must not be copied or model files
-downloaded until the owner chooses how Phase 2 should handle this gap.
+The face requirement was escalated under `rules.md` §10 because no maintained
+ncnn face-restoration candidate has a complete permissive source-and-weights
+chain. After being shown the restriction, the owner required GFPGAN and approved
+using the official source. This is a documented exception, not a finding that the
+model is commercially unrestricted. Unlicensed third-party mirrors and GPL forks
+remain blocked; official files still require checksums and runtime tests before
+they can be enabled.
 
 ## Flutter packages selected for Phase 1
 
