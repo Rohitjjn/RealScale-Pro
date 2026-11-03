@@ -160,11 +160,7 @@ jobs:
         shell: bash
         run: |
           if ! flutter build windows --debug 2>&1 | tee windows-build.log; then
-            grep -E 'error C[0-9]+|error:|CMake Error|FAILED|fatal error|LNK[0-9]+' \
-              windows-build.log | tail -n 80 > windows-errors.log || true
-            if [[ ! -s windows-errors.log ]]; then
-              tail -n 10 windows-build.log > windows-errors.log
-            fi
+            tail -n 20 windows-build.log > windows-errors.log
             message=$(sed ':a;N;$!ba;s/\n/%0A/g' windows-errors.log)
             echo "::error file=windows::$message"
             exit 1
