@@ -44,8 +44,11 @@ jobs:
         run: |
           dart format lib test
           for file in $(git diff --name-only -- lib test); do
-            encoded=$(base64 -w 0 "$file")
-            echo "::error file=$file::$encoded"
+            index=0
+            while IFS= read -r chunk; do
+              echo "::error file=$file,title=FORMAT-$index::FORMAT:$file:$index:$chunk"
+              index=$((index + 1))
+            done < <(base64 -w 3000 "$file")
           done
           git diff --quiet -- lib test
       - name: Check formatting
