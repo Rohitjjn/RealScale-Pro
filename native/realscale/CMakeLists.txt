@@ -16,6 +16,9 @@ FetchContent_Declare(
   GIT_SHALLOW FALSE
 )
 FetchContent_MakeAvailable(ncnn)
+if(MSVC)
+  target_compile_options(ncnn PRIVATE /wd4244 /wd4267)
+endif()
 
 add_library(realscale_ncnn SHARED realscale_ncnn.cpp)
 target_compile_features(realscale_ncnn PRIVATE cxx_std_17)

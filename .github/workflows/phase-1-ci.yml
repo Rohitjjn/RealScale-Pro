@@ -163,7 +163,7 @@ jobs:
             grep -E 'error C[0-9]+|error:|CMake Error|FAILED|fatal error|LNK[0-9]+' \
               windows-build.log | tail -n 80 > windows-errors.log || true
             if [[ ! -s windows-errors.log ]]; then
-              tail -n 80 windows-build.log > windows-errors.log
+              tail -n 10 windows-build.log > windows-errors.log
             fi
             message=$(sed ':a;N;$!ba;s/\n/%0A/g' windows-errors.log)
             echo "::error file=windows::$message"
