@@ -8,7 +8,7 @@ produced a correctly sized 2x image on this 4 GB Linux workspace. The measured
 The workspace has no Vulkan driver, Android tools or Windows runner, so Android,
 Windows and GPU measurements are honestly pending. The owner chose to continue
 Phase 1 while those hardware checks remain pending. Two small permissively
-licensed fallback models are bundled; other models will be offered on demand
+licensed waifu2x fallback models are bundled; other models will be offered on demand
 from GitHub Releases.
 
 ## 2. What was built
@@ -16,7 +16,7 @@ from GitHub Releases.
 | --- | --- | --- | --- |
 | Reuse and license survey | `Docs/licenses.md` | §2.1–2.3, §12.4 | Complete |
 | Repeatable ncnn CPU harness | `native/spike/CMakeLists.txt`, `native/spike/main.cpp` | §2.3, §8 | Passed on available Linux CPU |
-| Bundled fallback data | `assets/models_starter/` | §3.5, §9 | Added, 3.7 MB total |
+| Bundled fallback data | `assets/models_starter/` | §3.5, §9 | Added, 2.2 MB total |
 | Android/Windows/Vulkan profile run | hardware-dependent | §2.3, §13.1 | Not run; hardware unavailable |
 
 ## 3. How to run and test it
@@ -40,7 +40,7 @@ not depend on another image library.
 | Engine | ncnn official upstream | commit `6125c9f…` | BSD-3-Clause | ONNX Runtime; third-party wrapper | Small, CPU/Vulkan, owner approved direct upstream |
 | Native reference | Real-ESRGAN ncnn Vulkan | commit `37026f4…` | MIT | RealSR-NCNN-Android; custom inference | Official implementation and smallest audit surface |
 | Offline photo fallback | waifu2x upconv7 photo | repository snapshot | MIT | Real-ESRGAN compact release asset | Small and available from audited source; exact Real-ESRGAN release asset was inaccessible here |
-| Offline anime fallback | Real-CUGAN nose 2x | repository snapshot | MIT | Real-ESRGAN anime-video | Small and permissive |
+| Offline anime fallback | waifu2x anime upconv7 2x | repository snapshot | MIT | Real-CUGAN; Real-ESRGAN anime-video | Small, permissive and compatible with the shared adapter |
 | Model downloads | GitHub Releases | n/a | model-specific | Owner server; undecided storage | Owner selected it; no private server required |
 
 ### Candidate findings

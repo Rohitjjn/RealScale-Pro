@@ -7,5 +7,5 @@
   },
   "defaultScale": 2,
   "photoModel": "waifu2x-photo-fallback",
-  "animeModel": "realcugan-anime-fallback"
+  "animeModel": "waifu2x-anime-fallback"
 }

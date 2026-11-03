@@ -88,7 +88,9 @@ class NcnnEngine implements UpscaleEngine {
         final int code = await Isolate.run(() => _invokeNative(files, job.tileSize));
         poll.cancel();
         if (code == 0) {
-          final String png = await Isolate.run(() => _ppmToPng(files.outputPpm));
+          final String png = await Isolate.run(
+            () => _ppmToPng(files.outputPpm, job.input.path),
+          );
           elapsed.stop();
           controller.add(EngineCompleted(png, elapsed.elapsed));
         } else if (code == 1) {
@@ -122,7 +124,7 @@ class NcnnEngine implements UpscaleEngine {
     final Directory temporary = await getTemporaryDirectory();
     await modelDirectory.create(recursive: true);
     final bool anime = job.input.kind == ImageKind.anime;
-    final String stem = anime ? 'up2x-no-denoise' : 'scale2.0x_model';
+    final String stem = anime ? 'anime_scale2.0x_model' : 'scale2.0x_model';
     final File parameter = File('${modelDirectory.path}${Platform.pathSeparator}$stem.param');
     final File model = File('${modelDirectory.path}${Platform.pathSeparator}$stem.bin');
     if (!await parameter.exists()) {
@@ -186,7 +188,7 @@ Future<void> _imageToPpm(String sourcePath, String outputPath) async {
   await File(outputPath).writeAsBytes(bytes.takeBytes(), flush: true);
 }
 
-Future<String> _ppmToPng(String ppmPath) async {
+Future<String> _ppmToPng(String ppmPath, String originalPath) async {
   final Uint8List data = await File(ppmPath).readAsBytes();
   int newline = 0;
   int offset = 0;
@@ -197,7 +199,7 @@ Future<String> _ppmToPng(String ppmPath) async {
   final List<String> parts = header.split(RegExp(r'\s+'));
   final int width = int.parse(parts[1]);
   final int height = int.parse(parts[2]);
-  final image_lib.Image image = image_lib.Image.fromBytes(
+  image_lib.Image image = image_lib.Image.fromBytes(
     width: width,
     height: height,
     bytes: data.buffer,
@@ -205,6 +207,26 @@ Future<String> _ppmToPng(String ppmPath) async {
     numChannels: 3,
     order: image_lib.ChannelOrder.rgb,
   );
+  final image_lib.Image? original =
+      image_lib.decodeImage(await File(originalPath).readAsBytes());
+  if (original != null) {
+    image.exif = original.exif;
+    if (original.numChannels == 4) {
+      image = image.convert(numChannels: 4);
+      final image_lib.Image alpha = image_lib.copyResize(
+        image_lib.bakeOrientation(original),
+        width: width,
+        height: height,
+        interpolation: image_lib.Interpolation.cubic,
+      );
+      for (int y = 0; y < height; y += 1) {
+        for (int x = 0; x < width; x += 1) {
+          final image_lib.Pixel color = image.getPixel(x, y);
+          image.setPixelRgba(x, y, color.r, color.g, color.b, alpha.getPixel(x, y).a);
+        }
+      }
+    }
+  }
   final String pngPath = ppmPath.replaceAll(RegExp(r'\.ppm$'), '.png');
   await File(pngPath).writeAsBytes(image_lib.encodePng(image), flush: true);
   await File(ppmPath).delete();

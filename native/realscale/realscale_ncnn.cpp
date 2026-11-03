@@ -29,7 +29,9 @@ bool read_ppm(const char* path, int& width, int& height,
     return false;
   }
   input.get();
-  pixels.resize(static_cast<size_t>(width) * height * 3);
+  const uint64_t input_bytes = static_cast<uint64_t>(width) * height * 3;
+  if (input_bytes > 128ULL * 1024ULL * 1024ULL) return false;
+  pixels.resize(static_cast<size_t>(input_bytes));
   return static_cast<bool>(input.read(reinterpret_cast<char*>(pixels.data()),
                                       pixels.size()));
 }
@@ -74,7 +76,10 @@ REALSCALE_API int realscale_upscale(const char* parameter_path,
   const int across = (width + tile_size - 1) / tile_size;
   const int down = (height + tile_size - 1) / tile_size;
   total_tiles.store(across * down);
-  std::vector<unsigned char> output(static_cast<size_t>(width) * 2 * height * 2 * 3);
+  const uint64_t output_bytes =
+      static_cast<uint64_t>(width) * 2 * height * 2 * 3;
+  if (output_bytes > 256ULL * 1024ULL * 1024ULL) return 6;
+  std::vector<unsigned char> output(static_cast<size_t>(output_bytes));
 
   for (int tile_y = 0; tile_y < down; ++tile_y) {
     for (int tile_x = 0; tile_x < across; ++tile_x) {

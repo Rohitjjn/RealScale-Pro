@@ -20,7 +20,7 @@
       "license": "MIT"
     },
     {
-      "id": "realcugan-anime-fallback",
+      "id": "waifu2x-anime-fallback",
       "version": "1.0.0",
       "name": "Compact anime model",
       "engine": "ncnn",
@@ -30,11 +30,11 @@
       "modes": ["upscale"],
       "bestFor": ["anime"],
       "speed": "veryFast",
-      "sizeBytes": 2554717,
+      "sizeBytes": 1107295,
       "bundled": true,
-      "paramAsset": "assets/models_starter/up2x-no-denoise.param",
-      "modelAsset": "assets/models_starter/up2x-no-denoise.bin",
-      "sha256": "2b6f4db8fdc04336ac68ba954b4cd3b280beb5e7b6b0bcd97f769accc512cf4a",
+      "paramAsset": "assets/models_starter/anime_scale2.0x_model.param",
+      "modelAsset": "assets/models_starter/anime_scale2.0x_model.bin",
+      "sha256": "27d880903ff81390a3b4a900b67af3381c465279e34297546c9a58781855f7ef",
       "license": "MIT"
     }
   ]
