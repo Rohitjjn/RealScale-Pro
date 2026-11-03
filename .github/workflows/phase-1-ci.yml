@@ -3,8 +3,6 @@ name: Phase 1 verification
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [arena/7d7a62ad-realscale-pro]
   workflow_dispatch:
 
 permissions:
@@ -32,7 +30,13 @@ jobs:
           channel: stable
           cache: true
       - name: Resolve pinned packages
-        run: flutter pub get
+        shell: bash
+        run: |
+          if ! flutter pub get 2>&1 | tee pub-get.log; then
+            message=$(tail -n 20 pub-get.log | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error file=pubspec.yaml::$message"
+            exit 1
+          fi
       - name: Generate English localization
         run: flutter gen-l10n
       - name: Check formatting
