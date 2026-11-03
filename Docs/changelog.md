@@ -5,6 +5,11 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-03 — Phase 2 — Validated model catalog
+- Added one typed, data-driven catalog for Manual settings, planning and Model
+  Manager. Only the two exact bundled models are enabled; held, restricted,
+  blocked and future models cannot accidentally become downloadable.
+
 ## 2026-11-03 — Phase 2 — Model-source decisions
 - The owner approved carefully testing the older permissive CNN sources one by
   one and required official GFPGAN despite its disclosed non-commercial component.
