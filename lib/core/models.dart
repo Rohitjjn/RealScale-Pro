@@ -145,4 +145,11 @@ class UpscaleRecord {
 }
 
 /// Non-technical errors suitable for mapping to localized UI messages.
-enum AppFailure { unsupportedImage, permissionDenied, storageLow, engineUnavailable, cancelled, unknown }
+enum AppFailure {
+  unsupportedImage,
+  permissionDenied,
+  storageLow,
+  engineUnavailable,
+  cancelled,
+  unknown,
+}

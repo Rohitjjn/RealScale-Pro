@@ -43,21 +43,22 @@ class _RealScaleAppState extends ConsumerState<RealScaleApp> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: _settings,
-        builder: (BuildContext context, Widget? child) => MaterialApp.router(
-          debugShowCheckedModeBanner: false,
-          onGenerateTitle: (BuildContext context) => AppLocalizations.of(context).appName,
-          theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
-          themeMode: _settings.themeMode,
-          routerConfig: _router,
-          localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
-        ),
-      );
+    listenable: _settings,
+    builder: (BuildContext context, Widget? child) => MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      onGenerateTitle: (BuildContext context) =>
+          AppLocalizations.of(context).appName,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: _settings.themeMode,
+      routerConfig: _router,
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
+  );
 }

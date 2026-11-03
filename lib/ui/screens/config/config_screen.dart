@@ -8,7 +8,11 @@ import '../../../state/app_controller.dart';
 import '../../widgets/core_widgets.dart';
 
 class ConfigScreen extends StatefulWidget {
-  const ConfigScreen({required this.controller, required this.settings, super.key});
+  const ConfigScreen({
+    required this.controller,
+    required this.settings,
+    super.key,
+  });
   final AppController controller;
   final SettingsService settings;
 
@@ -40,7 +44,12 @@ class _ConfigScreenState extends State<ConfigScreen> {
     if (image == null) {
       return Scaffold(
         appBar: AppBar(title: Text(context.l10n.configTitle)),
-        body: Center(child: FilledButton(onPressed: _swap, child: Text(context.l10n.pickAnother))),
+        body: Center(
+          child: FilledButton(
+            onPressed: _swap,
+            child: Text(context.l10n.pickAnother),
+          ),
+        ),
       );
     }
     final String detection = image.kind == ImageKind.anime
@@ -50,21 +59,44 @@ class _ConfigScreenState extends State<ConfigScreen> {
       appBar: AppBar(
         title: Text(context.l10n.configTitle),
         actions: <Widget>[
-          IconButton(tooltip: context.l10n.swap, onPressed: _swap, icon: const Icon(Icons.swap_horiz_rounded)),
+          IconButton(
+            tooltip: context.l10n.swap,
+            onPressed: _swap,
+            icon: const Icon(Icons.swap_horiz_rounded),
+          ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         children: <Widget>[
-          AspectRatio(aspectRatio: 16 / 10, child: Hero(tag: image.path, child: ImagePreview(path: image.path))),
+          AspectRatio(
+            aspectRatio: 16 / 10,
+            child: Hero(
+              tag: image.path,
+              child: ImagePreview(path: image.path),
+            ),
+          ),
           const SizedBox(height: 8),
-          Text('${image.width}×${image.height} · ${(image.bytes / 1048576).toStringAsFixed(1)} MB'),
+          Text(
+            '${image.width}×${image.height} · ${(image.bytes / 1048576).toStringAsFixed(1)} MB',
+          ),
           const SizedBox(height: 20),
           SegmentedButton<int>(
             segments: <ButtonSegment<int>>[
-              ButtonSegment<int>(value: 0, label: Text(context.l10n.defaultLevel)),
-              ButtonSegment<int>(value: 1, label: Text(context.l10n.manualLevel), enabled: false),
-              ButtonSegment<int>(value: 2, label: Text(context.l10n.advancedLevel), enabled: false),
+              ButtonSegment<int>(
+                value: 0,
+                label: Text(context.l10n.defaultLevel),
+              ),
+              ButtonSegment<int>(
+                value: 1,
+                label: Text(context.l10n.manualLevel),
+                enabled: false,
+              ),
+              ButtonSegment<int>(
+                value: 2,
+                label: Text(context.l10n.advancedLevel),
+                enabled: false,
+              ),
             ],
             selected: const <int>{0},
           ),
@@ -74,7 +106,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
               leading: const Icon(Icons.auto_awesome_rounded),
               title: Text(detection),
               trailing: TextButton(
-                onPressed: () => showAppSheet(context, Text(context.l10n.phaseTwoNotice)),
+                onPressed: () =>
+                    showAppSheet(context, Text(context.l10n.phaseTwoNotice)),
                 child: Text(context.l10n.change),
               ),
             ),

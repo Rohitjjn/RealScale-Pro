@@ -23,7 +23,8 @@ class SafeCpuEngine implements UpscaleEngine {
 
   @override
   Stream<EngineEvent> run(JobSpec job) {
-    final StreamController<EngineEvent> controller = StreamController<EngineEvent>();
+    final StreamController<EngineEvent> controller =
+        StreamController<EngineEvent>();
     final ReceivePort messages = ReceivePort();
     final Stopwatch elapsed = Stopwatch()..start();
 
@@ -47,9 +48,10 @@ class SafeCpuEngine implements UpscaleEngine {
 
         await for (final Object? message in messages) {
           if (message is int) {
-            final int total = ((job.input.width / job.tileSize).ceil() *
-                    (job.input.height / job.tileSize).ceil())
-                .clamp(1, 1 << 30);
+            final int total =
+                ((job.input.width / job.tileSize).ceil() *
+                        (job.input.height / job.tileSize).ceil())
+                    .clamp(1, 1 << 30);
             final double averageMs = elapsed.elapsedMilliseconds / message;
             final int remainingMs = ((total - message) * averageMs).round();
             controller.add(
@@ -142,7 +144,9 @@ class SafeCpuEngine implements UpscaleEngine {
           request.port.send(completed);
         }
       }
-      await File(request.outputPath).writeAsBytes(image_lib.encodePng(result), flush: true);
+      await File(
+        request.outputPath,
+      ).writeAsBytes(image_lib.encodePng(result), flush: true);
       request.port.send('done');
     } on Object {
       request.port.send('failed');

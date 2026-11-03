@@ -10,7 +10,9 @@ class PipelinePlanner {
   Map<String, dynamic>? _rules;
 
   Future<void> load() async {
-    final String source = await rootBundle.loadString('assets/data/planner_rules.json');
+    final String source = await rootBundle.loadString(
+      'assets/data/planner_rules.json',
+    );
     _rules = jsonDecode(source) as Map<String, dynamic>;
   }
 

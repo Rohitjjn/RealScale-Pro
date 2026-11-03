@@ -37,7 +37,9 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: dark ? const Color(0xFF111113) : AppColors.canvas,
+      scaffoldBackgroundColor: dark
+          ? const Color(0xFF111113)
+          : AppColors.canvas,
       cardTheme: CardThemeData(
         clipBehavior: Clip.antiAlias,
         elevation: 0,

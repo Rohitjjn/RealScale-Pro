@@ -13,22 +13,24 @@ import '../../core/models.dart';
 import '../safe_cpu_engine.dart';
 import '../upscale_engine.dart';
 
-typedef _RunNative = Int32 Function(
-  Pointer<Utf8>,
-  Pointer<Utf8>,
-  Pointer<Utf8>,
-  Pointer<Utf8>,
-  Int32,
-  Int32,
-);
-typedef _RunDart = int Function(
-  Pointer<Utf8>,
-  Pointer<Utf8>,
-  Pointer<Utf8>,
-  Pointer<Utf8>,
-  int,
-  int,
-);
+typedef _RunNative =
+    Int32 Function(
+      Pointer<Utf8>,
+      Pointer<Utf8>,
+      Pointer<Utf8>,
+      Pointer<Utf8>,
+      Int32,
+      Int32,
+    );
+typedef _RunDart =
+    int Function(
+      Pointer<Utf8>,
+      Pointer<Utf8>,
+      Pointer<Utf8>,
+      Pointer<Utf8>,
+      int,
+      int,
+    );
 typedef _ValueNative = Int32 Function();
 typedef _ValueDart = int Function();
 typedef _CancelNative = Void Function();
@@ -36,7 +38,8 @@ typedef _CancelDart = void Function();
 
 /// ncnn FFI adapter with a safe portable fallback.
 class NcnnEngine implements UpscaleEngine {
-  NcnnEngine({SafeCpuEngine? fallback}) : _fallback = fallback ?? SafeCpuEngine();
+  NcnnEngine({SafeCpuEngine? fallback})
+    : _fallback = fallback ?? SafeCpuEngine();
 
   final SafeCpuEngine _fallback;
   final Map<String, _CancelDart> _cancellers = <String, _CancelDart>{};
@@ -46,7 +49,8 @@ class NcnnEngine implements UpscaleEngine {
 
   @override
   Stream<EngineEvent> run(JobSpec job) {
-    final StreamController<EngineEvent> controller = StreamController<EngineEvent>();
+    final StreamController<EngineEvent> controller =
+        StreamController<EngineEvent>();
     () async {
       DynamicLibrary library;
       try {
@@ -56,9 +60,13 @@ class NcnnEngine implements UpscaleEngine {
         await controller.close();
         return;
       }
-      final _ValueDart progress = library.lookupFunction<_ValueNative, _ValueDart>('realscale_progress');
-      final _ValueDart total = library.lookupFunction<_ValueNative, _ValueDart>('realscale_total');
-      final _CancelDart cancel = library.lookupFunction<_CancelNative, _CancelDart>('realscale_cancel');
+      final _ValueDart progress = library
+          .lookupFunction<_ValueNative, _ValueDart>('realscale_progress');
+      final _ValueDart total = library.lookupFunction<_ValueNative, _ValueDart>(
+        'realscale_total',
+      );
+      final _CancelDart cancel = library
+          .lookupFunction<_CancelNative, _CancelDart>('realscale_cancel');
       _cancellers[job.id] = cancel;
       final Stopwatch elapsed = Stopwatch()..start();
       Timer? poll;
@@ -68,7 +76,9 @@ class NcnnEngine implements UpscaleEngine {
           final int count = progress();
           final int all = total();
           if (all > 0) {
-            final double average = count == 0 ? 0 : elapsed.elapsedMilliseconds / count;
+            final double average = count == 0
+                ? 0
+                : elapsed.elapsedMilliseconds / count;
             controller.add(
               EngineProgress(
                 ProgressEvent(
@@ -79,13 +89,17 @@ class NcnnEngine implements UpscaleEngine {
                   elapsed: elapsed.elapsed,
                   eta: count == 0
                       ? null
-                      : Duration(milliseconds: ((all - count) * average).round()),
+                      : Duration(
+                          milliseconds: ((all - count) * average).round(),
+                        ),
                 ),
               ),
             );
           }
         });
-        final int code = await Isolate.run(() => _invokeNative(files, job.tileSize));
+        final int code = await Isolate.run(
+          () => _invokeNative(files, job.tileSize),
+        );
         poll.cancel();
         if (code == 0) {
           final String png = await Isolate.run(
@@ -120,28 +134,42 @@ class NcnnEngine implements UpscaleEngine {
 
   Future<_NativeFiles> _prepareFiles(JobSpec job) async {
     final Directory support = await getApplicationSupportDirectory();
-    final Directory modelDirectory = Directory('${support.path}${Platform.pathSeparator}models');
+    final Directory modelDirectory = Directory(
+      '${support.path}${Platform.pathSeparator}models',
+    );
     final Directory temporary = await getTemporaryDirectory();
     await modelDirectory.create(recursive: true);
     final bool anime = job.input.kind == ImageKind.anime;
     final String stem = anime ? 'anime_scale2.0x_model' : 'scale2.0x_model';
-    final File parameter = File('${modelDirectory.path}${Platform.pathSeparator}$stem.param');
-    final File model = File('${modelDirectory.path}${Platform.pathSeparator}$stem.bin');
+    final File parameter = File(
+      '${modelDirectory.path}${Platform.pathSeparator}$stem.param',
+    );
+    final File model = File(
+      '${modelDirectory.path}${Platform.pathSeparator}$stem.bin',
+    );
     if (!await parameter.exists()) {
       await parameter.writeAsBytes(
-        (await rootBundle.load('assets/models_starter/$stem.param')).buffer.asUint8List(),
+        (await rootBundle.load(
+          'assets/models_starter/$stem.param',
+        )).buffer.asUint8List(),
         flush: true,
       );
     }
     if (!await model.exists()) {
       await model.writeAsBytes(
-        (await rootBundle.load('assets/models_starter/$stem.bin')).buffer.asUint8List(),
+        (await rootBundle.load(
+          'assets/models_starter/$stem.bin',
+        )).buffer.asUint8List(),
         flush: true,
       );
     }
-    final String inputPpm = '${temporary.path}${Platform.pathSeparator}${job.id}_input.ppm';
-    final String outputPpm = '${temporary.path}${Platform.pathSeparator}${job.id}_output.ppm';
-    await Isolate.run(() => _imageToPpm(job.preparedInputPath ?? job.input.path, inputPpm));
+    final String inputPpm =
+        '${temporary.path}${Platform.pathSeparator}${job.id}_input.ppm';
+    final String outputPpm =
+        '${temporary.path}${Platform.pathSeparator}${job.id}_output.ppm';
+    await Isolate.run(
+      () => _imageToPpm(job.preparedInputPath ?? job.input.path, inputPpm),
+    );
     return _NativeFiles(parameter.path, model.path, inputPpm, outputPpm);
   }
 }
@@ -154,7 +182,9 @@ DynamicLibrary _openLibrary() {
 
 int _invokeNative(_NativeFiles files, int tileSize) {
   final DynamicLibrary library = _openLibrary();
-  final _RunDart run = library.lookupFunction<_RunNative, _RunDart>('realscale_upscale');
+  final _RunDart run = library.lookupFunction<_RunNative, _RunDart>(
+    'realscale_upscale',
+  );
   final Pointer<Utf8> parameter = files.parameter.toNativeUtf8();
   final Pointer<Utf8> model = files.model.toNativeUtf8();
   final Pointer<Utf8> input = files.inputPpm.toNativeUtf8();
@@ -177,7 +207,9 @@ int _invokeNative(_NativeFiles files, int tileSize) {
 }
 
 Future<void> _imageToPpm(String sourcePath, String outputPath) async {
-  final image_lib.Image? decoded = image_lib.decodeImage(await File(sourcePath).readAsBytes());
+  final image_lib.Image? decoded = image_lib.decodeImage(
+    await File(sourcePath).readAsBytes(),
+  );
   if (decoded == null) throw const FormatException('unsupported_image');
   final image_lib.Image oriented = image_lib.bakeOrientation(decoded);
   final BytesBuilder bytes = BytesBuilder(copy: false)
@@ -207,8 +239,9 @@ Future<String> _ppmToPng(String ppmPath, String originalPath) async {
     numChannels: 3,
     order: image_lib.ChannelOrder.rgb,
   );
-  final image_lib.Image? original =
-      image_lib.decodeImage(await File(originalPath).readAsBytes());
+  final image_lib.Image? original = image_lib.decodeImage(
+    await File(originalPath).readAsBytes(),
+  );
   if (original != null) {
     image.exif = original.exif;
     if (original.numChannels == 4) {
@@ -222,7 +255,14 @@ Future<String> _ppmToPng(String ppmPath, String originalPath) async {
       for (int y = 0; y < height; y += 1) {
         for (int x = 0; x < width; x += 1) {
           final image_lib.Pixel color = image.getPixel(x, y);
-          image.setPixelRgba(x, y, color.r, color.g, color.b, alpha.getPixel(x, y).a);
+          image.setPixelRgba(
+            x,
+            y,
+            color.r,
+            color.g,
+            color.b,
+            alpha.getPixel(x, y).a,
+          );
         }
       }
     }

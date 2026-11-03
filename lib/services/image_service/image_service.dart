@@ -19,7 +19,14 @@ class ImageService {
   Future<ImageSelection?> pickFile() async {
     final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const <String>['jpg', 'jpeg', 'png', 'webp', 'heic', 'bmp'],
+      allowedExtensions: const <String>[
+        'jpg',
+        'jpeg',
+        'png',
+        'webp',
+        'heic',
+        'bmp',
+      ],
     );
     final String? path = result?.files.single.path;
     return path == null ? null : inspect(path);
@@ -90,16 +97,31 @@ class ImageService {
     final bool hasAlpha = oriented.numChannels == 4;
     int saturated = 0;
     int sampled = 0;
-    final int stride = (oriented.width * oriented.height / 1500).ceil().clamp(1, 999999);
-    for (int index = 0; index < oriented.width * oriented.height; index += stride) {
+    final int stride = (oriented.width * oriented.height / 1500).ceil().clamp(
+      1,
+      999999,
+    );
+    for (
+      int index = 0;
+      index < oriented.width * oriented.height;
+      index += stride
+    ) {
       final int x = index % oriented.width;
       final int y = index ~/ oriented.width;
       if (y >= oriented.height) {
         break;
       }
       final image_lib.Pixel pixel = oriented.getPixel(x, y);
-      final num maximum = <num>[pixel.r, pixel.g, pixel.b].reduce((num a, num b) => a > b ? a : b);
-      final num minimum = <num>[pixel.r, pixel.g, pixel.b].reduce((num a, num b) => a < b ? a : b);
+      final num maximum = <num>[
+        pixel.r,
+        pixel.g,
+        pixel.b,
+      ].reduce((num a, num b) => a > b ? a : b);
+      final num minimum = <num>[
+        pixel.r,
+        pixel.g,
+        pixel.b,
+      ].reduce((num a, num b) => a < b ? a : b);
       if (maximum - minimum > 95) {
         saturated += 1;
       }

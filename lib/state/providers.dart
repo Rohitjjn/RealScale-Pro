@@ -10,15 +10,20 @@ import '../services/storage_service/storage_service.dart';
 import 'app_controller.dart';
 
 final Provider<SettingsService> settingsProvider = Provider<SettingsService>(
-  (Ref ref) => throw StateError('SettingsService must be overridden at startup'),
+  (Ref ref) =>
+      throw StateError('SettingsService must be overridden at startup'),
 );
 
 final Provider<ModelDownloadService> modelDownloadProvider =
     Provider<ModelDownloadService>(
-  (Ref ref) => throw StateError('ModelDownloadService must be overridden at startup'),
-);
+      (Ref ref) => throw StateError(
+        'ModelDownloadService must be overridden at startup',
+      ),
+    );
 
-final Provider<AppController> appControllerProvider = Provider<AppController>((Ref ref) {
+final Provider<AppController> appControllerProvider = Provider<AppController>((
+  Ref ref,
+) {
   final AppController controller = AppController(
     profiler: const DeviceProfiler(),
     planner: PipelinePlanner(),

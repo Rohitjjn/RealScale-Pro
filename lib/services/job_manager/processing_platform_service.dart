@@ -21,10 +21,9 @@ class ProcessingPlatformService {
 
   Future<void> update(double fraction) async {
     if (!Platform.isAndroid) return;
-    await _safeInvoke(
-      'updateProcessing',
-      <String, int>{'progress': (fraction.clamp(0, 1) * 100).round()},
-    );
+    await _safeInvoke('updateProcessing', <String, int>{
+      'progress': (fraction.clamp(0, 1) * 100).round(),
+    });
   }
 
   Future<void> stop() async {
@@ -39,14 +38,16 @@ class ProcessingPlatformService {
 
   void _setWindowsAwake(bool enabled) {
     final DynamicLibrary kernel = DynamicLibrary.open('kernel32.dll');
-    final int Function(int) setState = kernel.lookupFunction<
-        Uint32 Function(Uint32), int Function(int)>('SetThreadExecutionState');
+    final int Function(int) setState = kernel
+        .lookupFunction<Uint32 Function(Uint32), int Function(int)>(
+          'SetThreadExecutionState',
+        );
     const int continuous = 0x80000000;
     const int systemRequired = 0x00000001;
     const int displayRequired = 0x00000002;
-    setState(enabled
-        ? continuous | systemRequired | displayRequired
-        : continuous);
+    setState(
+      enabled ? continuous | systemRequired | displayRequired : continuous,
+    );
   }
 
   Future<void> _safeInvoke(String method, [Object? arguments]) async {

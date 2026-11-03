@@ -19,12 +19,16 @@ class StorageService {
     if (Platform.isWindows) {
       final String? profile = Platform.environment['USERPROFILE'];
       if (profile != null) {
-        return Directory('$profile${Platform.pathSeparator}Pictures${Platform.pathSeparator}RealScale-Pro');
+        return Directory(
+          '$profile${Platform.pathSeparator}Pictures${Platform.pathSeparator}RealScale-Pro',
+        );
       }
     }
     final Directory documents = await getApplicationDocumentsDirectory();
     if (Platform.isAndroid) {
-      return Directory('${documents.path}${Platform.pathSeparator}RealScale-Pro');
+      return Directory(
+        '${documents.path}${Platform.pathSeparator}RealScale-Pro',
+      );
     }
     return Directory('${documents.path}${Platform.pathSeparator}RealScale-Pro');
   }
@@ -51,8 +55,9 @@ class StorageService {
       saved = await File(temporaryOutput).copy(destination);
     } else {
       final List<int> encoded = await Isolate.run(() {
-        final image_lib.Image? result =
-            image_lib.decodeImage(File(temporaryOutput).readAsBytesSync());
+        final image_lib.Image? result = image_lib.decodeImage(
+          File(temporaryOutput).readAsBytesSync(),
+        );
         if (result == null) throw const FormatException('unsupported_image');
         return image_lib.encodeJpg(result, quality: 95);
       });
@@ -94,22 +99,26 @@ class StorageService {
       if (!await file.exists()) {
         return <UpscaleRecord>[];
       }
-      final List<dynamic> values = jsonDecode(await file.readAsString()) as List<dynamic>;
-      return values.map((dynamic value) {
-        final Map<String, dynamic> map = value as Map<String, dynamic>;
-        return UpscaleRecord(
-          id: map['id'] as String,
-          originalPath: map['originalPath'] as String,
-          outputPath: map['outputPath'] as String,
-          width: map['width'] as int,
-          height: map['height'] as int,
-          bytes: map['bytes'] as int,
-          modelId: map['modelId'] as String,
-          scale: map['scale'] as int,
-          elapsed: Duration(milliseconds: map['elapsedMs'] as int),
-          createdAt: DateTime.parse(map['createdAt'] as String),
-        );
-      }).where((UpscaleRecord record) => File(record.outputPath).existsSync()).toList();
+      final List<dynamic> values =
+          jsonDecode(await file.readAsString()) as List<dynamic>;
+      return values
+          .map((dynamic value) {
+            final Map<String, dynamic> map = value as Map<String, dynamic>;
+            return UpscaleRecord(
+              id: map['id'] as String,
+              originalPath: map['originalPath'] as String,
+              outputPath: map['outputPath'] as String,
+              width: map['width'] as int,
+              height: map['height'] as int,
+              bytes: map['bytes'] as int,
+              modelId: map['modelId'] as String,
+              scale: map['scale'] as int,
+              elapsed: Duration(milliseconds: map['elapsedMs'] as int),
+              createdAt: DateTime.parse(map['createdAt'] as String),
+            );
+          })
+          .where((UpscaleRecord record) => File(record.outputPath).existsSync())
+          .toList();
     } on Object {
       return <UpscaleRecord>[];
     }
@@ -121,7 +130,9 @@ class StorageService {
       await result.delete();
     }
     final List<UpscaleRecord> records = await loadHistory();
-    await _writeHistory(records.where((UpscaleRecord item) => item.id != record.id).toList());
+    await _writeHistory(
+      records.where((UpscaleRecord item) => item.id != record.id).toList(),
+    );
   }
 
   Future<File> _historyFile() async {
@@ -132,18 +143,22 @@ class StorageService {
 
   Future<void> _writeHistory(List<UpscaleRecord> records) async {
     final File file = await _historyFile();
-    final List<Map<String, Object>> data = records.map((UpscaleRecord record) => <String, Object>{
-      'id': record.id,
-      'originalPath': record.originalPath,
-      'outputPath': record.outputPath,
-      'width': record.width,
-      'height': record.height,
-      'bytes': record.bytes,
-      'modelId': record.modelId,
-      'scale': record.scale,
-      'elapsedMs': record.elapsed.inMilliseconds,
-      'createdAt': record.createdAt.toIso8601String(),
-    }).toList();
+    final List<Map<String, Object>> data = records
+        .map(
+          (UpscaleRecord record) => <String, Object>{
+            'id': record.id,
+            'originalPath': record.originalPath,
+            'outputPath': record.outputPath,
+            'width': record.width,
+            'height': record.height,
+            'bytes': record.bytes,
+            'modelId': record.modelId,
+            'scale': record.scale,
+            'elapsedMs': record.elapsed.inMilliseconds,
+            'createdAt': record.createdAt.toIso8601String(),
+          },
+        )
+        .toList();
     await file.writeAsString(jsonEncode(data), flush: true);
   }
 }

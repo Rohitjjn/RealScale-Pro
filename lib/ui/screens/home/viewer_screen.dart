@@ -30,7 +30,9 @@ class _ViewerScreenState extends State<ViewerScreen> {
           ? AppBar(
               backgroundColor: Colors.black,
               foregroundColor: Colors.white,
-              title: Text('${selection.width}×${selection.height} · ${(selection.bytes / 1048576).toStringAsFixed(1)} MB'),
+              title: Text(
+                '${selection.width}×${selection.height} · ${(selection.bytes / 1048576).toStringAsFixed(1)} MB',
+              ),
             )
           : null,
       body: GestureDetector(
@@ -57,20 +59,36 @@ class _ViewerScreenState extends State<ViewerScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: <Widget>[
-                      Expanded(child: FilledButton.icon(onPressed: () => context.go('/config'), icon: const Icon(Icons.auto_awesome_rounded), label: Text(context.l10n.upscale))),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => context.go('/config'),
+                          icon: const Icon(Icons.auto_awesome_rounded),
+                          label: Text(context.l10n.upscale),
+                        ),
+                      ),
                       IconButton(
                         color: Colors.white,
                         tooltip: context.l10n.details,
-                        onPressed: () => showAppSheet(context, Text('${selection.name}\n${selection.width}×${selection.height}')),
+                        onPressed: () => showAppSheet(
+                          context,
+                          Text(
+                            '${selection.name}\n${selection.width}×${selection.height}',
+                          ),
+                        ),
                         icon: const Icon(Icons.info_outline_rounded),
                       ),
                       IconButton(
                         color: Colors.white,
                         tooltip: context.l10n.share,
-                        onPressed: () => SharePlus.instance.share(ShareParams(files: <XFile>[XFile(selection.path)])),
+                        onPressed: () => SharePlus.instance.share(
+                          ShareParams(files: <XFile>[XFile(selection.path)]),
+                        ),
                         icon: const Icon(Icons.share_rounded),
                       ),
-                      const InfoChip(icon: Icons.auto_awesome_rounded, label: '2×'),
+                      const InfoChip(
+                        icon: Icons.auto_awesome_rounded,
+                        label: '2×',
+                      ),
                     ],
                   ),
                 ),

@@ -24,11 +24,12 @@ class ModelDownloadService {
 
   Future<void> initialize() async {
     await FileDownloader().start(autoCleanDatabase: true);
-    final Iterable<TaskRecord> records = await FileDownloader().database.allRecords();
+    final Iterable<TaskRecord> records = await FileDownloader().database
+        .allRecords();
     for (final TaskRecord record in records) {
       if (record.status.isNotFinalState) {
-        _active[record.task.taskId] =
-            await FileDownloader().transfers.getOrStart(record.task);
+        _active[record.task.taskId] = await FileDownloader().transfers
+            .getOrStart(record.task);
       }
     }
   }
@@ -55,8 +56,7 @@ class ModelDownloadService {
         TransferHint.largeFile,
       },
     );
-    final Transfer transfer =
-        await FileDownloader().transfers.getOrStart(task);
+    final Transfer transfer = await FileDownloader().transfers.getOrStart(task);
     _active[model.id] = transfer;
     final File file = await transfer.file;
     if (await _checksum(file) != model.sha256.toLowerCase()) {

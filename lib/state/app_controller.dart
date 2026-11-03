@@ -17,11 +17,11 @@ class AppController extends ChangeNotifier {
     required ImageService images,
     required StorageService storage,
     required UpscaleEngine engine,
-  })  : _profiler = profiler,
-        _planner = planner,
-        _images = images,
-        _storage = storage,
-        _engine = engine;
+  }) : _profiler = profiler,
+       _planner = planner,
+       _images = images,
+       _storage = storage,
+       _engine = engine;
 
   final DeviceProfiler _profiler;
   final PipelinePlanner _planner;
@@ -54,7 +54,8 @@ class AppController extends ChangeNotifier {
   }
 
   Future<bool> chooseFile() async => _setSelection(await _images.pickFile());
-  Future<bool> chooseGallery() async => _setSelection(await _images.pickGallery());
+  Future<bool> chooseGallery() async =>
+      _setSelection(await _images.pickGallery());
   Future<bool> takePhoto() async => _setSelection(await _images.takePhoto());
 
   Future<bool> selectPath(String path) async {

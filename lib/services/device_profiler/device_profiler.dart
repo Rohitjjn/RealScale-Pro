@@ -30,37 +30,44 @@ class DeviceProfiler {
     Map<Object?, Object?> native = <Object?, Object?>{};
     if (Platform.isAndroid) {
       try {
-        native = await _channel.invokeMapMethod<Object?, Object?>('profile') ??
+        native =
+            await _channel.invokeMapMethod<Object?, Object?>('profile') ??
             <Object?, Object?>{};
       } on PlatformException {
         native = <Object?, Object?>{};
       }
     }
-    final int totalRam = (native['totalRamMb'] as num?)?.round() ??
+    final int totalRam =
+        (native['totalRamMb'] as num?)?.round() ??
         (cores <= 2 ? 2048 : (cores <= 4 ? 4096 : 8192));
     final DeviceTier tier = totalRam <= 2048
         ? DeviceTier.t0
         : totalRam <= 4096
-            ? DeviceTier.t1
-            : totalRam <= 8192
-                ? DeviceTier.t2
-                : DeviceTier.t3;
+        ? DeviceTier.t1
+        : totalRam <= 8192
+        ? DeviceTier.t2
+        : DeviceTier.t3;
     final Directory support = await getApplicationSupportDirectory();
-    final int freeStorageMb = (native['freeStorageMb'] as num?)?.round() ??
+    final int freeStorageMb =
+        (native['freeStorageMb'] as num?)?.round() ??
         _freeSpaceFallback(support);
     final BaseDeviceInfo info = await DeviceInfoPlugin().deviceInfo;
 
     return DeviceProfile(
       tier: tier,
-      label: tier.index <= 1 ? 'Light' : (tier == DeviceTier.t2 ? 'Standard' : 'Powerful'),
+      label: tier.index <= 1
+          ? 'Light'
+          : (tier == DeviceTier.t2 ? 'Standard' : 'Powerful'),
       totalRamMb: totalRam,
       cpuCores: cores,
-      gpuName: native['gpuName'] as String? ??
+      gpuName:
+          native['gpuName'] as String? ??
           (Platform.isAndroid ? 'Android graphics' : 'Windows graphics'),
       vulkanSupported: native['vulkanSupported'] as bool? ?? false,
       benchmarkMs: stopwatch.elapsedMilliseconds,
       freeStorageMb: freeStorageMb,
-      osVersion: info.data['version']?.toString() ?? Platform.operatingSystemVersion,
+      osVersion:
+          info.data['version']?.toString() ?? Platform.operatingSystemVersion,
       measuredAt: DateTime.now(),
     );
   }

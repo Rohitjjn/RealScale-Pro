@@ -38,28 +38,32 @@ class _BrandSplashScreenState extends State<BrandSplashScreen>
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: Center(
-          child: FadeTransition(
-            opacity: CurvedAnimation(parent: _animation, curve: Curves.easeOut),
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.92, end: 1).animate(_animation),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const Icon(Icons.auto_awesome_rounded, color: AppColors.blue, size: 58),
-                  const SizedBox(height: 16),
-                  Text(
-                    context.l10n.appName,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                ],
+    body: Center(
+      child: FadeTransition(
+        opacity: CurvedAnimation(parent: _animation, curve: Curves.easeOut),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.92, end: 1).animate(_animation),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Icon(
+                Icons.auto_awesome_rounded,
+                color: AppColors.blue,
+                size: 58,
               ),
-            ),
+              const SizedBox(height: 16),
+              Text(
+                context.l10n.appName,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class GuideScreen extends StatefulWidget {
@@ -86,9 +90,14 @@ class _GuideScreenState extends State<GuideScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<(IconData, String, String)> slides = <(IconData, String, String)>[
+    final List<(IconData, String, String)>
+    slides = <(IconData, String, String)>[
       (Icons.hd_rounded, context.l10n.guideTitle1, context.l10n.guideBody1),
-      (Icons.devices_rounded, context.l10n.guideTitle2, context.l10n.guideBody2),
+      (
+        Icons.devices_rounded,
+        context.l10n.guideTitle2,
+        context.l10n.guideBody2,
+      ),
       (Icons.tune_rounded, context.l10n.guideTitle3, context.l10n.guideBody3),
       (Icons.lock_rounded, context.l10n.guideTitle4, context.l10n.guideBody4),
     ];
@@ -106,7 +115,8 @@ class _GuideScreenState extends State<GuideScreen> {
               itemCount: slides.length,
               onPageChanged: (int value) => setState(() => _page = value),
               itemBuilder: (BuildContext context, int index) {
-                final (IconData icon, String title, String body) = slides[index];
+                final (IconData icon, String title, String body) =
+                    slides[index];
                 return Padding(
                   padding: const EdgeInsets.all(32),
                   child: Column(
@@ -114,9 +124,17 @@ class _GuideScreenState extends State<GuideScreen> {
                     children: <Widget>[
                       Icon(icon, size: 96, color: AppColors.blue),
                       const SizedBox(height: 32),
-                      Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
                       const SizedBox(height: 12),
-                      Text(body, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge),
+                      Text(
+                        body,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
                     ],
                   ),
                 );
@@ -140,12 +158,17 @@ class _GuideScreenState extends State<GuideScreen> {
             ),
           ),
           PrimaryActionBar(
-            label: _page == slides.length - 1 ? context.l10n.getStarted : context.l10n.next,
+            label: _page == slides.length - 1
+                ? context.l10n.getStarted
+                : context.l10n.next,
             onPressed: () {
               if (_page == slides.length - 1) {
                 _finish();
               } else {
-                _controller.nextPage(duration: AppTokens.screenMotion, curve: Curves.easeOutCubic);
+                _controller.nextPage(
+                  duration: AppTokens.screenMotion,
+                  curve: Curves.easeOutCubic,
+                );
               }
             },
           ),
@@ -167,57 +190,61 @@ class PermissionPrimerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(
-                  isPhotos ? Icons.photo_library_rounded : Icons.notifications_active_rounded,
-                  color: AppColors.blue,
-                  size: 88,
-                ),
-                const SizedBox(height: 28),
-                Text(
-                  isPhotos
-                      ? context.l10n.photoPermissionTitle
-                      : context.l10n.notificationPermissionTitle,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  isPhotos
-                      ? context.l10n.photoPermissionBody
-                      : context.l10n.notificationPermissionBody,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                FilledButton(
-                  onPressed: () async {
-                    if (isPhotos) {
-                      await permissions.photoState();
-                    } else {
-                      await permissions.notificationState();
-                    }
-                    if (context.mounted) {
-                      context.go(isPhotos ? '/permissions/notifications' : '/device-check');
-                    }
-                  },
-                  child: Text(context.l10n.allow),
-                ),
-                TextButton(
-                  onPressed: () => context.go(
-                    isPhotos ? '/permissions/notifications' : '/device-check',
-                  ),
-                  child: Text(context.l10n.notNow),
-                ),
-              ],
+    body: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Icon(
+              isPhotos
+                  ? Icons.photo_library_rounded
+                  : Icons.notifications_active_rounded,
+              color: AppColors.blue,
+              size: 88,
             ),
-          ),
+            const SizedBox(height: 28),
+            Text(
+              isPhotos
+                  ? context.l10n.photoPermissionTitle
+                  : context.l10n.notificationPermissionTitle,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isPhotos
+                  ? context.l10n.photoPermissionBody
+                  : context.l10n.notificationPermissionBody,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            FilledButton(
+              onPressed: () async {
+                if (isPhotos) {
+                  await permissions.photoState();
+                } else {
+                  await permissions.notificationState();
+                }
+                if (context.mounted) {
+                  context.go(
+                    isPhotos ? '/permissions/notifications' : '/device-check',
+                  );
+                }
+              },
+              child: Text(context.l10n.allow),
+            ),
+            TextButton(
+              onPressed: () => context.go(
+                isPhotos ? '/permissions/notifications' : '/device-check',
+              ),
+              child: Text(context.l10n.notNow),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class DeviceCheckScreen extends StatefulWidget {
@@ -243,24 +270,29 @@ class _DeviceCheckScreenState extends State<DeviceCheckScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                const Icon(Icons.memory_rounded, color: AppColors.blue, size: 80),
-                const SizedBox(height: 24),
-                Text(context.l10n.checkingDevice, style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 8),
-                Text(context.l10n.deviceCheckBody, textAlign: TextAlign.center),
-                const SizedBox(height: 24),
-                const LinearProgressIndicator(borderRadius: BorderRadius.all(Radius.circular(8))),
-              ],
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Icon(Icons.memory_rounded, color: AppColors.blue, size: 80),
+            const SizedBox(height: 24),
+            Text(
+              context.l10n.checkingDevice,
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(context.l10n.deviceCheckBody, textAlign: TextAlign.center),
+            const SizedBox(height: 24),
+            const LinearProgressIndicator(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class SetupScreen extends StatelessWidget {
@@ -286,10 +318,16 @@ class SetupScreen extends StatelessWidget {
             final (int index, (String, String) row) = entry;
             return Card(
               child: ListTile(
-                leading: Icon(index < 2 ? Icons.check_circle_rounded : Icons.cloud_download_outlined),
+                leading: Icon(
+                  index < 2
+                      ? Icons.check_circle_rounded
+                      : Icons.cloud_download_outlined,
+                ),
                 title: Text(row.$1),
                 subtitle: Text(row.$2),
-                trailing: Text(index < 2 ? context.l10n.done : context.l10n.queued),
+                trailing: Text(
+                  index < 2 ? context.l10n.done : context.l10n.queued,
+                ),
               ),
             );
           }),

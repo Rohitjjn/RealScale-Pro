@@ -12,11 +12,14 @@ import 'state/providers.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   LicenseRegistry.addLicense(() async* {
-    final String notices = await rootBundle.loadString('assets/data/native_notices.txt');
-    yield LicenseEntryWithLineBreaks(
-      const <String>['ncnn', 'waifu2x-ncnn-vulkan', 'Real-ESRGAN-ncnn-vulkan'],
-      notices,
+    final String notices = await rootBundle.loadString(
+      'assets/data/native_notices.txt',
     );
+    yield LicenseEntryWithLineBreaks(const <String>[
+      'ncnn',
+      'waifu2x-ncnn-vulkan',
+      'Real-ESRGAN-ncnn-vulkan',
+    ], notices);
   });
   final SharedPreferences preferences = await SharedPreferences.getInstance();
   final SettingsService settings = SettingsService(preferences);
