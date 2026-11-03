@@ -58,6 +58,11 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 add_subdirectory("../native/realscale" "${CMAKE_CURRENT_BINARY_DIR}/realscale_ncnn")
 add_subdirectory("runner")
 target_link_libraries(${BINARY_NAME} PRIVATE realscale_ncnn)
+add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "$<TARGET_FILE:realscale_ncnn>"
+    "$<TARGET_FILE_DIR:${BINARY_NAME}>"
+)
 
 
 # Enable the test target.
@@ -84,8 +89,6 @@ set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
-  COMPONENT Runtime)
-install(TARGETS realscale_ncnn RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
