@@ -10,12 +10,12 @@ Phase 0 review. Model files are data, never downloaded executable code.
 | --- | --- | --- | --- | --- | --- |
 | ncnn | `6125c9f47cd14b589de0521350668cf9d3d37e3c` | BSD-3-Clause (with permissive third-party notices) | https://github.com/Tencent/ncnn | CPU/Vulkan neural-network runtime | Source license read; active 2026-11-03 |
 | Real-ESRGAN ncnn Vulkan | `37026f49824c5cf84062e7c6a5dd71445dcf610f` | MIT | https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan | Primary upstream integration reference | License read; last code update 2024-05-10 |
-| Real-CUGAN ncnn Vulkan | upstream snapshot reviewed 2026-11-03 | MIT | https://github.com/nihui/realcugan-ncnn-vulkan | Bundled compact anime fallback model | License read; last code update 2023-03-12 |
+| Real-CUGAN ncnn Vulkan | upstream snapshot reviewed 2026-11-03 | MIT | https://github.com/nihui/realcugan-ncnn-vulkan | Reviewed candidate; reserved for later model support | License read; last code update 2023-03-12 |
 | waifu2x ncnn Vulkan | upstream snapshot reviewed 2026-11-03 | MIT | https://github.com/nihui/waifu2x-ncnn-vulkan | Bundled compact photo fallback model and CPU spike | License read; active 2026-04-13 |
 | `scale2.0x_model` weights | from `models-upconv_7_photo` in waifu2x ncnn Vulkan | MIT repository distribution | https://github.com/nihui/waifu2x-ncnn-vulkan | Offline photo fallback | SHA-256 recorded in `assets/data/starter_manifest.json` |
-| `up2x-no-denoise` weights | from `models-nose` in Real-CUGAN ncnn Vulkan | MIT repository distribution | https://github.com/nihui/realcugan-ncnn-vulkan | Offline anime fallback | SHA-256 recorded in `assets/data/starter_manifest.json` |
+| `anime_scale2.0x_model` weights | from `models-upconv_7_anime_style_art_rgb` in waifu2x ncnn Vulkan | MIT repository distribution | https://github.com/nihui/waifu2x-ncnn-vulkan | Offline anime fallback | SHA-256 recorded in `assets/data/starter_manifest.json` |
 
-The two bundled fallbacks are 3.7 MB together. Official Real-ESRGAN compact files
+The two bundled fallbacks are 2.2 MB together. Official Real-ESRGAN compact files
 remain the preferred on-demand models. They are not bundled until their exact
 weight terms and a reliable GitHub Release asset can be verified on Android and
 Windows.
@@ -32,6 +32,7 @@ Windows.
 | image_picker | 1.2.4 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/image_picker | Camera and system gallery fallback |
 | permission_handler | 13.0.2 | MIT | https://github.com/Baseflow/flutter-permission-handler | Permission requests after primers |
 | background_downloader | 9.6.5 | BSD-3-Clause | https://github.com/781flyingdutchman/background_downloader | Resumable model downloads |
+| crypto | 3.0.8 | BSD-3-Clause | https://github.com/dart-lang/core/tree/main/pkgs/crypto | SHA-256 model verification |
 | share_plus | 13.3.1 | BSD-3-Clause | https://github.com/fluttercommunity/plus_plugins | System share sheet |
 | device_info_plus | 13.3.0 | BSD-3-Clause | https://github.com/fluttercommunity/plus_plugins | OS/device profile |
 | package_info_plus | 10.2.2 | BSD-3-Clause | https://github.com/fluttercommunity/plus_plugins | About screen version |

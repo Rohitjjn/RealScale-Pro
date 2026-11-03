@@ -13,6 +13,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   background_downloader: 9.6.5
+  crypto: 3.0.8
   device_info_plus: 13.3.0
   file_picker: 13.3.2
   ffi: 2.2.0

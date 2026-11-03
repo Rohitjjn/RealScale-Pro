@@ -1,0 +1,14 @@
+ncnn
+Copyright (C) 2017 Tencent. All rights reserved.
+Licensed under the BSD 3-Clause License.
+Source: https://github.com/Tencent/ncnn
+
+waifu2x-ncnn-vulkan and bundled compact model files
+Copyright (c) 2019 nihui
+Licensed under the MIT License.
+Source: https://github.com/nihui/waifu2x-ncnn-vulkan
+
+Real-ESRGAN-ncnn-vulkan integration reference
+Copyright (c) 2021 Xintao Wang
+Licensed under the MIT License.
+Source: https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan
