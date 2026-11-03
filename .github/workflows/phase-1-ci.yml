@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: phase-1-${{ github.workflow }}-${{ github.ref }}
@@ -39,6 +39,18 @@ jobs:
           fi
       - name: Generate English localization
         run: flutter gen-l10n
+      - name: Apply formatter on manual maintenance run
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          dart format lib test
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add lib test
+            git commit -m "style(dart): apply verified formatter"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test
       - name: Analyze without warnings
