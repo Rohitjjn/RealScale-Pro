@@ -101,16 +101,67 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 }
 
-class MyUpscalesScreen extends StatelessWidget {
+class MyUpscalesScreen extends StatefulWidget {
   const MyUpscalesScreen({required this.controller, super.key});
   final AppController controller;
 
   @override
+  State<MyUpscalesScreen> createState() => _MyUpscalesScreenState();
+}
+
+class _MyUpscalesScreenState extends State<MyUpscalesScreen> {
+  final Set<String> _selected = <String>{};
+
+  Future<void> _shareSelected() async {
+    final List<XFile> files = widget.controller.history
+        .where((UpscaleRecord record) => _selected.contains(record.id))
+        .map((UpscaleRecord record) => XFile(record.outputPath))
+        .toList();
+    if (files.isNotEmpty) {
+      await SharePlus.instance.share(ShareParams(files: files));
+    }
+  }
+
+  Future<void> _deleteSelected() async {
+    final List<UpscaleRecord> records = widget.controller.history
+        .where((UpscaleRecord record) => _selected.contains(record.id))
+        .toList();
+    for (final UpscaleRecord record in records) {
+      await widget.controller.deleteRecord(record);
+    }
+    if (mounted) setState(_selected.clear);
+  }
+
+  void _toggle(UpscaleRecord record) {
+    setState(() {
+      if (!_selected.remove(record.id)) _selected.add(record.id);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: controller,
+        listenable: widget.controller,
         builder: (BuildContext context, Widget? child) => Scaffold(
-          appBar: AppBar(title: Text(context.l10n.myUpscales)),
-          body: controller.history.isEmpty
+          appBar: AppBar(
+            title: Text(_selected.isEmpty
+                ? context.l10n.myUpscales
+                : _selected.length.toString()),
+            actions: _selected.isEmpty
+                ? null
+                : <Widget>[
+                    IconButton(
+                      tooltip: context.l10n.share,
+                      onPressed: _shareSelected,
+                      icon: const Icon(Icons.share_rounded),
+                    ),
+                    IconButton(
+                      tooltip: context.l10n.delete,
+                      onPressed: _deleteSelected,
+                      icon: const Icon(Icons.delete_outline_rounded),
+                    ),
+                  ],
+          ),
+          body: widget.controller.history.isEmpty
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
@@ -132,16 +183,38 @@ class MyUpscalesScreen extends StatelessWidget {
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,
                   ),
-                  itemCount: controller.history.length,
+                  itemCount: widget.controller.history.length,
                   itemBuilder: (BuildContext context, int index) {
-                    final UpscaleRecord record = controller.history[index];
+                    final UpscaleRecord record = widget.controller.history[index];
+                    final bool selected = _selected.contains(record.id);
                     return Card(
                       child: InkWell(
+                        onLongPress: () => _toggle(record),
                         onTap: () {
-                          controller.openRecord(record);
-                          context.go('/result');
+                          if (_selected.isNotEmpty) {
+                            _toggle(record);
+                          } else {
+                            widget.controller.openRecord(record);
+                            context.go('/result');
+                          }
                         },
-                        child: Image.file(File(record.outputPath), fit: BoxFit.cover),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            Image.file(File(record.outputPath), fit: BoxFit.cover),
+                            if (selected)
+                              ColoredBox(
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.35),
+                                child: const Align(
+                                  alignment: Alignment.topRight,
+                                  child: Padding(
+                                    padding: EdgeInsets.all(8),
+                                    child: Icon(Icons.check_circle_rounded, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },
