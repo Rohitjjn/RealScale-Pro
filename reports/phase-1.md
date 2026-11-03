@@ -187,8 +187,10 @@ the audited fallback models.
    the core flow passes. The current development icon is suitable only for test packages.
 
 ## 9. Notes for the next phase
-Do not begin Phase 2. CI with Flutter 3.47.9 is green. Next test the exact
-Android 2 GB and Windows 4 GB profiles,
+The owner approved starting Phase 2 on 3 November 2026 after reviewing this
+report. The unresolved Phase 1 hardware checks remain open and must not be
+silently treated as passes. CI with Flutter 3.47.9 is green. Test the exact
+Android 2 GB and Windows 4 GB profiles when hardware becomes available,
 then connect setup rows to the release manifest, add streamed strip output and
 overlap blending, enable Vulkan with CPU recovery, and complete albums/clipboard.
 Measured Linux baseline: 64×64 → 128×128 at 39 ms in the Phase 0 harness; current

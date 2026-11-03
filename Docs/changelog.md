@@ -5,6 +5,11 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-03 — Phase 2 — Kickoff and task plan
+- Expanded Phase 2 into twelve small, testable tasks informed by the Phase 1
+  report. Hardware gaps remain open while model choice, downloads, faces and
+  complete Settings are built in order.
+
 ## 2026-11-03 — Phase 1 — Cloud verification for owner hand-off
 - Added pinned GitHub Actions checks for formatting, analysis, tests, prohibited
   package policy, a real ncnn model run, and Android/Windows debug builds. Successful
