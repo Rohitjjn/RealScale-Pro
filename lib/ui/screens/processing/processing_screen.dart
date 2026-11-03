@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/models.dart';
+import '../../../services/job_manager/processing_platform_service.dart';
 import '../../../services/settings_service.dart';
 import '../../../state/app_controller.dart';
 import '../../widgets/core_widgets.dart';
@@ -18,12 +21,16 @@ class ProcessingScreen extends StatefulWidget {
 
 class _ProcessingScreenState extends State<ProcessingScreen> {
   final Set<int> _hapticMarks = <int>{};
+  final ProcessingPlatformService _platform = const ProcessingPlatformService();
+  int _lastNotificationPercent = -1;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.controller.startJob(onComplete: () {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _platform.start(keepAwake: widget.settings.keepAwake);
+      await widget.controller.startJob(onComplete: () async {
+        await _platform.stop();
         if (mounted) context.go('/result');
       });
     });
@@ -42,6 +49,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
       ),
     );
     if (cancel ?? false) {
+      await _platform.stop();
       await widget.controller.cancelJob();
       if (mounted) context.go('/config');
     }
@@ -54,6 +62,10 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
           final ProgressEvent? progress = widget.controller.progress;
           final double fraction = progress?.fraction.clamp(0, 1) ?? 0;
           final int percent = (fraction * 100).round();
+          if (percent != _lastNotificationPercent) {
+            _lastNotificationPercent = percent;
+            unawaited(_platform.update(fraction));
+          }
           if (widget.settings.haptics) {
             for (final int mark in <int>[25, 50, 75]) {
               if (percent >= mark && _hapticMarks.add(mark)) HapticFeedback.selectionClick();
