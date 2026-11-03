@@ -24,7 +24,7 @@ Windows.
 
 | Package | Pinned version | License | Upstream | Where used / reason |
 | --- | --- | --- | --- | --- |
-| flutter_riverpod | 3.4.3 | MIT | https://github.com/rrousselGit/riverpod | Typed app state; required by rules.md |
+| flutter_riverpod | 3.0.3 | MIT | https://github.com/rrousselGit/riverpod | Typed app state; required by rules.md |
 | go_router | 16.2.4 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/go_router | Navigation; required by rules.md |
 | photo_manager | 3.12.0 | Apache-2.0 | https://github.com/fluttercandies/flutter_photo_manager | Recents and limited photo access |
 | file_picker | 13.3.2 | MIT | https://github.com/vicajilau/flutter_file_picker | Android and desktop file picker |
