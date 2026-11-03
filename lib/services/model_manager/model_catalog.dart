@@ -104,14 +104,11 @@ class ModelDefinition {
       sizeBytes: _requiredInt(json, 'sizeBytes'),
       license: _requiredString(json, 'license'),
       sourceUrl: _requiredString(json, 'sourceUrl'),
-      availability: _enumValue(
-        ModelAvailability.values,
+      availability: _enumValue(ModelAvailability.values, json, 'availability'),
+      files: _objectList(
         json,
-        'availability',
-      ),
-      files: _objectList(json, 'files')
-          .map(ModelFileDefinition.fromJson)
-          .toList(growable: false),
+        'files',
+      ).map(ModelFileDefinition.fromJson).toList(growable: false),
       restricted: json['restricted'] as bool? ?? false,
       restrictionNote: _optionalString(json, 'restrictionNote'),
     );
@@ -205,9 +202,10 @@ class ModelCatalog {
     if (version <= 0) {
       throw const FormatException('Model catalog version must be positive');
     }
-    final List<ModelDefinition> models = _objectList(decoded, 'models')
-        .map(ModelDefinition.fromJson)
-        .toList(growable: false);
+    final List<ModelDefinition> models = _objectList(
+      decoded,
+      'models',
+    ).map(ModelDefinition.fromJson).toList(growable: false);
     if (models.isEmpty) {
       throw const FormatException('Model catalog cannot be empty');
     }
@@ -264,10 +262,7 @@ List<int> _intList(Map<String, dynamic> json, String key) {
   return value.cast<int>().toList(growable: false);
 }
 
-List<Map<String, dynamic>> _objectList(
-  Map<String, dynamic> json,
-  String key,
-) {
+List<Map<String, dynamic>> _objectList(Map<String, dynamic> json, String key) {
   final Object? value = json[key];
   if (value is! List<dynamic> ||
       value.any((Object? item) => item is! Map<String, dynamic>)) {
@@ -302,9 +297,7 @@ List<T> _enumList<T extends Enum>(
       .map(
         (String item) => values.firstWhere(
           (T value) => value.name == item,
-          orElse: () => throw FormatException(
-            '$key has unknown value: $item',
-          ),
+          orElse: () => throw FormatException('$key has unknown value: $item'),
         ),
       )
       .toList(growable: false);

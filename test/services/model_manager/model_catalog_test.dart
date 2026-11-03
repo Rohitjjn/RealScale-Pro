@@ -36,10 +36,10 @@ void main() {
         .where((ModelDefinition model) => model.isEnabled)
         .toList();
 
-    expect(
-      enabled.map((ModelDefinition model) => model.id),
-      <String>['waifu2x-photo-fallback', 'waifu2x-anime-fallback'],
-    );
+    expect(enabled.map((ModelDefinition model) => model.id), <String>[
+      'waifu2x-photo-fallback',
+      'waifu2x-anime-fallback',
+    ]);
     expect(
       enabled.every((ModelDefinition model) => model.files.length == 2),
       isTrue,
@@ -53,8 +53,14 @@ void main() {
     );
 
     expect(faceModels, hasLength(2));
-    expect(faceModels.every((ModelDefinition model) => model.restricted), isTrue);
-    expect(faceModels.every((ModelDefinition model) => !model.isEnabled), isTrue);
+    expect(
+      faceModels.every((ModelDefinition model) => model.restricted),
+      isTrue,
+    );
+    expect(
+      faceModels.every((ModelDefinition model) => !model.isEnabled),
+      isTrue,
+    );
     expect(
       catalog.byId('gfpgan-v1-4').restrictionNote,
       contains('Owner-approved'),
@@ -95,10 +101,12 @@ void main() {
     final Map<String, dynamic> json =
         jsonDecode(source) as Map<String, dynamic>;
     final List<dynamic> models = json['models'] as List<dynamic>;
-    final Map<String, dynamic> gfpgan = models.firstWhere(
-      (dynamic model) =>
-          (model as Map<String, dynamic>)['id'] == 'gfpgan-v1-4',
-    ) as Map<String, dynamic>;
+    final Map<String, dynamic> gfpgan =
+        models.firstWhere(
+              (dynamic model) =>
+                  (model as Map<String, dynamic>)['id'] == 'gfpgan-v1-4',
+            )
+            as Map<String, dynamic>;
     gfpgan['availability'] = 'onDemand';
 
     expect(
