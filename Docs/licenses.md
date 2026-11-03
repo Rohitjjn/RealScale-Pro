@@ -24,22 +24,22 @@ Windows.
 
 | Package | Pinned version | License | Upstream | Where used / reason |
 | --- | --- | --- | --- | --- |
-| flutter_riverpod | 3.0.3 | MIT | https://github.com/rrousselGit/riverpod | Typed app state; required by rules.md |
-| go_router | 16.2.4 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/go_router | Navigation; required by rules.md |
+| flutter_riverpod | 3.4.3 | MIT | https://github.com/rrousselGit/riverpod | Typed app state; required by rules.md |
+| go_router | 18.1.2 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/go_router | Navigation; required by rules.md |
 | photo_manager | 3.12.0 | Apache-2.0 | https://github.com/fluttercandies/flutter_photo_manager | Recents and limited photo access |
 | file_picker | 13.3.2 | MIT | https://github.com/vicajilau/flutter_file_picker | Android and desktop file picker |
 | ffi | 2.2.0 | BSD-3-Clause | https://github.com/dart-lang/native/tree/main/pkgs/ffi | Safe Dart bindings to the thin ncnn C interface |
-| image_picker | 1.2.0 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/image_picker | Camera and system gallery fallback |
+| image_picker | 1.2.4 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/image_picker | Camera and system gallery fallback |
 | permission_handler | 13.0.2 | MIT | https://github.com/Baseflow/flutter-permission-handler | Permission requests after primers |
 | background_downloader | 9.6.5 | BSD-3-Clause | https://github.com/781flyingdutchman/background_downloader | Resumable model downloads |
 | crypto | 3.0.8 | BSD-3-Clause | https://github.com/dart-lang/core/tree/main/pkgs/crypto | SHA-256 model verification |
 | share_plus | 13.3.1 | BSD-3-Clause | https://github.com/fluttercommunity/plus_plugins | System share sheet |
 | device_info_plus | 13.3.0 | BSD-3-Clause | https://github.com/fluttercommunity/plus_plugins | OS/device profile |
 | package_info_plus | 10.2.2 | BSD-3-Clause | https://github.com/fluttercommunity/plus_plugins | About screen version |
-| shared_preferences | 2.5.3 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/shared_preferences | Onboarding and settings persistence |
+| shared_preferences | 2.5.6 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/shared_preferences | Onboarding and settings persistence |
 | path_provider | 2.1.6 | BSD-3-Clause | https://github.com/flutter/packages/tree/main/packages/path_provider | Models, temporary copies and fallback output folders |
 | image | 4.5.4 | MIT | https://github.com/brendan-duncan/image | Decode, orientation, compression and preview helpers |
-| flutter_native_splash | 2.4.7 | MIT | https://github.com/jonbhanson/flutter_native_splash | Theme-matched native splash generation |
+| flutter_native_splash | 2.4.8 | MIT | https://github.com/jonbhanson/flutter_native_splash | Theme-matched native splash generation |
 
 All listed repositories had activity within 18 months on the verification date.
 Flutter and Dart are distributed under BSD-3-Clause. Material widgets,
