@@ -1,0 +1,11 @@
+{
+  "tiers": {
+    "T0": {"label": "Light", "maxRamMb": 2048, "tile": 128, "maxTile": 256, "overlap": 16, "inputMp": 1, "outputMp": 16},
+    "T1": {"label": "Light", "maxRamMb": 4096, "tile": 256, "maxTile": 384, "overlap": 16, "inputMp": 2, "outputMp": 32},
+    "T2": {"label": "Standard", "maxRamMb": 8192, "tile": 384, "maxTile": 512, "overlap": 24, "inputMp": 4, "outputMp": 64},
+    "T3": {"label": "Powerful", "maxRamMb": 999999, "tile": 512, "maxTile": 1024, "overlap": 32, "inputMp": 8, "outputMp": 128}
+  },
+  "defaultScale": 2,
+  "photoModel": "waifu2x-photo-fallback",
+  "animeModel": "waifu2x-anime-fallback"
+}

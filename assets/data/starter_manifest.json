@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "waifu2x-photo-fallback",
+      "version": "1.0.0",
+      "name": "Compact photo model",
+      "engine": "ncnn",
+      "pack": "starter",
+      "minTier": "T0",
+      "nativeScales": [2],
+      "modes": ["upscale"],
+      "bestFor": ["photo"],
+      "speed": "veryFast",
+      "sizeBytes": 1107295,
+      "bundled": true,
+      "paramAsset": "assets/models_starter/scale2.0x_model.param",
+      "modelAsset": "assets/models_starter/scale2.0x_model.bin",
+      "sha256": "25a2bb25b29e43e63179aac216cd87690791243a436328506d4ef9fca88ee962",
+      "license": "MIT"
+    },
+    {
+      "id": "waifu2x-anime-fallback",
+      "version": "1.0.0",
+      "name": "Compact anime model",
+      "engine": "ncnn",
+      "pack": "starter",
+      "minTier": "T0",
+      "nativeScales": [2],
+      "modes": ["upscale"],
+      "bestFor": ["anime"],
+      "speed": "veryFast",
+      "sizeBytes": 1107295,
+      "bundled": true,
+      "paramAsset": "assets/models_starter/anime_scale2.0x_model.param",
+      "modelAsset": "assets/models_starter/anime_scale2.0x_model.bin",
+      "sha256": "27d880903ff81390a3b4a900b67af3381c465279e34297546c9a58781855f7ef",
+      "license": "MIT"
+    }
+  ]
+}

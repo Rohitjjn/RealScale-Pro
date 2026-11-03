@@ -69,12 +69,39 @@ only), §7, plus the locked Video card.
 
 ---
 
-## Phase 2 — Choice and faces (summary; full task list is written at Phase 2 kickoff, informed by reports/phase-1.md)
+## Phase 2 — Choice and faces
 
-Scope: Manual level (full model list with inline downloads), Model Manager screen,
-all CNN catalog models, face enhancement end-to-end, complete Settings.
-Exit: every installed model runs; face toggle works; downloads resume after
-interruption; report in `reports/phase-2.md`.
+Goal: let people choose an audited CNN model and scale, manage model storage and
+downloads, restore faces after upscaling, and control the complete Settings set.
+The Phase 1 hardware gaps remain open and must stay visible in the Phase 2 report.
+
+| # | Task | Build notes | Test before moving on |
+| --- | --- | --- | --- |
+| 2.1 | Audit the Phase 2 CNN and face-model catalog, model weights, licenses, sizes and maintained upstreams; keep blocked or unverifiable models unavailable | Reuse first; permissive licenses only; record candidates and decisions in `licenses.md` and the report | Every enabled catalog row has a source, exact version/checksum and permissive license |
+| 2.2 | Add typed model catalog, pack, install-state and download-state contracts plus a data-driven bundled catalog | One catalog feeds Manual, Model Manager and planner; malformed entries fail safely | Unit tests parse every row and reject invalid URLs, checksums, tiers and scales |
+| 2.3 | Build the ModelManager service over the existing pinned `background_downloader`: install detection, queue, pause/resume, checksum retry, updates, delete, storage accounting and fallback-to-Auto | HTTPS only; Wi-Fi-only default; originals/images never enter network code | Service tests cover installed/not installed/downloading/update/error and delete fallback |
+| 2.4 | Replace the placeholder Model Manager with grouped packs, status and size rows, storage bar, Photo/Anime/Face/mode filters, download-all, delete and update actions | Designed loading, empty and friendly error states; license links are catalog-driven | Widget tests cover filters and all row states; owner preview mirrors the screen |
+| 2.5 | Implement Manual configuration: image-type chips, every available catalog model, inline download-and-select, recommended/device-fit/heavy badges, and 2x–5x scale chips | Advanced remains Phase 3; blocked/ONNX models may be visible only as clearly unavailable catalog entries | Widget/unit tests verify installed state, auto-select after download and heavy-model confirmation |
+| 2.6 | Extend PipelinePlanner and JobSpec for persisted Manual choices, native-scale-to-target resize chains, live output dimensions/megapixels and honest time estimates | Rules remain in data files, never widgets; 5x identifies the extra resize step | Planner tests cover Photo/Anime, tiers T0–T3, scales 2x–5x and unavailable-model fallback |
+| 2.7 | Add face detection as a local helper with a typed result and a responsive hint; keep detection off the UI thread | Reuse an audited permissive detector/model; no image upload | Face/no-face/error fixtures return friendly typed states without blocking widgets |
+| 2.8 | Add the Face pack download flow and face toggle; first enable shows size/progress and turns on only after verified installation | GFPGAN is default if its weights pass task 2.1; CodeFormer remains blocked | Interrupted download resumes; checksum failure retries; toggle state matches installation |
+| 2.9 | Implement the native face pipeline: upscale whole image, restore detected crops, soft-mask blend, emit real `faces` progress and preserve safe cancellation/cleanup | Same engine interface; recovery chain and CPU fallback; no raw native failures | Fixture with multiple faces verifies stage order, dimensions, blend boundaries and cancellation |
+| 2.10 | Complete Settings: default mode, compute preference, battery/heat slowdown, rerun device check, output defaults/metadata, Wi-Fi-only, storage/cache, privacy opt-ins, FAQ/feedback and model credits | Privacy options default off; feedback may attach device profile but never an image | Every setting persists; clear-cache preserves installed models; device check can rerun |
+| 2.11 | Localization, accessibility and responsive pass for every Phase 2 screen; update the HTML owner preview | English ARB only in this phase; 200% text and 360×640 remain usable | Formatter/analyzer clean; widget tests find no overflow or hard-coded user strings |
+| 2.12 | Full Phase 1 + Phase 2 QA and target CI; write `reports/phase-2.md` and tag only if all exit checks genuinely pass | Record real hardware gaps as not run, never as passes | `qa-checklist.md` evidence, Android/Windows artifacts and an honest report |
+
+**Phase 2 exit checks:**
+- Every enabled, installed CNN catalog model loads and completes an image through
+  the shared engine interface; unavailable or blocked models are clearly labeled.
+- Manual lists every catalog entry with correct installed/download state, scale
+  chips 2x–5x update output/time, and inline download selects the model afterward.
+- Model Manager filters, pack actions, storage accounting, updates and deletion
+  work; deleting the selected model falls back to Auto.
+- Face detection and verified Face-pack download work; enhancement runs in the
+  order upscale → restore faces → soft blend, with honest stage progress.
+- Killing an active model download and reopening resumes without restarting.
+- Phase 1 quality checks plus every Phase 2 checklist item pass or are explicitly
+  escalated with evidence in `reports/phase-2.md`.
 
 ## Phase 3 — Pro (summary)
 

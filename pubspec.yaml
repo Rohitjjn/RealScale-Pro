@@ -1,0 +1,49 @@
+name: realscale_pro
+description: Private, offline image upscaling for Android and Windows.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+  flutter: '>=3.38.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  background_downloader: 9.6.5
+  crypto: 3.0.8
+  device_info_plus: 13.3.0
+  file_picker: 13.3.2
+  ffi: 2.2.0
+  flutter_riverpod: 3.4.3
+  go_router: 18.1.2
+  image: 4.5.4
+  image_picker: 1.2.4
+  package_info_plus: 10.2.2
+  path_provider: 2.1.6
+  permission_handler: 13.0.2
+  photo_manager: 3.12.0
+  share_plus: 13.3.1
+  shared_preferences: 2.5.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: 6.0.0
+  flutter_native_splash: 2.4.8
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/data/
+    - assets/models_starter/
+
+flutter_native_splash:
+  color: '#F5F5F7'
+  color_dark: '#1D1D1F'
+  android_12:
+    color: '#F5F5F7'
+    color_dark: '#1D1D1F'

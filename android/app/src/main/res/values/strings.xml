@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">RealScale-Pro</string>
+    <string name="processing_channel">Image processing</string>
+    <string name="processing_progress">Enhancing image · %1$d%%</string>
+</resources>

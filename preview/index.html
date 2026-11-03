@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f5f7">
+  <title>RealScale-Pro UI Preview</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="desktop-rail" aria-label="Preview navigation">
+    <div class="rail-logo">R</div>
+    <button data-go="home" class="rail-active" aria-label="Home">⌂</button>
+    <button data-go="library" aria-label="My Upscales">▦</button>
+    <button data-go="settings" aria-label="Settings">⚙</button>
+  </div>
+  <main class="shell">
+    <section id="home" class="screen active">
+      <header><div><span class="eyebrow">PRIVATE · ON DEVICE</span><h1>RealScale-Pro</h1></div><button class="icon" data-go="settings" aria-label="Settings">⚙</button></header>
+      <div class="hero">
+        <div><span class="pill blue">UPSCALE MODE</span><h2>Make every detail<br>feel <em>new again.</em></h2><p>Private AI enhancement, tuned automatically for this device.</p></div>
+        <div class="hero-orb"><span>2×</span><small>DEFAULT</small></div>
+      </div>
+      <div class="section-head"><h3>Recent photos</h3><button class="link">See all</button></div>
+      <div class="recents" id="recents">
+        <button class="recent empty" id="recentPick"><span>＋</span><small>Add a photo</small></button>
+        <div class="recent placeholder"><span>1200×800</span><button disabled>Upscale</button></div>
+        <div class="recent placeholder warm"><span>1920×1080</span><button disabled>Upscale</button></div>
+      </div>
+      <h3>Choose another image</h3>
+      <div class="imports">
+        <button data-pick><b>▧</b><span>Gallery<small>Albums and all photos</small></span></button>
+        <button data-pick><b>⌑</b><span>Files<small>Browse folders</small></span></button>
+        <button data-pick><b>◉</b><span>Camera<small>Take a photo</small></span></button>
+        <button data-pick><b>＋</b><span>More<small>Cloud and other apps</small></span></button>
+      </div>
+      <h3>Mode</h3>
+      <button class="mode selected"><span class="mode-check">✓</span><span><b>Upscale Mode</b><small>Fast, simple and automatic.</small></span></button>
+      <button class="mode" id="proMode"><span class="mode-check">◇</span><span><b>Super Resolution</b><small>Maximum quality for powerful devices.</small></span><i>PRO</i></button>
+      <div class="options">
+        <button data-go="library">My Upscales <span>›</span></button>
+        <button>Model Manager <span>›</span></button>
+        <button id="locked">Video Upscale <small>⌕ Coming soon</small></button>
+        <button data-go="settings">Settings <span>›</span></button>
+      </div>
+    </section>
+
+    <section id="config" class="screen">
+      <header><button class="icon" data-go="home">‹</button><h1>Upscale Mode</h1><button class="icon" data-pick>⇄</button></header>
+      <div class="config-grid">
+        <div class="preview-frame"><img id="sourcePreview" alt="Selected original"><div class="image-meta" id="imageMeta">Selected image</div></div>
+        <div class="config-panel">
+          <div class="segments"><button class="active">Default</button><button id="manual">Manual</button><button id="advanced">Advanced</button></div>
+          <div class="summary"><span class="spark">✦</span><div><b id="detection">Detected: Photo · 2×</b><small>Auto settings · compact model</small></div><button id="change">Change</button></div>
+          <div class="face"><span>Enhance faces<small>Available in the next update</small></span><input type="checkbox" disabled></div>
+          <div class="privacy-note">⌾ Your original is never modified</div>
+          <button class="primary" id="start"><span>Upscale</span><small id="estimate">Choose an image first</small></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="processing" class="screen processing">
+      <header><h1>Enhancing details</h1></header>
+      <div class="process-stage">
+        <div class="process-image"><canvas id="blurCanvas"></canvas><canvas id="workCanvas"></canvas><div class="scan" id="scan"></div></div>
+        <div class="percent" id="percent">0%</div>
+        <div class="muted" id="tiles">Preparing image</div>
+        <div class="eta" id="eta">Estimating…</div>
+        <div class="bar"><i id="bar"></i></div>
+        <p class="tip">2× is a great choice for everyday photos.</p>
+        <div class="process-actions"><button class="secondary" id="cancel">Cancel</button><button class="secondary" data-go="home">Continue in background</button></div>
+      </div>
+    </section>
+
+    <section id="result" class="screen">
+      <header><button class="icon" data-go="home">‹</button><h1>Your upscale is ready</h1><button class="icon">•••</button></header>
+      <div class="result-grid">
+        <div class="compare" id="compare"><canvas id="resultCanvas"></canvas><div class="before-layer" id="beforeLayer"><canvas id="originalCanvas"></canvas></div><div class="handle" id="handle"><i></i></div><span class="before-label">BEFORE</span><span class="after-label">AFTER</span></div>
+        <div class="result-info"><span class="success">✓ SAVED</span><h2>Sharper. Larger.<br>Still completely yours.</h2><div class="chips" id="resultChips"></div><button class="primary" id="download">Share / Save copy</button><button class="secondary" data-go="config">Upscale again</button><button class="link" data-go="home">New image</button></div>
+      </div>
+    </section>
+
+    <section id="library" class="screen">
+      <header><button class="icon" data-go="home">‹</button><h1>My Upscales</h1></header>
+      <div id="libraryGrid" class="library-grid"><div class="empty-state">✦<h2>Your finished images will appear here</h2><p>Choose a photo on Home to create your first upscale.</p></div></div>
+    </section>
+
+    <section id="settings" class="screen">
+      <header><button class="icon" data-go="home">‹</button><h1>Settings</h1></header>
+      <div class="settings-card"><label>Theme <select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><label>Haptics <input type="checkbox" checked></label><label>Keep screen awake <input type="checkbox" checked></label><label>Language <span>English</span></label></div>
+      <div class="settings-card"><button>Replay the guide <span>›</span></button><button>Open-source licenses <span>›</span></button></div>
+      <p class="privacy">Images stay on this device. There are no accounts, uploads, analytics or crash reports by default.</p>
+    </section>
+  </main>
+  <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/bmp" hidden>
+  <dialog id="notice"><h2>Coming soon</h2><p id="noticeText">This feature is coming in a future update.</p><button class="primary" id="closeNotice">Close</button></dialog>
+  <script src="app.js"></script>
+</body>
+</html>
