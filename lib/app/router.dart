@@ -41,25 +41,25 @@ GoRouter buildRouter({
     ),
     GoRoute(
       path: '/permissions/photos',
-      builder: (_, __) =>
+      builder: (_, _) =>
           PermissionPrimerScreen(isPhotos: true, permissions: permissions),
     ),
     GoRoute(
       path: '/permissions/notifications',
-      builder: (_, __) =>
+      builder: (_, _) =>
           PermissionPrimerScreen(isPhotos: false, permissions: permissions),
     ),
     GoRoute(
       path: '/device-check',
-      builder: (_, __) => DeviceCheckScreen(controller: controller),
+      builder: (_, _) => DeviceCheckScreen(controller: controller),
     ),
     GoRoute(
       path: '/setup',
-      builder: (_, __) => SetupScreen(settings: settings),
+      builder: (_, _) => SetupScreen(settings: settings),
     ),
     GoRoute(
       path: '/home',
-      builder: (_, __) => HomeScreen(
+      builder: (_, _) => HomeScreen(
         controller: controller,
         settings: settings,
         permissions: permissions,
@@ -67,38 +67,38 @@ GoRouter buildRouter({
     ),
     GoRoute(
       path: '/viewer',
-      builder: (_, __) => ViewerScreen(controller: controller),
+      builder: (_, _) => ViewerScreen(controller: controller),
     ),
     GoRoute(
       path: '/config',
-      builder: (_, __) =>
+      builder: (_, _) =>
           ConfigScreen(controller: controller, settings: settings),
     ),
     GoRoute(
       path: '/processing',
-      builder: (_, __) =>
+      builder: (_, _) =>
           ProcessingScreen(controller: controller, settings: settings),
     ),
     GoRoute(
       path: '/result',
-      builder: (_, __) => ResultScreen(controller: controller),
+      builder: (_, _) => ResultScreen(controller: controller),
     ),
     GoRoute(
       path: '/upscales',
-      builder: (_, __) => MyUpscalesScreen(controller: controller),
+      builder: (_, _) => MyUpscalesScreen(controller: controller),
     ),
     GoRoute(
       path: '/settings',
-      builder: (_, __) => SettingsScreen(settings: settings),
+      builder: (_, _) => SettingsScreen(settings: settings),
     ),
-    GoRoute(path: '/about', builder: (_, __) => const AboutScreen()),
+    GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
     GoRoute(
       path: '/models',
-      builder: (_, __) => const SimpleInfoScreen(kind: 'models'),
+      builder: (_, _) => const SimpleInfoScreen(kind: 'models'),
     ),
     GoRoute(
       path: '/help',
-      builder: (_, __) => const SimpleInfoScreen(kind: 'help'),
+      builder: (_, _) => const SimpleInfoScreen(kind: 'help'),
     ),
   ],
 );

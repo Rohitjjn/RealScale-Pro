@@ -17,7 +17,7 @@ class ImageService {
   final ImagePicker _picker;
 
   Future<ImageSelection?> pickFile() async {
-    final FilePickerResult? result = await FilePicker.platform.pickFiles(
+    final PlatformFile? result = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const <String>[
         'jpg',
@@ -28,7 +28,7 @@ class ImageService {
         'bmp',
       ],
     );
-    final String? path = result?.files.single.path;
+    final String? path = result?.path;
     return path == null ? null : inspect(path);
   }
 

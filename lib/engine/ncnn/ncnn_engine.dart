@@ -196,7 +196,7 @@ int _invokeNative(_NativeFiles files, int tileSize) {
       input,
       output,
       tileSize,
-      Platform.numberOfProcessors.clamp(1, 4) as int,
+      Platform.numberOfProcessors.clamp(1, 4),
     );
   } finally {
     calloc.free(parameter);

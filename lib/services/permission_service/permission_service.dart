@@ -13,7 +13,10 @@ class PermissionService {
     }
     return PhotoManager.requestPermissionExtend(
       requestOption: const PermissionRequestOption(
-        androidPermission: AndroidPermission(type: RequestType.image),
+        androidPermission: AndroidPermission(
+          type: RequestType.image,
+          mediaLocation: false,
+        ),
       ),
     );
   }

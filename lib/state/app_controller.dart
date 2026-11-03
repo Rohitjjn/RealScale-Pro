@@ -60,7 +60,7 @@ class AppController extends ChangeNotifier {
 
   Future<bool> selectPath(String path) async {
     try {
-      return _setSelection(await _images.inspect(path));
+      return await _setSelection(await _images.inspect(path));
     } on Object {
       failure = AppFailure.unsupportedImage;
       notifyListeners();

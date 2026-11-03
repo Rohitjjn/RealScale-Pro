@@ -80,8 +80,9 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
       }
       if (widget.settings.haptics) {
         for (final int mark in <int>[25, 50, 75]) {
-          if (percent >= mark && _hapticMarks.add(mark))
+          if (percent >= mark && _hapticMarks.add(mark)) {
             HapticFeedback.selectionClick();
+          }
         }
       }
       final ImageSelection? image = widget.controller.selectedImage;
