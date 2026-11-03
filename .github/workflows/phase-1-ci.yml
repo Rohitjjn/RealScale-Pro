@@ -66,8 +66,8 @@ jobs:
               json.loads(Path(path).read_text())
           print('Portable policy checks passed.')
           PY
-          if grep -R -E 'video_player|pickVideo|VideoPlayer|ffmpeg|READ_MEDIA_VIDEO' \
-            --exclude-dir=.git --exclude-dir=.github --exclude-dir=Docs --exclude-dir=reports .; then
+          if git grep -E 'video_player|pickVideo|VideoPlayer|ffmpeg|READ_MEDIA_VIDEO' -- \
+            ':!Docs/**' ':!reports/**' ':!.github/**'; then
             echo 'Forbidden future-media implementation found.' >&2
             exit 1
           fi

@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(realscale_ncnn LANGUAGES CXX)
 
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum dependency policy" FORCE)
 include(FetchContent)
 set(NCNN_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(NCNN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
