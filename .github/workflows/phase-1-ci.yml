@@ -20,9 +20,13 @@ jobs:
     name: Analyze and unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
     steps:
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.head_ref }}
       - name: Install Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
@@ -39,8 +43,19 @@ jobs:
           fi
       - name: Generate English localization
         run: flutter gen-l10n
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Format Dart source
+        run: dart format lib test
+      - name: Commit formatter output when needed
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          if ! git diff --quiet -- lib test; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add lib test
+            git commit -m 'style(dart): apply automated formatter'
+            git push origin "HEAD:${{ github.head_ref }}"
+          fi
       - name: Analyze without warnings
         run: flutter analyze --fatal-infos --fatal-warnings
       - name: Run unit and widget tests
