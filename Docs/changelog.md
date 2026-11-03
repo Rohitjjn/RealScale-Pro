@@ -5,6 +5,45 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-03 — Phase 1 — Verification and native compatibility fixes
+- Verified the shared ncnn library on one-tile and nine-tile inputs, replaced the
+  incompatible anime fallback with a matching permissive model, added Android
+  hardware profiling, and registered native notices in the in-app license page.
+
+## 2026-11-03 — Phase 1 — Tests and target hand-off
+- Added portable unit tests and `tool/verify_phase1.sh`. JavaScript/data checks
+  pass here; Flutter analysis and Android/Windows builds remain explicitly
+  pending because this workspace cannot download the Flutter SDK or run targets.
+
+## 2026-11-03 — Phase 1 — Interactive HTML preview
+- Added a responsive browser preview for owner review. It supports image import,
+  real tile-based preview progress, before/after comparison, saving and history;
+  it is a UI preview, not the release AI engine.
+
+## 2026-11-03 — Phase 1 — Results, saving and settings
+- Added result comparison and sharing, automatic RealScale-Pro folder saving,
+  local My Upscales history, deletion, themes, haptics, guide replay, privacy and
+  open-source license screens.
+
+## 2026-11-03 — Phase 1 — Default upscale flow
+- Added image inspection, the 2 MB quality-90 temporary-copy rule, data-driven
+  planning, a thin ncnn interface, tiled processing with completed-tile progress,
+  moving ETA, cancellation, a safe CPU fallback and friendly failures.
+
+## 2026-11-03 — Phase 1 — Home and image selection
+- Added recents, viewer and zoom, Gallery/Files/Camera/More imports, persisted
+  mode guidance, app options and the locked Coming soon card with no processing
+  or media libraries for that future feature.
+
+## 2026-11-03 — Phase 1 — First launch and design system
+- Added the owner-approved neutral/blue/coral/amber palette, light and dark
+  themes, native splash styling, four-slide guide, permission explanations,
+  device check and offline Starter setup.
+
+## 2026-11-03 — Phase 1 — Android and Windows app foundation
+- Added the pinned Flutter project, Android 8+ and Windows 10+ shells, Riverpod,
+  go_router, English localization data, planner/model data and feature structure.
+
 ## 2026-11-03 — Phase 0 — Engine feasibility decision
 - Confirmed the owner-selected direct-upstream ncnn path and documented the
   available CPU result plus the Android, Windows and Vulkan checks that remain
