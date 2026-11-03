@@ -20,6 +20,28 @@ remain the preferred on-demand models. They are not bundled until their exact
 weight terms and a reliable GitHub Release asset can be verified on Android and
 Windows.
 
+## Phase 2 model audit — current shipping gates
+
+Audit started 3 November 2026. A catalog entry may be shown for transparency,
+but it is enabled for download only after its exact files, checksums, weight terms
+and native compatibility are verified. “Blocked” means it must not ship.
+
+| Candidate | Source state and license | Maintenance / delivery | Phase 2 decision |
+| --- | --- | --- | --- |
+| waifu2x upconv7 photo + anime | MIT repository distribution; exact bundled checksums already recorded | Upstream active 2026-04-13; files already pass the shared ncnn adapter | **Enabled** as the installed Starter fallbacks |
+| Real-ESRGAN ncnn models | Port repository is MIT; its release advertises anime-video, x4plus, x4plus-anime and realesrnet models | Latest release 0.2.0 (2022-04-24), last push 2024-05-10; exact individual files/checksums are not published in the source tree | **Held** pending stale-component owner approval, exact release-file audit and adapter tests |
+| Real-CUGAN ncnn models | MIT; model files are distributed in the source repository | Latest release 20220728; last push 2023-03-12; the Phase 1 graph was incompatible with the current thin adapter | **Held** pending stale-component owner approval and a compatible audited adapter |
+| RealSR ncnn DF2K models | MIT; two 33,424,520-byte model binaries plus parameter files are distributed in the source repository | Latest release 20220728; last push 2023-03-12 | **Held** pending stale-component owner approval, checksums and adapter tests |
+| Official GFPGAN v1.4 | Project states Apache-2.0 except bundled third-party components; its license includes an NVIDIA non-commercial use limitation | Last push 2024-07-26; official ncnn delivery is absent | **Blocked** because the complete reusable work is not permissively licensed under project rules |
+| Qengineering GFPGAN ncnn port | Port code is BSD-3-Clause | Last push 2023-01-04; required weights come from an external Google Drive archive with no license or checksums in the repository | **Blocked** because the model-weight license cannot be verified |
+| Other GFPGAN ncnn forks | One active candidate is GPL-3.0; two candidates have no repository license | Activity varies | **Blocked** by GPL or missing license |
+| CodeFormer | Non-commercial model terms | Not applicable | **Blocked** unless the owner deliberately changes the commercial-license rule |
+
+The face requirement is therefore an escalation under `rules.md` §10: no
+maintained ncnn face-restoration candidate currently has a complete, verifiable,
+permissive source-and-weights chain. Face code must not be copied or model files
+downloaded until the owner chooses how Phase 2 should handle this gap.
+
 ## Flutter packages selected for Phase 1
 
 | Package | Pinned version | License | Upstream | Where used / reason |

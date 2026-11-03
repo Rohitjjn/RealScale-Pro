@@ -5,6 +5,12 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-03 — Phase 2 — Model and face reuse audit
+- Audited the planned CNN and face sources before copying code. Existing waifu2x
+  fallbacks remain safe; older CNN candidates need owner approval and exact-file
+  tests, while every current GFPGAN ncnn route is blocked by non-commercial,
+  GPL, missing or unverifiable model terms.
+
 ## 2026-11-03 — Phase 2 — Kickoff and task plan
 - Expanded Phase 2 into twelve small, testable tasks informed by the Phase 1
   report. Hardware gaps remain open while model choice, downloads, faces and
