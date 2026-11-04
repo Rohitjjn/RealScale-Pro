@@ -16,9 +16,9 @@ windows/flutter/ephemeral/
 .vscode/
 
 # Downloaded model and job data
-models/
-downloads/
-temp/
+/models/
+/downloads/
+/temp/
 *.part
 
 # OS

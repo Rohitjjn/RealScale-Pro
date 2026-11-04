@@ -20,3 +20,8 @@ proMode.addEventListener('click',()=>{noticeText.textContent='Super Resolution i
 closeNotice.addEventListener('click',()=>notice.close());
 theme.addEventListener('change',()=>{document.body.classList.remove('light','dark');if(theme.value!=='system')document.body.classList.add(theme.value)});
 start.disabled=true;
+
+document.querySelectorAll('[data-model-filter]').forEach(button=>button.addEventListener('click',()=>{
+  document.querySelectorAll('[data-model-filter]').forEach(item=>item.classList.toggle('active',item===button));
+  document.querySelectorAll('[data-model-type]').forEach(row=>row.hidden=button.dataset.modelFilter!=='all'&&row.dataset.modelType!==button.dataset.modelFilter);
+}));

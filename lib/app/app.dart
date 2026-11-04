@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
+import '../services/model_manager/model_manager.dart';
 import '../services/permission_service/permission_service.dart';
 import '../services/settings_service.dart';
 import '../state/app_controller.dart';
@@ -21,6 +22,7 @@ class RealScaleApp extends ConsumerStatefulWidget {
 class _RealScaleAppState extends ConsumerState<RealScaleApp> {
   late final SettingsService _settings;
   late final AppController _controller;
+  late final ModelManager _models;
   late final GoRouter _router;
 
   @override
@@ -28,9 +30,11 @@ class _RealScaleAppState extends ConsumerState<RealScaleApp> {
     super.initState();
     _settings = ref.read(settingsProvider);
     _controller = ref.read(appControllerProvider);
+    _models = ref.read(modelManagerProvider);
     _router = buildRouter(
       settings: _settings,
       controller: _controller,
+      models: _models,
       permissions: const PermissionService(),
     );
   }

@@ -39,7 +39,7 @@
       <button class="mode" id="proMode"><span class="mode-check">◇</span><span><b>Super Resolution</b><small>Maximum quality for powerful devices.</small></span><i>PRO</i></button>
       <div class="options">
         <button data-go="library">My Upscales <span>›</span></button>
-        <button>Model Manager <span>›</span></button>
+        <button data-go="models">Model Manager <span>›</span></button>
         <button id="locked">Video Upscale <small>⌕ Coming soon</small></button>
         <button data-go="settings">Settings <span>›</span></button>
       </div>
@@ -83,6 +83,21 @@
     <section id="library" class="screen">
       <header><button class="icon" data-go="home">‹</button><h1>My Upscales</h1></header>
       <div id="libraryGrid" class="library-grid"><div class="empty-state">✦<h2>Your finished images will appear here</h2><p>Choose a photo on Home to create your first upscale.</p></div></div>
+    </section>
+
+    <section id="models" class="screen">
+      <header><button class="icon" data-go="home">‹</button><h1>Model Manager</h1></header>
+      <div class="model-storage"><b>Model storage</b><div class="storage-bar"><i style="width:7%"></i></div><small>2.2 MB used · 1.0 GB available</small></div>
+      <div class="model-filters" aria-label="Model filters"><button class="active" data-model-filter="all">All models</button><button data-model-filter="photo">Photo</button><button data-model-filter="anime">Anime</button><button data-model-filter="face">Faces</button></div>
+      <div class="section-head"><h3>Starter pack</h3><button class="link">Download all</button></div>
+      <div class="model-list">
+        <article data-model-type="photo"><span class="model-state installed">✓</span><div><b>Waifu2x compact photo</b><small>1.1 MB · MIT · Very fast</small><em>Included with the app</em></div></article>
+        <article data-model-type="anime"><span class="model-state installed">✓</span><div><b>Waifu2x compact anime</b><small>1.1 MB · MIT · Very fast</small><em>Included with the app</em></div></article>
+        <article data-model-type="photo"><span class="model-state">↓</span><div><b>Real-ESRGAN x2plus</b><small>67.1 MB · BSD-3-Clause · Balanced</small><em>Not installed</em></div><button>Download</button></article>
+        <article data-model-type="anime"><span class="model-state">↓</span><div><b>Real-ESRGAN AnimeVideo x2</b><small>1.3 MB · MIT · Very fast</small><em>Not installed</em></div><button>Download</button></article>
+      </div>
+      <div class="section-head"><h3>Face pack</h3></div>
+      <div class="model-list"><article data-model-type="face"><span class="model-state review">!</span><div><b>GFPGAN v1.4</b><small>Official source · license restriction disclosed</small><em>Under review</em></div></article></div>
     </section>
 
     <section id="settings" class="screen">

@@ -5,6 +5,11 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-04 — Phase 2 — Model Manager screen
+- Replaced the placeholder with grouped packs, honest storage totals, Photo/Anime/
+  Face and mode filters, install/update/pause/resume/delete actions, model source
+  details and designed unavailable states; the browser preview mirrors the screen.
+
 ## 2026-11-04 — Phase 2 — Safe model installation service
 - Added app-start catalog loading, resumable per-model transfer control,
   checksum/size verification with one clean re-download, transactional installs,

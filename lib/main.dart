@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
+import 'services/device_profiler/device_profiler.dart';
 import 'services/model_manager/file_model_store.dart';
 import 'services/model_manager/model_catalog.dart';
 import 'services/model_manager/model_download_service.dart';
@@ -43,6 +44,10 @@ Future<void> main() async {
         '${support.path}${Platform.pathSeparator}models'
         '${Platform.pathSeparator}installed',
       ),
+      freeBytesReader: () async {
+        final int freeMb = (await const DeviceProfiler().profile()).freeStorageMb;
+        return freeMb * 1024 * 1024;
+      },
     ),
   );
   await models.initialize();

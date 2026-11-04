@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/model_manager/model_manager.dart';
 import '../services/permission_service/permission_service.dart';
 import '../services/settings_service.dart';
 import '../state/app_controller.dart';
 import '../ui/screens/config/config_screen.dart';
 import '../ui/screens/home/home_screen.dart';
 import '../ui/screens/home/viewer_screen.dart';
+import '../ui/screens/models/model_manager_screen.dart';
 import '../ui/screens/onboarding/onboarding_screens.dart';
 import '../ui/screens/processing/processing_screen.dart';
 import '../ui/screens/result/result_screens.dart';
@@ -15,6 +17,7 @@ import '../ui/screens/settings/settings_screens.dart';
 GoRouter buildRouter({
   required SettingsService settings,
   required AppController controller,
+  required ModelManager models,
   required PermissionService permissions,
 }) => GoRouter(
   initialLocation: '/splash',
@@ -94,7 +97,7 @@ GoRouter buildRouter({
     GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
     GoRoute(
       path: '/models',
-      builder: (_, _) => const SimpleInfoScreen(kind: 'models'),
+      builder: (_, _) => ModelManagerScreen(manager: models),
     ),
     GoRoute(
       path: '/help',
