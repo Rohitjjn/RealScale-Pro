@@ -7,8 +7,8 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ## 2026-11-04 — Phase 2 — Safe model installation service
 - Added app-start catalog loading, resumable per-model transfer control,
-  checksum/size verification, transactional installs, update detection, storage
-  accounting, deletion and selected-model fallback with unit tests.
+  checksum/size verification with one clean re-download, transactional installs,
+  update detection, storage accounting, deletion and selected-model fallback tests.
 
 ## 2026-11-04 — Phase 2 — Honest progress report
 - Added a work-in-progress Phase 2 report and marked the phase plan clearly as

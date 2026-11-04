@@ -29,12 +29,20 @@ class ModelDownloadService implements ModelTransferGateway {
     ModelDefinition model,
     ModelFileDefinition file, {
     required void Function(double progress) onProgress,
+  }) => _downloadVerified(model, file, onProgress: onProgress, attempt: 0);
+
+  Future<File> _downloadVerified(
+    ModelDefinition model,
+    ModelFileDefinition file, {
+    required void Function(double progress) onProgress,
+    required int attempt,
   }) async {
     final String? url = file.url;
     if (url == null || Uri.tryParse(url)?.scheme != 'https') {
       throw const FileSystemException('model_url_unavailable');
     }
-    final String taskId = '${model.id}-${model.version}-${file.role}';
+    final String taskId =
+        '${model.id}-${model.version}-${file.role}-attempt$attempt';
     final DownloadTask task = DownloadTask(
       taskId: taskId,
       url: url,
@@ -55,8 +63,16 @@ class ModelDownloadService implements ModelTransferGateway {
     _active[taskId] = transfer;
     final File downloaded = await transfer.file;
     if (!await _matches(downloaded, file)) {
-      await downloaded.delete();
+      if (await downloaded.exists()) await downloaded.delete();
       _active.remove(taskId);
+      if (attempt < 1) {
+        return _downloadVerified(
+          model,
+          file,
+          onProgress: onProgress,
+          attempt: attempt + 1,
+        );
+      }
       throw const FileSystemException('model_checksum_failed');
     }
     onProgress(1);
