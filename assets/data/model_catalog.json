@@ -8,9 +8,15 @@
       "engine": "ncnn",
       "pack": "starter",
       "minTier": 0,
-      "nativeScales": [2],
-      "purposes": ["photo"],
-      "modes": ["upscale"],
+      "nativeScales": [
+        2
+      ],
+      "purposes": [
+        "photo"
+      ],
+      "modes": [
+        "upscale"
+      ],
       "speed": "veryFast",
       "sizeBytes": 1107295,
       "license": "MIT",
@@ -41,9 +47,15 @@
       "engine": "ncnn",
       "pack": "starter",
       "minTier": 0,
-      "nativeScales": [2],
-      "purposes": ["anime"],
-      "modes": ["upscale"],
+      "nativeScales": [
+        2
+      ],
+      "purposes": [
+        "anime"
+      ],
+      "modes": [
+        "upscale"
+      ],
       "speed": "veryFast",
       "sizeBytes": 1107295,
       "license": "MIT",
@@ -74,9 +86,16 @@
       "engine": "ncnn",
       "pack": "starter",
       "minTier": 0,
-      "nativeScales": [4],
-      "purposes": ["photo"],
-      "modes": ["upscale", "superResolution"],
+      "nativeScales": [
+        4
+      ],
+      "purposes": [
+        "photo"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "veryFast",
       "sizeBytes": 9800000,
       "license": "MIT",
@@ -87,21 +106,43 @@
     },
     {
       "id": "realesrgan-animevideov3",
-      "version": "0.2.0",
+      "version": "0.2.5",
       "name": "Real-ESRGAN anime compact",
       "engine": "ncnn",
       "pack": "starter",
       "minTier": 0,
-      "nativeScales": [2, 3, 4],
-      "purposes": ["anime"],
-      "modes": ["upscale", "superResolution"],
+      "nativeScales": [
+        2
+      ],
+      "purposes": [
+        "anime"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "veryFast",
-      "sizeBytes": 9800000,
+      "sizeBytes": 1250541,
       "license": "MIT",
       "sourceUrl": "https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan",
-      "availability": "held",
+      "availability": "onDemand",
       "restricted": false,
-      "files": []
+      "files": [
+        {
+          "role": "weights",
+          "filename": "realesr-animevideov3-x2.bin",
+          "url": "https://github.com/erosTeam/NextE-Models/releases/download/model-pack-v1.0.0/realesr-animevideov3-x2.bin",
+          "sizeBytes": 1247368,
+          "sha256": "548a36f9c3f4ab8da56cd3b13badf23968bee207b396dad14d04b830e5f2ab2d"
+        },
+        {
+          "role": "parameters",
+          "filename": "realesr-animevideov3-x2.param",
+          "url": "https://github.com/erosTeam/NextE-Models/releases/download/model-pack-v1.0.0/realesr-animevideov3-x2.param",
+          "sizeBytes": 3173,
+          "sha256": "b88ff4f00ebf019a7fdac17fdd45a7fd3665d37509efc5baf2e4da2e24420a04"
+        }
+      ]
     },
     {
       "id": "realcugan-pro",
@@ -110,9 +151,18 @@
       "engine": "ncnn",
       "pack": "pro",
       "minTier": 1,
-      "nativeScales": [2, 3, 4],
-      "purposes": ["anime"],
-      "modes": ["upscale", "superResolution"],
+      "nativeScales": [
+        2,
+        3,
+        4
+      ],
+      "purposes": [
+        "anime"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "fast",
       "sizeBytes": 40000000,
       "license": "MIT",
@@ -128,9 +178,15 @@
       "engine": "ncnn",
       "pack": "pro",
       "minTier": 0,
-      "nativeScales": [2],
-      "purposes": ["anime"],
-      "modes": ["upscale"],
+      "nativeScales": [
+        2
+      ],
+      "purposes": [
+        "anime"
+      ],
+      "modes": [
+        "upscale"
+      ],
       "speed": "fast",
       "sizeBytes": 20000000,
       "license": "MIT",
@@ -146,9 +202,16 @@
       "engine": "ncnn",
       "pack": "pro",
       "minTier": 2,
-      "nativeScales": [4],
-      "purposes": ["photo"],
-      "modes": ["upscale", "superResolution"],
+      "nativeScales": [
+        4
+      ],
+      "purposes": [
+        "photo"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "medium",
       "sizeBytes": 33540513,
       "license": "MIT",
@@ -164,9 +227,16 @@
       "engine": "ncnn",
       "pack": "pro",
       "minTier": 1,
-      "nativeScales": [4],
-      "purposes": ["photo"],
-      "modes": ["upscale", "superResolution"],
+      "nativeScales": [
+        4
+      ],
+      "purposes": [
+        "photo"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "medium",
       "sizeBytes": 65000000,
       "license": "MIT",
@@ -177,21 +247,43 @@
     },
     {
       "id": "realesrgan-x2plus",
-      "version": "0.2.0",
+      "version": "1.0.0",
       "name": "Real-ESRGAN x2plus",
       "engine": "ncnn",
       "pack": "pro",
       "minTier": 1,
-      "nativeScales": [2],
-      "purposes": ["photo"],
-      "modes": ["upscale", "superResolution"],
+      "nativeScales": [
+        2
+      ],
+      "purposes": [
+        "photo"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "medium",
-      "sizeBytes": 65000000,
-      "license": "MIT",
+      "sizeBytes": 67106328,
+      "license": "BSD-3-Clause",
       "sourceUrl": "https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan",
-      "availability": "held",
+      "availability": "onDemand",
       "restricted": false,
-      "files": []
+      "files": [
+        {
+          "role": "weights",
+          "filename": "realesrgan_x2plus.bin",
+          "url": "https://github.com/erosTeam/NextE-Models/releases/download/model-pack-v1.0.0/realesrgan_x2plus.bin",
+          "sizeBytes": 66814128,
+          "sha256": "119cbbcf701a976a016d03fc5c457157e52a94f5e3e929e562e9ec87596d782b"
+        },
+        {
+          "role": "parameters",
+          "filename": "realesrgan_x2plus.param",
+          "url": "https://github.com/erosTeam/NextE-Models/releases/download/model-pack-v1.0.0/realesrgan_x2plus.param",
+          "sizeBytes": 292200,
+          "sha256": "79cb4938c0465a3b7d66aa21e9dc0e595a2ab2015b453831426f37a536b925b5"
+        }
+      ]
     },
     {
       "id": "realesrgan-x4plus-anime",
@@ -200,9 +292,16 @@
       "engine": "ncnn",
       "pack": "pro",
       "minTier": 1,
-      "nativeScales": [4],
-      "purposes": ["anime"],
-      "modes": ["upscale", "superResolution"],
+      "nativeScales": [
+        4
+      ],
+      "purposes": [
+        "anime"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "medium",
       "sizeBytes": 17000000,
       "license": "MIT",
@@ -218,9 +317,15 @@
       "engine": "onnx",
       "pack": "ultra",
       "minTier": 3,
-      "nativeScales": [4],
-      "purposes": ["photo"],
-      "modes": ["superResolution"],
+      "nativeScales": [
+        4
+      ],
+      "purposes": [
+        "photo"
+      ],
+      "modes": [
+        "superResolution"
+      ],
       "speed": "slow",
       "sizeBytes": 150000000,
       "license": "Apache-2.0 reported; audit pending",
@@ -236,9 +341,15 @@
       "engine": "onnx",
       "pack": "ultra",
       "minTier": 3,
-      "nativeScales": [4],
-      "purposes": ["photo"],
-      "modes": ["superResolution"],
+      "nativeScales": [
+        4
+      ],
+      "purposes": [
+        "photo"
+      ],
+      "modes": [
+        "superResolution"
+      ],
       "speed": "verySlow",
       "sizeBytes": 400000000,
       "license": "Audit pending",
@@ -254,9 +365,17 @@
       "engine": "onnx",
       "pack": "ultra",
       "minTier": 3,
-      "nativeScales": [2, 3, 4],
-      "purposes": ["photo"],
-      "modes": ["superResolution"],
+      "nativeScales": [
+        2,
+        3,
+        4
+      ],
+      "purposes": [
+        "photo"
+      ],
+      "modes": [
+        "superResolution"
+      ],
       "speed": "verySlow",
       "sizeBytes": 400000000,
       "license": "Audit pending",
@@ -273,8 +392,13 @@
       "pack": "face",
       "minTier": 1,
       "nativeScales": [],
-      "purposes": ["face"],
-      "modes": ["upscale", "superResolution"],
+      "purposes": [
+        "face"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "medium",
       "sizeBytes": 348632874,
       "license": "Apache-2.0 with non-commercial third-party component",
@@ -292,8 +416,13 @@
       "pack": "face",
       "minTier": 2,
       "nativeScales": [],
-      "purposes": ["face"],
-      "modes": ["upscale", "superResolution"],
+      "purposes": [
+        "face"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "medium",
       "sizeBytes": 375000000,
       "license": "Non-commercial",
@@ -311,8 +440,13 @@
       "pack": "starter",
       "minTier": 0,
       "nativeScales": [],
-      "purposes": ["helper"],
-      "modes": ["upscale", "superResolution"],
+      "purposes": [
+        "helper"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "veryFast",
       "sizeBytes": 0,
       "license": "Audit pending",
@@ -329,8 +463,13 @@
       "pack": "starter",
       "minTier": 0,
       "nativeScales": [],
-      "purposes": ["helper"],
-      "modes": ["upscale", "superResolution"],
+      "purposes": [
+        "helper"
+      ],
+      "modes": [
+        "upscale",
+        "superResolution"
+      ],
       "speed": "veryFast",
       "sizeBytes": 0,
       "license": "Audit pending",

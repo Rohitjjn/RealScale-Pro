@@ -5,6 +5,12 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-03 — Phase 2 — High-quality 2× Starter models
+- Selected official-derived Real-ESRGAN x2plus for social/photo images and the
+  official anime-video x2 model for illustration. Exact GitHub Release URLs,
+  byte sizes and SHA-256 checksums are pinned; they remain download-on-setup
+  until native output tests pass, while tiny bundled models become fallbacks.
+
 ## 2026-11-03 — Phase 2 — Android CI disk reliability
 - Android compilation had succeeded but artifact creation exhausted the hosted
   runner disk. The job now removes unrelated preinstalled SDKs before building

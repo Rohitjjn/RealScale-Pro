@@ -30,7 +30,7 @@ void main() {
     );
   });
 
-  test('only exact bundled models are enabled', () {
+  test('only models with exact files are enabled', () {
     final ModelCatalog catalog = ModelCatalog.parse(source);
     final List<ModelDefinition> enabled = catalog.models
         .where((ModelDefinition model) => model.isEnabled)
@@ -39,6 +39,8 @@ void main() {
     expect(enabled.map((ModelDefinition model) => model.id), <String>[
       'waifu2x-photo-fallback',
       'waifu2x-anime-fallback',
+      'realesrgan-animevideov3',
+      'realesrgan-x2plus',
     ]);
     expect(
       enabled.every((ModelDefinition model) => model.files.length == 2),
