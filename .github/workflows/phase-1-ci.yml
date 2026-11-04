@@ -107,6 +107,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      - name: Reclaim runner disk space
+        shell: bash
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /usr/local/share/powershell /usr/local/lib/android/sdk/system-images
+          docker image prune --all --force
+          df -h /
       - name: Check out source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Install Java 17

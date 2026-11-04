@@ -5,6 +5,11 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-03 — Phase 2 — Android CI disk reliability
+- Android compilation had succeeded but artifact creation exhausted the hosted
+  runner disk. The job now removes unrelated preinstalled SDKs before building
+  while preserving the Android and Flutter toolchains it needs.
+
 ## 2026-11-03 — Phase 2 — Validated model catalog
 - Added one typed, data-driven catalog for Manual settings, planning and Model
   Manager. Only the two exact bundled models are enabled; held, restricted,
