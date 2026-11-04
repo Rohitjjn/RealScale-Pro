@@ -250,7 +250,7 @@
       "version": "1.0.0",
       "name": "Real-ESRGAN x2plus",
       "engine": "ncnn",
-      "pack": "pro",
+      "pack": "starter",
       "minTier": 1,
       "nativeScales": [
         2
