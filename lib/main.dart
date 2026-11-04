@@ -45,7 +45,8 @@ Future<void> main() async {
         '${Platform.pathSeparator}installed',
       ),
       freeBytesReader: () async {
-        final int freeMb = (await const DeviceProfiler().profile()).freeStorageMb;
+        final int freeMb =
+            (await const DeviceProfiler().profile()).freeStorageMb;
         return freeMb * 1024 * 1024;
       },
     ),

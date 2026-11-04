@@ -39,21 +39,6 @@ jobs:
           fi
       - name: Generate English localization
         run: flutter gen-l10n
-      - name: Export remaining formatter result
-        shell: bash
-        run: |
-          git diff --name-only -- lib test | sort > before-format.txt
-          dart format lib test
-          git diff --name-only -- lib test | sort > after-format.txt
-          comm -13 before-format.txt after-format.txt > formatted-files.txt
-          while IFS= read -r file; do
-            index=0
-            while IFS= read -r chunk; do
-              echo "::error file=$file,title=FORMAT-$index::FORMAT:$file:$index:$chunk"
-              index=$((index + 1))
-            done < <(base64 -w 3000 "$file")
-          done < formatted-files.txt
-          test ! -s formatted-files.txt
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed lib test
       - name: Analyze without warnings
