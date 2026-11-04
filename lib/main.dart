@@ -1,11 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
+import 'services/model_manager/file_model_store.dart';
+import 'services/model_manager/model_catalog.dart';
 import 'services/model_manager/model_download_service.dart';
+import 'services/model_manager/model_manager.dart';
 import 'services/settings_service.dart';
 import 'state/providers.dart';
 
@@ -25,11 +31,27 @@ Future<void> main() async {
   final SettingsService settings = SettingsService(preferences);
   final ModelDownloadService downloads = ModelDownloadService();
   await downloads.initialize();
+  final ModelCatalog catalog = ModelCatalog.parse(
+    await rootBundle.loadString('assets/data/model_catalog.json'),
+  );
+  final Directory support = await getApplicationSupportDirectory();
+  final ModelManager models = ModelManager(
+    catalog: catalog,
+    transfers: downloads,
+    store: FileModelStore(
+      Directory(
+        '${support.path}${Platform.pathSeparator}models'
+        '${Platform.pathSeparator}installed',
+      ),
+    ),
+  );
+  await models.initialize();
   runApp(
     ProviderScope(
       overrides: [
         settingsProvider.overrideWithValue(settings),
         modelDownloadProvider.overrideWithValue(downloads),
+        modelManagerProvider.overrideWithValue(models),
       ],
       child: const RealScaleApp(),
     ),

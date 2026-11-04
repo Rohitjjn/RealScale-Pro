@@ -3,23 +3,11 @@ import 'dart:io';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:crypto/crypto.dart';
 
-/// One remotely hosted model file.
-class ModelDownload {
-  const ModelDownload({
-    required this.id,
-    required this.url,
-    required this.filename,
-    required this.sha256,
-  });
+import 'model_catalog.dart';
+import 'model_manager.dart';
 
-  final String id;
-  final String url;
-  final String filename;
-  final String sha256;
-}
-
-/// Resumable, background model downloads with mandatory checksum verification.
-class ModelDownloadService {
+/// Resumable background downloads with mandatory checksum verification.
+class ModelDownloadService implements ModelTransferGateway {
   final Map<String, Transfer> _active = <String, Transfer>{};
 
   Future<void> initialize() async {
@@ -34,50 +22,78 @@ class ModelDownloadService {
     }
   }
 
-  Transfer? transferFor(String id) => _active[id];
+  Transfer? transferFor(String taskId) => _active[taskId];
 
-  Future<File> download(
-    ModelDownload model, {
-    bool wifiOnly = true,
-    int checksumRetries = 1,
+  @override
+  Future<File> downloadFile(
+    ModelDefinition model,
+    ModelFileDefinition file, {
+    required void Function(double progress) onProgress,
   }) async {
+    final String? url = file.url;
+    if (url == null || Uri.tryParse(url)?.scheme != 'https') {
+      throw const FileSystemException('model_url_unavailable');
+    }
+    final String taskId = '${model.id}-${model.version}-${file.role}';
     final DownloadTask task = DownloadTask(
-      taskId: model.id,
-      url: model.url,
-      filename: model.filename,
-      directory: 'models',
+      taskId: taskId,
+      url: url,
+      filename: file.filename,
+      directory: 'models/downloads/${model.id}/${model.version}',
       baseDirectory: BaseDirectory.applicationSupport,
       updates: Updates.statusAndProgress,
       retries: 3,
       allowPause: true,
-      requiresWiFi: wifiOnly,
+      requiresWiFi: true,
       transferHints: const <TransferHint>{
         TransferHint.userInitiated,
         TransferHint.largeFile,
       },
     );
+    onProgress(0);
     final Transfer transfer = await FileDownloader().transfers.getOrStart(task);
-    _active[model.id] = transfer;
-    final File file = await transfer.file;
-    if (await _checksum(file) != model.sha256.toLowerCase()) {
-      await file.delete();
-      _active.remove(model.id);
-      if (checksumRetries > 0) {
-        return download(
-          model,
-          wifiOnly: wifiOnly,
-          checksumRetries: checksumRetries - 1,
-        );
-      }
+    _active[taskId] = transfer;
+    final File downloaded = await transfer.file;
+    if (!await _matches(downloaded, file)) {
+      await downloaded.delete();
+      _active.remove(taskId);
       throw const FileSystemException('model_checksum_failed');
     }
-    return file;
+    onProgress(1);
+    return downloaded;
   }
 
-  Future<bool> pause(String id) async => await _active[id]?.pause() ?? false;
-  Future<bool> resume(String id) async => await _active[id]?.resume() ?? false;
-  Future<bool> cancel(String id) async => await _active[id]?.cancel() ?? false;
+  @override
+  Future<void> pauseModel(String modelId) async {
+    for (final MapEntry<String, Transfer> entry in _forModel(modelId)) {
+      await entry.value.pause();
+    }
+  }
 
-  Future<String> _checksum(File file) async =>
-      (await sha256.bind(file.openRead()).first).toString();
+  @override
+  Future<void> resumeModel(String modelId) async {
+    for (final MapEntry<String, Transfer> entry in _forModel(modelId)) {
+      await entry.value.resume();
+    }
+  }
+
+  @override
+  Future<void> cancelModel(String modelId) async {
+    final List<MapEntry<String, Transfer>> transfers = _forModel(modelId);
+    for (final MapEntry<String, Transfer> entry in transfers) {
+      await entry.value.cancel();
+      _active.remove(entry.key);
+    }
+  }
+
+  List<MapEntry<String, Transfer>> _forModel(String modelId) => _active.entries
+      .where((MapEntry<String, Transfer> entry) => entry.key.startsWith('$modelId-'))
+      .toList(growable: false);
+
+  Future<bool> _matches(File file, ModelFileDefinition expected) async {
+    if (!await file.exists() || await file.length() != expected.sizeBytes) {
+      return false;
+    }
+    return (await sha256.bind(file.openRead()).first).toString() == expected.sha256;
+  }
 }

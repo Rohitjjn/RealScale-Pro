@@ -4,6 +4,7 @@ import '../engine/ncnn/ncnn_engine.dart';
 import '../services/device_profiler/device_profiler.dart';
 import '../services/image_service/image_service.dart';
 import '../services/model_manager/model_download_service.dart';
+import '../services/model_manager/model_manager.dart';
 import '../services/pipeline_planner/pipeline_planner.dart';
 import '../services/settings_service.dart';
 import '../services/storage_service/storage_service.dart';
@@ -20,6 +21,10 @@ final Provider<ModelDownloadService> modelDownloadProvider =
         'ModelDownloadService must be overridden at startup',
       ),
     );
+
+final Provider<ModelManager> modelManagerProvider = Provider<ModelManager>(
+  (Ref ref) => throw StateError('ModelManager must be overridden at startup'),
+);
 
 final Provider<AppController> appControllerProvider = Provider<AppController>((
   Ref ref,
