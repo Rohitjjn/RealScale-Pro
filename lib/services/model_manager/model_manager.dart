@@ -109,8 +109,7 @@ class ModelManager {
   final void Function()? onSelectedModelDeleted;
   final StreamController<List<ModelRuntimeState>> _changes =
       StreamController<List<ModelRuntimeState>>.broadcast();
-  final Map<String, ModelRuntimeState> _states =
-      <String, ModelRuntimeState>{};
+  final Map<String, ModelRuntimeState> _states = <String, ModelRuntimeState>{};
 
   String? selectedModelId;
 
@@ -192,10 +191,9 @@ class ModelManager {
           : ModelManagerFailure.installFailed;
       _set(
         modelId,
-        stateFor(modelId).copyWith(
-          status: ModelInstallStatus.failed,
-          failure: failure,
-        ),
+        stateFor(
+          modelId,
+        ).copyWith(status: ModelInstallStatus.failed, failure: failure),
       );
     } on Object {
       _set(
@@ -282,10 +280,7 @@ class ModelManager {
           installedVersion: installed,
         );
       case ModelAvailability.held:
-        return ModelRuntimeState(
-          model: model,
-          status: ModelInstallStatus.held,
-        );
+        return ModelRuntimeState(model: model, status: ModelInstallStatus.held);
       case ModelAvailability.blocked:
         return ModelRuntimeState(
           model: model,

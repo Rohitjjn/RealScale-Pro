@@ -44,8 +44,9 @@ class FileModelStore implements ModelInstallStore {
           '${staging.path}${Platform.pathSeparator}${expected.filename}',
         );
       }
-      await File('${staging.path}${Platform.pathSeparator}.version')
-          .writeAsString(model.version, flush: true);
+      await File(
+        '${staging.path}${Platform.pathSeparator}.version',
+      ).writeAsString(model.version, flush: true);
 
       final Directory installed = Directory(_path(model.id, ''));
       final Directory backup = Directory(_path('${model.id}.previous', ''));
@@ -89,14 +90,12 @@ class FileModelStore implements ModelInstallStore {
       '${root.path}${Platform.pathSeparator}$modelId'
       '${filename.isEmpty ? '' : '${Platform.pathSeparator}$filename'}';
 
-  Future<bool> _matches(
-    File file,
-    ModelFileDefinition expected,
-  ) async {
+  Future<bool> _matches(File file, ModelFileDefinition expected) async {
     if (!await file.exists() || await file.length() != expected.sizeBytes) {
       return false;
     }
-    final String checksum = (await sha256.bind(file.openRead()).first).toString();
+    final String checksum = (await sha256.bind(file.openRead()).first)
+        .toString();
     return checksum == expected.sha256;
   }
 }

@@ -87,13 +87,16 @@ class ModelDownloadService implements ModelTransferGateway {
   }
 
   List<MapEntry<String, Transfer>> _forModel(String modelId) => _active.entries
-      .where((MapEntry<String, Transfer> entry) => entry.key.startsWith('$modelId-'))
+      .where(
+        (MapEntry<String, Transfer> entry) => entry.key.startsWith('$modelId-'),
+      )
       .toList(growable: false);
 
   Future<bool> _matches(File file, ModelFileDefinition expected) async {
     if (!await file.exists() || await file.length() != expected.sizeBytes) {
       return false;
     }
-    return (await sha256.bind(file.openRead()).first).toString() == expected.sha256;
+    return (await sha256.bind(file.openRead()).first).toString() ==
+        expected.sha256;
   }
 }
