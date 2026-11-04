@@ -5,6 +5,11 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-04 — Phase 2 — Honest progress report
+- Added a work-in-progress Phase 2 report and marked the phase plan clearly as
+  incomplete. It records that only catalog groundwork exists and lists Model
+  Manager, Manual controls, native Real-ESRGAN, faces, Settings and QA as pending.
+
 ## 2026-11-03 — Phase 2 — High-quality 2× Starter models
 - Selected official-derived Real-ESRGAN x2plus for social/photo images and the
   official anime-video x2 model for illustration. Exact GitHub Release URLs,
