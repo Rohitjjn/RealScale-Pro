@@ -29,13 +29,19 @@ void main() {
 
     await manager.initialize();
 
-    expect(manager.stateFor('bundled-model').status, ModelInstallStatus.bundled);
+    expect(
+      manager.stateFor('bundled-model').status,
+      ModelInstallStatus.bundled,
+    );
     expect(
       manager.stateFor('remote-model').status,
       ModelInstallStatus.updateAvailable,
     );
     expect(manager.stateFor('held-model').status, ModelInstallStatus.held);
-    expect(manager.stateFor('blocked-model').status, ModelInstallStatus.blocked);
+    expect(
+      manager.stateFor('blocked-model').status,
+      ModelInstallStatus.blocked,
+    );
     expect(
       manager.stateFor('future-model').status,
       ModelInstallStatus.comingSoon,
