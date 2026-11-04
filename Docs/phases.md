@@ -76,7 +76,7 @@ downloads, restore faces after upscaling, and control the complete Settings set.
 The Phase 1 hardware gaps remain open and must stay visible in the Phase 2 report.
 
 **Current status (4 November 2026): Phase 2 is in progress, not complete.** Task
-2.1 remains partial; tasks 2.2 and 2.3 are complete; tasks 2.4–2.12 remain. The
+2.1 remains partial; tasks 2.2–2.4 are complete; tasks 2.5–2.12 remain. The
 honest live status and latest CI evidence are in `reports/phase-2.md`.
 
 | # | Task | Build notes | Test before moving on |

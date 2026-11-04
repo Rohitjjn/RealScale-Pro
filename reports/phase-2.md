@@ -9,9 +9,10 @@ Phase 2 has started but is not finished. The model-source audit, typed catalog
 and safe installation service exist, and two higher-quality 2× Starter downloads
 have exact GitHub addresses, sizes and checksums. The original small waifu2x
 models are still the only models the native app can execute; they remain safe
-fallbacks while Real-ESRGAN integration is built and tested. The Model Manager
-screen, Manual controls, face detection/restoration, complete Settings and Phase
-2 QA are not implemented yet. Current Flutter tests and target compilation pass.
+fallbacks while Real-ESRGAN integration is built and tested. Model Manager now
+has real packs, filters, storage and lifecycle controls. Manual controls, face
+detection/restoration, complete Settings and Phase 2 QA are not implemented yet.
+Current Flutter tests and target compilation pass.
 
 ## 2. What has been built
 | Task | Current result | Status |
@@ -19,7 +20,7 @@ screen, Manual controls, face detection/restoration, complete Settings and Phase
 | 2.1 Model/license audit | Audited current CNN and GFPGAN sources; pinned exact Real-ESRGAN x2plus and anime-video x2 files; documented the owner-approved GFPGAN restriction | In progress — remaining models and executable GFPGAN files are not verified |
 | 2.2 Typed catalog | Added validated definitions for 17 catalog entries plus typed install/download states | Complete; automated parser and safety tests pass |
 | 2.3 ModelManager service | Added app-start catalog loading, background transfer control, checksum retry, transactional installation, update detection, storage totals, deletion and selected-model fallback | Complete; service and corrupt-file tests pass |
-| 2.4 Model Manager screen | Phase 1 placeholder only | Not started |
+| 2.4 Model Manager screen | Added grouped packs, honest storage, type/mode filters, lifecycle actions, source details, designed unavailable states, widget tests and matching HTML preview | Complete |
 | 2.5 Manual configuration | Manual control remains disabled | Not started |
 | 2.6 Manual planner | Default 2× fallback planner only | Not started |
 | 2.7 Face detection | No verified detector pipeline | Not started |
@@ -66,12 +67,11 @@ https://github.com/Rohitjjn/RealScale-Pro/actions/runs/41763750099
 - No Phase 2 checklist item should be marked passed merely because compilation is green.
 
 ## 6. Next implementation order
-1. Build the Model Manager screen over the completed installation service.
+1. Build Manual controls and 2×–5× planning over the completed model service.
 2. Download, transform and run both preferred Real-ESRGAN 2× models through ncnn.
 3. Make the tested photo model the default and preserve automatic fallback.
-4. Build Manual controls with 2×–5× planning.
-5. Add the audited face detector, Face pack and GFPGAN pipeline.
-6. Complete Settings, localization, preview and the full QA matrix.
+4. Add the audited face detector, Face pack and GFPGAN pipeline.
+5. Complete Settings, localization, preview and the full QA matrix.
 
 A final Phase 2 report will replace this progress report only after those items
 are implemented and honestly tested.
