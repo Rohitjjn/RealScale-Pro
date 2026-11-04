@@ -43,61 +43,64 @@ class _ModelManagerScreenState extends State<ModelManagerScreen> {
   Widget build(BuildContext context) => StreamBuilder<List<ModelRuntimeState>>(
     stream: widget.manager.changes,
     initialData: widget.manager.states,
-    builder: (
-      BuildContext context,
-      AsyncSnapshot<List<ModelRuntimeState>> snapshot,
-    ) {
-      final List<ModelRuntimeState> states = _filtered(
-        snapshot.data ?? const <ModelRuntimeState>[],
-      );
-      return Scaffold(
-        appBar: AppBar(title: Text(context.l10n.modelManager)),
-        body: RefreshIndicator(
-          onRefresh: () async => _refreshStorage(),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            children: <Widget>[
-              _StorageCard(storage: _storage),
-              const SizedBox(height: 12),
-              _Filters(
-                purpose: _purpose,
-                mode: _mode,
-                onPurpose: (ModelPurpose? value) {
-                  setState(() => _purpose = value);
-                },
-                onMode: (ModelMode? value) {
-                  setState(() => _mode = value);
-                },
+    builder:
+        (
+          BuildContext context,
+          AsyncSnapshot<List<ModelRuntimeState>> snapshot,
+        ) {
+          final List<ModelRuntimeState> states = _filtered(
+            snapshot.data ?? const <ModelRuntimeState>[],
+          );
+          return Scaffold(
+            appBar: AppBar(title: Text(context.l10n.modelManager)),
+            body: RefreshIndicator(
+              onRefresh: () async => _refreshStorage(),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                children: <Widget>[
+                  _StorageCard(storage: _storage),
+                  const SizedBox(height: 12),
+                  _Filters(
+                    purpose: _purpose,
+                    mode: _mode,
+                    onPurpose: (ModelPurpose? value) {
+                      setState(() => _purpose = value);
+                    },
+                    onMode: (ModelMode? value) {
+                      setState(() => _mode = value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  if (states.isEmpty)
+                    _EmptyFilter(
+                      onClear: () {
+                        setState(() {
+                          _purpose = null;
+                          _mode = null;
+                        });
+                      },
+                    )
+                  else
+                    for (final ModelPack pack in ModelPack.values)
+                      if (states.any(
+                        (ModelRuntimeState state) => state.model.pack == pack,
+                      ))
+                        _PackSection(
+                          pack: pack,
+                          states: states
+                              .where(
+                                (ModelRuntimeState state) =>
+                                    state.model.pack == pack,
+                              )
+                              .toList(growable: false),
+                          manager: widget.manager,
+                          onChanged: _refreshStorage,
+                        ),
+                ],
               ),
-              const SizedBox(height: 16),
-              if (states.isEmpty)
-                _EmptyFilter(onClear: () {
-                  setState(() {
-                    _purpose = null;
-                    _mode = null;
-                  });
-                })
-              else
-                for (final ModelPack pack in ModelPack.values)
-                  if (states.any(
-                    (ModelRuntimeState state) => state.model.pack == pack,
-                  ))
-                    _PackSection(
-                      pack: pack,
-                      states: states
-                          .where(
-                            (ModelRuntimeState state) =>
-                                state.model.pack == pack,
-                          )
-                          .toList(growable: false),
-                      manager: widget.manager,
-                      onChanged: _refreshStorage,
-                    ),
-            ],
-          ),
-        ),
-      );
-    },
+            ),
+          );
+        },
   );
 }
 
@@ -112,49 +115,53 @@ class _StorageCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: FutureBuilder<ModelStorageSummary>(
         future: storage,
-        builder: (
-          BuildContext context,
-          AsyncSnapshot<ModelStorageSummary> snapshot,
-        ) {
-          if (snapshot.hasError) {
-            return Text(context.l10n.somethingWentWrong);
-          }
-          if (!snapshot.hasData) {
-            return const LinearProgressIndicator();
-          }
-          final ModelStorageSummary value = snapshot.data!;
-          final int? free = value.freeBytes;
-          final double? fraction = free == null || value.usedBytes + free == 0
-              ? null
-              : value.usedBytes / (value.usedBytes + free);
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
+        builder:
+            (
+              BuildContext context,
+              AsyncSnapshot<ModelStorageSummary> snapshot,
+            ) {
+              if (snapshot.hasError) {
+                return Text(context.l10n.somethingWentWrong);
+              }
+              if (!snapshot.hasData) {
+                return const LinearProgressIndicator();
+              }
+              final ModelStorageSummary value = snapshot.data!;
+              final int? free = value.freeBytes;
+              final double? fraction =
+                  free == null || value.usedBytes + free == 0
+                  ? null
+                  : value.usedBytes / (value.usedBytes + free);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const Icon(Icons.storage_rounded),
-                  const SizedBox(width: 10),
+                  Row(
+                    children: <Widget>[
+                      const Icon(Icons.storage_rounded),
+                      const SizedBox(width: 10),
+                      Text(
+                        context.l10n.modelStorage,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (fraction != null)
+                    LinearProgressIndicator(
+                      value: fraction.clamp(0.0, 1.0).toDouble(),
+                    ),
+                  const SizedBox(height: 8),
                   Text(
-                    context.l10n.modelStorage,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    free == null
+                        ? context.l10n.modelUsed(_megabytes(value.usedBytes))
+                        : context.l10n.modelStorageSummary(
+                            _megabytes(value.usedBytes),
+                            _megabytes(free),
+                          ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              if (fraction != null)
-                LinearProgressIndicator(value: fraction.clamp(0.0, 1.0).toDouble()),
-              const SizedBox(height: 8),
-              Text(
-                free == null
-                    ? context.l10n.modelUsed(_megabytes(value.usedBytes))
-                    : context.l10n.modelStorageSummary(
-                        _megabytes(value.usedBytes),
-                        _megabytes(free),
-                      ),
-              ),
-            ],
-          );
-        },
+              );
+            },
       ),
     ),
   );
@@ -283,11 +290,7 @@ class _PackSection extends StatelessWidget {
             ],
           ),
           for (final ModelRuntimeState state in states)
-            _ModelRow(
-              state: state,
-              manager: manager,
-              onChanged: onChanged,
-            ),
+            _ModelRow(state: state, manager: manager, onChanged: onChanged),
         ],
       ),
     );
@@ -489,7 +492,10 @@ class _StatusIcon extends StatelessWidget {
         Icons.block_rounded,
         Theme.of(context).colorScheme.error,
       ),
-      _ => (Icons.cloud_download_outlined, Theme.of(context).colorScheme.primary),
+      _ => (
+        Icons.cloud_download_outlined,
+        Theme.of(context).colorScheme.primary,
+      ),
     };
     return Icon(appearance.$1, color: appearance.$2, size: 28);
   }
