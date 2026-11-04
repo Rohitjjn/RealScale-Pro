@@ -29,19 +29,13 @@ void main() {
 
     await manager.initialize();
 
-    expect(
-      manager.stateFor('bundled-model').status,
-      ModelInstallStatus.bundled,
-    );
+    expect(manager.stateFor('bundled-model').status, ModelInstallStatus.bundled);
     expect(
       manager.stateFor('remote-model').status,
       ModelInstallStatus.updateAvailable,
     );
     expect(manager.stateFor('held-model').status, ModelInstallStatus.held);
-    expect(
-      manager.stateFor('blocked-model').status,
-      ModelInstallStatus.blocked,
-    );
+    expect(manager.stateFor('blocked-model').status, ModelInstallStatus.blocked);
     expect(
       manager.stateFor('future-model').status,
       ModelInstallStatus.comingSoon,
@@ -152,4 +146,84 @@ Map<String, dynamic> _model(
   'pack': 'starter',
   'minTier': 0,
   'nativeScales': <int>[2],
-  'purposes': <String>['photo']
+  'purposes': <String>['photo'],
+  'modes': <String>['upscale'],
+  'speed': 'fast',
+  'sizeBytes': files ? 3 : 0,
+  'license': 'MIT',
+  'sourceUrl': 'https://github.com/example/models',
+  'availability': availability,
+  'restricted': false,
+  'files': files
+      ? <Map<String, dynamic>>[
+          <String, dynamic>{
+            'role': 'weights',
+            'filename': '$id.bin',
+            if (asset)
+              'assetPath': 'assets/$id.bin'
+            else
+              'url': 'https://github.com/example/models/$id.bin',
+            'sizeBytes': 3,
+            'sha256':
+                '039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81',
+          },
+        ]
+      : <Map<String, dynamic>>[],
+};
+
+class _FakeGateway implements ModelTransferGateway {
+  _FakeGateway(this.root);
+
+  final Directory root;
+  bool failure = false;
+
+  @override
+  Future<File> downloadFile(
+    ModelDefinition model,
+    ModelFileDefinition file, {
+    required void Function(double progress) onProgress,
+  }) async {
+    if (failure) throw const SocketException('offline');
+    onProgress(0.5);
+    final File result = File('${root.path}/${file.filename}');
+    await result.writeAsBytes(<int>[1, 2, 3]);
+    onProgress(1);
+    return result;
+  }
+
+  @override
+  Future<void> cancelModel(String modelId) async {}
+
+  @override
+  Future<void> pauseModel(String modelId) async {}
+
+  @override
+  Future<void> resumeModel(String modelId) async {}
+}
+
+class _FakeStore implements ModelInstallStore {
+  final Map<String, String> versions = <String, String>{};
+  final Set<String> installedIds = <String>{};
+
+  @override
+  Future<void> delete(String modelId) async {
+    versions.remove(modelId);
+    installedIds.remove(modelId);
+  }
+
+  @override
+  Future<void> install(
+    ModelDefinition model,
+    List<File> downloadedFiles,
+  ) async {
+    installedIds.add(model.id);
+    versions[model.id] = model.version;
+  }
+
+  @override
+  Future<String?> installedVersion(String modelId) async => versions[modelId];
+
+  @override
+  Future<ModelStorageSummary> summary() async =>
+      const ModelStorageSummary(usedBytes: 3, freeBytes: 100);
+}
