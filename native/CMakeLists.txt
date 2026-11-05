@@ -24,13 +24,49 @@ if(NOT DEFINED NCNN_DIR OR "${NCNN_DIR}" STREQUAL "")
     "Run: bash native/fetch_ncnn.sh <android|linux|windows>")
 endif()
 
-if(ANDROID AND EXISTS "${NCNN_DIR}/${ANDROID_ABI}/lib/cmake/ncnn")
-  set(NCNN_CMAKE_DIR "${NCNN_DIR}/${ANDROID_ABI}/lib/cmake/ncnn")
-else()
-  set(NCNN_CMAKE_DIR "${NCNN_DIR}/lib/cmake/ncnn")
-endif()
+# Locate the ncnn CMake package. Prebuilt Android archives place it under
+# <abi>/lib/cmake/ncnn, desktop archives under lib/cmake/ncnn.
+set(NCNN_CMAKE_DIR "")
+foreach(_cand
+    "${NCNN_DIR}/${ANDROID_ABI}/lib/cmake/ncnn"
+    "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/lib/cmake/ncnn"
+    "${NCNN_DIR}/lib/cmake/ncnn")
+  if(EXISTS "${_cand}" AND NCNN_CMAKE_DIR STREQUAL "")
+    set(NCNN_CMAKE_DIR "${_cand}")
+  endif()
+endforeach()
 
-find_package(ncnn REQUIRED PATHS "${NCNN_CMAKE_DIR}" NO_DEFAULT_PATH)
+if(NOT NCNN_CMAKE_DIR STREQUAL "")
+  find_package(ncnn REQUIRED PATHS "${NCNN_CMAKE_DIR}" NO_DEFAULT_PATH)
+else()
+  # Archives shipped without a CMake package: wire the static archive up by
+  # hand (Android layout is <abi>/lib/libncnn.a + <abi>/include or include/).
+  set(NCNN_LIBRARY "")
+  foreach(_cand
+      "${NCNN_DIR}/${ANDROID_ABI}/lib/libncnn.a"
+      "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/lib/libncnn.a"
+      "${NCNN_DIR}/lib/libncnn.a"
+      "${NCNN_DIR}/${ANDROID_ABI}/lib/libncnn.so"
+      "${NCNN_DIR}/lib/libncnn.so")
+    if(EXISTS "${_cand}" AND NCNN_LIBRARY STREQUAL "")
+      set(NCNN_LIBRARY "${_cand}")
+    endif()
+  endforeach()
+  if(NCNN_LIBRARY STREQUAL "")
+    message(FATAL_ERROR
+      "Could not locate an ncnn CMake package or library under ${NCNN_DIR}. "
+      "Run: bash native/fetch_ncnn.sh <android|linux|windows>")
+  endif()
+  set(NCNN_INCLUDE_DIR "${NCNN_DIR}/${ANDROID_ABI}/include")
+  if(NOT EXISTS "${NCNN_INCLUDE_DIR}")
+    set(NCNN_INCLUDE_DIR "${NCNN_DIR}/include")
+  endif()
+  message(STATUS "ncnn (manual import): ${NCNN_LIBRARY}")
+  add_library(ncnn STATIC IMPORTED GLOBAL)
+  set_target_properties(ncnn PROPERTIES
+    IMPORTED_LOCATION "${NCNN_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${NCNN_INCLUDE_DIR}")
+endif()
 
 add_library(realscale_ncnn SHARED realscale_ncnn.cpp)
 target_link_libraries(realscale_ncnn PRIVATE ncnn)
