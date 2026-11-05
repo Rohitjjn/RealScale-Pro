@@ -108,12 +108,6 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Restore the signing keystore (optional)
-        if: ${{ secrets.KEY_PROPERTIES != '' }}
-        run: |
-          printf '%s' "${{ secrets.KEY_PROPERTIES }}" | base64 -d > android/key.properties
-          echo "key.properties restored"
-
       # ncnn must be on disk BEFORE the Gradle configure step so
       # android/app/build.gradle.kts wires in the CMake native build. If the
       # download is ever unavailable the APK still builds — it then ships
