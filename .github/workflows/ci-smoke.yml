@@ -108,4 +108,20 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Restore the signing keystore (optional)
+        if: ${{ secrets.KEY_PROPERTIES != '' }}
+        run: |
+          printf '%s' "${{ secrets.KEY_PROPERTIES }}" | base64 -d > android/key.properties
+          echo "key.properties restored"
+
+      # ncnn must be on disk BEFORE the Gradle configure step so
+      # android/app/build.gradle.kts wires in the CMake native build. If the
+      # download is ever unavailable the APK still builds — it then ships
+      # with the honest pure-Dart Lanczos engine only.
+      - name: Fetch pinned ncnn (BSD-3-Clause) for Android
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.include_native_ncnn }}
+        continue-on-error: true
+        id: ncnn
+        run: bash native/fetch_ncnn.sh android
+
 
