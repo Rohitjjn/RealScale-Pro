@@ -249,6 +249,10 @@ jobs:
               | head -n 30 | while IFS= read -r line; do
                 echo "::error file=android::$line"
               done
+            grep -n -A 12 'CMake Error' build-universal.log | head -n 40 \
+              | while IFS= read -r line; do
+                echo "::error file=cmake::$line"
+              done
             exit 1
           fi
 
@@ -262,6 +266,10 @@ jobs:
             grep -nE '^e: |error:|Unresolved|Caused by|Execution failed|CMake Error|FAILED:|ninja: build stopped' build-abi.log \
               | head -n 30 | while IFS= read -r line; do
                 echo "::error file=android::$line"
+              done
+            grep -n -A 12 'CMake Error' build-abi.log | head -n 40 \
+              | while IFS= read -r line; do
+                echo "::error file=cmake::$line"
               done
             exit 1
           fi

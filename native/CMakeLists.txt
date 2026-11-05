@@ -24,8 +24,9 @@ if(NOT DEFINED NCNN_DIR OR "${NCNN_DIR}" STREQUAL "")
     "Run: bash native/fetch_ncnn.sh <android|linux|windows>")
 endif()
 
-# Locate the ncnn CMake package. Prebuilt Android archives place it under
-# <abi>/lib/cmake/ncnn, desktop archives under lib/cmake/ncnn.
+# --- Locate ncnn ---------------------------------------------------------------
+# Prebuilt Android archives place the CMake package under <abi>/lib/cmake/ncnn,
+# desktop archives under lib/cmake/ncnn.
 set(NCNN_CMAKE_DIR "")
 foreach(_cand
     "${NCNN_DIR}/${ANDROID_ABI}/lib/cmake/ncnn"
@@ -36,11 +37,19 @@ foreach(_cand
   endif()
 endforeach()
 
+set(NCNN_HAVE_PACKAGE FALSE)
 if(NOT NCNN_CMAKE_DIR STREQUAL "")
-  find_package(ncnn REQUIRED PATHS "${NCNN_CMAKE_DIR}" NO_DEFAULT_PATH)
-else()
-  # Archives shipped without a CMake package: wire the static archive up by
-  # hand (Android layout is <abi>/lib/libncnn.a + <abi>/include or include/).
+  # QUIET (not REQUIRED): some prebuilt configs fail their own dependency
+  # probe (a Vulkan-enabled ncnn whose Vulkan lookup misses on Android). In
+  # that case we fall back to importing the archive by hand below instead of
+  # breaking the whole APK build.
+  find_package(ncnn QUIET PATHS "${NCNN_CMAKE_DIR}" NO_DEFAULT_PATH)
+  if(TARGET ncnn)
+    set(NCNN_HAVE_PACKAGE TRUE)
+  endif()
+endif()
+
+if(NOT NCNN_HAVE_PACKAGE)
   set(NCNN_LIBRARY "")
   foreach(_cand
       "${NCNN_DIR}/${ANDROID_ABI}/lib/libncnn.a"
@@ -57,15 +66,46 @@ else()
       "Could not locate an ncnn CMake package or library under ${NCNN_DIR}. "
       "Run: bash native/fetch_ncnn.sh <android|linux|windows>")
   endif()
+
   set(NCNN_INCLUDE_DIR "${NCNN_DIR}/${ANDROID_ABI}/include")
+  if(NOT EXISTS "${NCNN_INCLUDE_DIR}")
+    set(NCNN_INCLUDE_DIR "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/include")
+  endif()
   if(NOT EXISTS "${NCNN_INCLUDE_DIR}")
     set(NCNN_INCLUDE_DIR "${NCNN_DIR}/include")
   endif()
-  message(STATUS "ncnn (manual import): ${NCNN_LIBRARY}")
+
+  message(STATUS "ncnn: manual import ${NCNN_LIBRARY}")
+
+  # System libs the prebuilt ncnn was linked against.
+  set(NCNN_EXTRA_LIBS "")
+  find_package(Threads QUIET)
+  if(TARGET Threads::Threads)
+    list(APPEND NCNN_EXTRA_LIBS Threads::Threads)
+  endif()
+  find_library(_ncnn_z z)
+  if(_ncnn_z)
+    list(APPEND NCNN_EXTRA_LIBS "${_ncnn_z}")
+  endif()
+  if(ANDROID)
+    list(APPEND NCNN_EXTRA_LIBS log android jnigraphics)
+    if(ENABLE_VULKAN)
+      # NDK stub: present from API 24, which is our minSdk (26).
+      find_library(_ncnn_vulkan vulkan)
+      if(_ncnn_vulkan)
+        list(APPEND NCNN_EXTRA_LIBS "${_ncnn_vulkan}")
+      endif()
+    endif()
+  endif()
+
   add_library(ncnn STATIC IMPORTED GLOBAL)
   set_target_properties(ncnn PROPERTIES
     IMPORTED_LOCATION "${NCNN_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${NCNN_INCLUDE_DIR}")
+    INTERFACE_INCLUDE_DIRECTORIES "${NCNN_INCLUDE_DIR}"
+    INTERFACE_LINK_LIBRARIES "${NCNN_EXTRA_LIBS}"
+    INTERFACE_COMPILE_FEATURES "cxx_std_11")
+else()
+  message(STATUS "ncnn: CMake package at ${NCNN_CMAKE_DIR}")
 endif()
 
 add_library(realscale_ncnn SHARED realscale_ncnn.cpp)
@@ -79,8 +119,8 @@ endif()
 
 if(ANDROID)
   target_link_libraries(realscale_ncnn PRIVATE log android)
-  # Link OpenMP statically so APK needs no standalone libomp.so at runtime,
-  # and align ELF segments to 16 KB for Android 15/16 devices.
+  # Link OpenMP statically so the APK needs no standalone libomp.so at
+  # runtime, and align ELF segments to 16 KB for Android 15/16 devices.
   target_link_options(realscale_ncnn PRIVATE
     "-fopenmp"
     "-static-openmp"
