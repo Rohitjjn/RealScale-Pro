@@ -75,9 +75,8 @@ void main() {
     });
     final root = Directory.systemTemp.createTempSync('rs_settings');
     addTearDown(() => root.deleteSync(recursive: true));
-    final services = await tester.runAsync(
-      () => buildTestServices(root.path),
-    ) as Services;
+    final services =
+        await tester.runAsync(() => buildTestServices(root.path)) as Services;
 
     await tester.pumpWidget(
       ProviderScope(
@@ -160,10 +159,7 @@ void main() {
     const dir = '/data/models';
     // Native resolution helpers (ncnn_engine.dart) and the installer must
     // agree on `<dir>/<id>-<scale>x.param` + `<dir>/<id>.bin`.
-    expect(
-      ncnnParamPath(dir, model.id, 4),
-      '$dir/${model.id}-4x.param',
-    );
+    expect(ncnnParamPath(dir, model.id, 4), '$dir/${model.id}-4x.param');
     expect(ncnnBinPath(dir, model.id), '$dir/${model.id}.bin');
   });
 
@@ -222,9 +218,9 @@ void main() {
       wifiOnlyDefault: true,
     );
     await manager.initialize();
-    await File('$modelDir/z_realesr-animevideov3_bin.zip').writeAsBytes(
-      List.filled(32, 7),
-    );
+    await File(
+      '$modelDir/z_realesr-animevideov3_bin.zip',
+    ).writeAsBytes(List.filled(32, 7));
     await manager.ensureBundledFiles();
     await manager.delete('waifu2x-upconv-photo-2x');
 
