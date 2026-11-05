@@ -76,9 +76,10 @@ final settingsProvider = Provider<SettingsService>(
 /// Revision counter bumped after every settings write (theme, language,
 /// output format, quality …). Widgets that read [SettingsService] directly
 /// watch this so they rebuild live instead of showing stale values.
-final settingsRevisionProvider = NotifierProvider<SettingsRevisionNotifier, int>(
-  SettingsRevisionNotifier.new,
-);
+final settingsRevisionProvider =
+    NotifierProvider<SettingsRevisionNotifier, int>(
+      SettingsRevisionNotifier.new,
+    );
 
 class SettingsRevisionNotifier extends Notifier<int> {
   @override

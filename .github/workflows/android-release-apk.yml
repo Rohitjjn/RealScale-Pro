@@ -88,8 +88,12 @@ jobs:
             exit 0
           fi
           git --no-pager diff > format.diff
-          message=$(head -n 120 format.diff | sed ':a;N;$!ba;s/\n/%0A/g')
-          echo "::error file=format.diff::$message"
+          git --no-pager diff --stat
+          # One annotation per file so nothing gets truncated.
+          for f in $(git --no-pager diff --name-only); do
+            d=$(git --no-pager diff -- "$f" | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error file=$f::$d"
+          done
           exit 1
 
       - name: Analyze (must report zero issues)
@@ -101,8 +105,11 @@ jobs:
             echo "flutter analyze: clean"
             exit 0
           fi
-          message=$(tail -n 100 analyze.log | sed ':a;N;$!ba;s/\n/%0A/g')
-          echo "::error file=lib::$message"
+          # One annotation per finding so the whole list is readable.
+          grep -E '^(Analyzing|info|warning|error|lint)' analyze.log \
+            | head -n 60 | while IFS= read -r line; do
+              echo "::error file=analyze::$line"
+            done
           exit 1
 
       - name: Run tests
@@ -114,9 +121,10 @@ jobs:
             echo "flutter test: all green"
             exit 0
           fi
-          message=$(grep -n -E '^[0-9]+:[0-9]+:|\[E\]|failed|Error' test.log \
-            | tail -n 80 | sed ':a;N;$!ba;s/\n/%0A/g')
-          echo "::error file=test::$message"
+          grep -E '^\[E\]|failed|Exception|Error|Expected:|  Actual:' test.log \
+            | head -n 60 | while IFS= read -r line; do
+              echo "::error file=test::$line"
+            done
           exit 1
 
       # --- native engine: build the Linux shim and run a REAL upscale ---------

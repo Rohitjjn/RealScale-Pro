@@ -209,9 +209,7 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen> {
                           if (confirmed == true && context.mounted) {
                             await ref.read(jobProvider.notifier).cancel();
                             await _releaseWakelock();
-                            await ref
-                                .read(configProvider.notifier)
-                                .reset();
+                            await ref.read(configProvider.notifier).reset();
                             if (!context.mounted) return;
                             _navigatedAway = true;
                             context.go(Routes.home);

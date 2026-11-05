@@ -107,7 +107,7 @@ void main() {
   // ---------------------------------------------------------------------------
   // 3. DeviceProfiler must report free storage in MEGABYTES, not KiB.
   // ---------------------------------------------------------------------------
-  test('DeviceProfiler.freeStorageMb divides the df KiB column by 1024', () async {
+  test('freeStorageMb divides the df KiB column by 1024', () async {
     if (!(Platform.isLinux || Platform.isAndroid)) return; // df -k only
     final mb = await DeviceProfiler.freeStorageMb(Directory.systemTemp.path);
     final res = await Process.run('df', ['-k', Directory.systemTemp.path]);
@@ -167,7 +167,7 @@ void main() {
     expect(ncnnBinPath(dir, model.id), '$dir/${model.id}.bin');
   });
 
-  test('starter pack is ready offline even with partial multi-scale files', () async {
+  test('starter pack is ready offline with partial scales', () async {
     final root = Directory.systemTemp.createTempSync('rs_starter');
     addTearDown(() => root.deleteSync(recursive: true));
     final catalog = await buildCatalog();
