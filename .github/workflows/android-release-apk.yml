@@ -106,10 +106,14 @@ jobs:
             exit 0
           fi
           # One annotation per finding so the whole list is readable.
-          grep -E '^(Analyzing|info|warning|error|lint)' analyze.log \
+          # Analyzer lines look like: "  warning • message • path:line:col • code"
+          grep -E '(info|warning|error|lint) • ' analyze.log \
             | head -n 60 | while IFS= read -r line; do
               echo "::error file=analyze::$line"
             done
+          tail -n 40 analyze.log | while IFS= read -r line; do
+            echo "::error file=analyze::TAIL $line"
+          done
           exit 1
 
       - name: Run tests
