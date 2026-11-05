@@ -256,6 +256,20 @@ jobs:
             exit 1
           fi
 
+      # Reads back the diagnostic written by native/CMakeLists.txt.
+      - name: Report how ncnn was resolved
+        if: always()
+        continue-on-error: true
+        run: |
+          f=$(find build android/app/.cxx -name ncnn_report.txt 2>/dev/null | head -n 1)
+          if [ -n "$f" ]; then
+            while IFS= read -r line; do
+              echo "::error file=ncnn-report::$line"
+            done < "$f"
+          else
+            echo "::error file=ncnn-report::no ncnn_report.txt"
+          fi
+
       - name: Build per-ABI release APKs
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.split_per_abi }}
         run: |

@@ -69,6 +69,12 @@ if(NOT NCNN_CMAKE_DIR STREQUAL "")
   find_package(ncnn QUIET PATHS "${NCNN_CMAKE_DIR}" NO_DEFAULT_PATH)
   if(TARGET ncnn)
     set(NCNN_HAVE_PACKAGE TRUE)
+  elseif(TARGET ncnn::ncnn)
+    # Namespaced export: bridge it to the plain name the shim links against.
+    add_library(ncnn INTERFACE IMPORTED GLOBAL)
+    set_target_properties(ncnn PROPERTIES
+      INTERFACE_LINK_LIBRARIES ncnn::ncnn)
+    set(NCNN_HAVE_PACKAGE TRUE)
   endif()
 endif()
 
@@ -113,6 +119,40 @@ if(NOT NCNN_HAVE_PACKAGE)
     endif()
   endif()
 
+  # A Vulkan-enabled ncnn is statically linked against glslang + SPIRV-Tools.
+  # Those archives ship next to libncnn.a, so pick up every one of them in
+  # dependency order (glslang pulls symbols from its own helpers).
+  set(_ncnn_lib_dir "")
+  foreach(_cand
+      "${NCNN_DIR}/${ANDROID_ABI}/lib"
+      "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/lib"
+      "${NCNN_DIR}/lib")
+    if(EXISTS "${_cand}" AND _ncnn_lib_dir STREQUAL "")
+      set(_ncnn_lib_dir "${_cand}")
+    endif()
+  endforeach()
+  foreach(_name
+      SPIRV-Tools-opt
+      SPIRV-Tools
+      SPIRV
+      glslang
+      OGLCompiler
+      OSDependent
+      MachineIndependent
+      GenericCodeGen)
+    if(EXISTS "${_ncnn_lib_dir}/lib${_name}.a")
+      list(APPEND NCNN_EXTRA_LIBS "${_ncnn_lib_dir}/lib${_name}.a")
+    endif()
+  endforeach()
+  # Anything else that ships alongside (newer ncnn splits libs differently).
+  file(GLOB _ncnn_other_archives "${_ncnn_lib_dir}/*.a")
+  foreach(_a IN LISTS _ncnn_other_archives)
+    get_filename_component(_n "${_a}" NAME_WE)
+    if(NOT _n STREQUAL "ncnn" AND NOT "${_a}" IN_LIST NCNN_EXTRA_LIBS)
+      list(APPEND NCNN_EXTRA_LIBS "${_a}")
+    endif()
+  endforeach()
+
   add_library(ncnn STATIC IMPORTED GLOBAL)
   set_target_properties(ncnn PROPERTIES
     IMPORTED_LOCATION "${NCNN_LIBRARY}"
@@ -121,6 +161,14 @@ if(NOT NCNN_HAVE_PACKAGE)
 else()
   message(STATUS "ncnn: CMake package at ${NCNN_CMAKE_DIR}")
 endif()
+
+file(
+  APPEND "${CMAKE_CURRENT_BINARY_DIR}/ncnn_report.txt"
+  "NCNN_HAVE_PACKAGE=${NCNN_HAVE_PACKAGE}\n"
+  "NCNN_INCLUDE_DIR=${NCNN_INCLUDE_DIR}\n"
+  "NCNN_LIBRARY=${NCNN_LIBRARY}\n"
+  "NCNN_EXTRA_LIBS=${NCNN_EXTRA_LIBS}\n"
+)
 
 add_library(realscale_ncnn SHARED realscale_ncnn.cpp)
 target_link_libraries(realscale_ncnn PRIVATE ncnn)
