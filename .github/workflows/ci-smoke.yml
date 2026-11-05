@@ -1,25 +1,8 @@
 name: ci-smoke
 
 on:
-  workflow_dispatch:
-    inputs:
-      split_per_abi:
-        description: 'Also build one smaller APK per CPU architecture'
-        type: boolean
-        default: true
-      include_native_ncnn:
-        description: 'Build the native ncnn engine (needs model support)'
-        type: boolean
-        default: true
   push:
     branches: ['main', 'arena/**']
-    paths-ignore: ['**.md', 'docs/**', 'reports/**']
-  pull_request:
-    branches: ['main']
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   FLUTTER_VERSION: '3.47.9'
@@ -27,8 +10,71 @@ env:
   NCNN_VERSION: '20240410'
 
 jobs:
-  hello:
+  # ---------------------------------------------------------------------------
+  # 1. Quality gates + a real run of the native engine on all starter models.
+  # ---------------------------------------------------------------------------
+  verify:
     name: Analyze, format & test
     runs-on: ubuntu-latest
     steps:
-      - run: echo "hello from actions"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Formatting gate. It prints the exact `dart format` diff when the tree
+      # is not clean, so the fix is a one-command copy/paste.
+      - name: Check formatting (dart format must be clean)
+        id: format
+        continue-on-error: true
+        run: |
+          dart format .
+          if ! git diff --quiet; then
+            echo "::error::dart format changed files — run 'dart format .' and commit"
+            git --no-pager diff
+            exit 1
+          fi
+          echo "dart format: clean"
+
+      - name: Analyze (must report zero issues)
+        run: flutter analyze --fatal-warnings
+
+      - name: Run tests
+        run: flutter test --reporter expanded
+
+      # --- native engine: build the Linux shim and run a REAL upscale ---------
+      - name: Fetch pinned ncnn (BSD-3-Clause) for Linux
+        run: bash native/fetch_ncnn.sh linux
+
+      - name: Configure native build
+        run: >
+          cmake -S native -B native/build/linux
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_SMOKE_TEST=ON
+          -DENABLE_VULKAN=OFF
+
+      - name: Build native shim + smoke test
+        run: cmake --build native/build/linux --config Release -j 4
+
+      - name: Run native smoke test on all four starter models
+        run: |
+          export LD_LIBRARY_PATH="$PWD/native/third_party/ncnn-linux/lib:$LD_LIBRARY_PATH"
+          ./native/build/linux/realscale_ncnn_smoke "$PWD"
+
