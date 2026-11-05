@@ -67,14 +67,6 @@ if(NOT NCNN_HAVE_PACKAGE)
       "Run: bash native/fetch_ncnn.sh <android|linux|windows>")
   endif()
 
-  set(NCNN_INCLUDE_DIR "${NCNN_DIR}/${ANDROID_ABI}/include")
-  if(NOT EXISTS "${NCNN_INCLUDE_DIR}")
-    set(NCNN_INCLUDE_DIR "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/include")
-  endif()
-  if(NOT EXISTS "${NCNN_INCLUDE_DIR}")
-    set(NCNN_INCLUDE_DIR "${NCNN_DIR}/include")
-  endif()
-
   message(STATUS "ncnn: manual import ${NCNN_LIBRARY}")
 
   # System libs the prebuilt ncnn was linked against.
@@ -101,7 +93,6 @@ if(NOT NCNN_HAVE_PACKAGE)
   add_library(ncnn STATIC IMPORTED GLOBAL)
   set_target_properties(ncnn PROPERTIES
     IMPORTED_LOCATION "${NCNN_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${NCNN_INCLUDE_DIR}"
     INTERFACE_LINK_LIBRARIES "${NCNN_EXTRA_LIBS}"
     INTERFACE_COMPILE_FEATURES "cxx_std_11")
 else()
@@ -110,6 +101,9 @@ endif()
 
 add_library(realscale_ncnn SHARED realscale_ncnn.cpp)
 target_link_libraries(realscale_ncnn PRIVATE ncnn)
+if(NOT NCNN_INCLUDE_DIR STREQUAL "")
+  target_include_directories(realscale_ncnn PRIVATE "${NCNN_INCLUDE_DIR}")
+endif()
 
 if(ENABLE_VULKAN)
   target_compile_definitions(realscale_ncnn PRIVATE RS_ENABLE_VULKAN=1)
