@@ -140,11 +140,20 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # Optional: set the KEY_PROPERTIES repository secret to the base64 of a
+      # `key.properties` file to sign with the real upload key. Without it the
+      # build falls back to the auto-generated certificate: still a release
+      # build (AOT + R8), just not store-ready.
       - name: Restore the signing keystore (optional)
-        if: ${{ secrets.KEY_PROPERTIES != '' }}
+        env:
+          KEY_PROPERTIES_B64: ${{ secrets.KEY_PROPERTIES }}
         run: |
-          printf '%s' "${{ secrets.KEY_PROPERTIES }}" | base64 -d > android/key.properties
-          echo "key.properties restored"
+          if [ -n "${KEY_PROPERTIES_B64:-}" ]; then
+            printf '%s' "$KEY_PROPERTIES_B64" | base64 -d > android/key.properties
+            echo "key.properties restored (release signing)"
+          else
+            echo "No upload keystore configured — using the fallback certificate"
+          fi
 
       # ncnn must be on disk BEFORE the Gradle configure step so
       # android/app/build.gradle.kts wires in the CMake native build. If the
