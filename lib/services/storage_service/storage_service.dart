@@ -237,11 +237,9 @@ class StorageService {
         AppLogger.d('StorageService', 'gallery permission not granted');
         return;
       }
-      await PhotoManager.editor.saveImageWithPath(
-        path,
-        title: title,
-        description: 'RealScale-Pro upscale',
-      );
+      // `saveImageWithPath(path, title:)` copies the file into the
+      // Pictures/RealScale-Pro album and registers it with MediaStore.
+      await PhotoManager.editor.saveImageWithPath(path, title: title);
     } catch (e, st) {
       AppLogger.w('StorageService', 'gallery publish skipped: $e', st);
     }

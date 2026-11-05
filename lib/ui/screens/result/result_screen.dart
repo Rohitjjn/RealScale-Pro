@@ -216,7 +216,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   Future<void> _newImage() async {
     await ref.read(configProvider.notifier).reset();
     ref.read(jobProvider.notifier).resetView();
-    if (!context.mounted) return;
+    if (!mounted) return;
     context.go(Routes.home);
   }
 }

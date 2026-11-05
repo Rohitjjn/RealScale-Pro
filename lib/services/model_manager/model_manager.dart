@@ -366,7 +366,7 @@ class ModelManager {
         }
       }
     } catch (e, st) {
-      AppLogger.w('ModelManager', 'temp cleanup failed', e, st);
+      AppLogger.w('ModelManager', 'temp cleanup failed: $e', st);
     }
   }
 

@@ -61,11 +61,7 @@ Future<void> main() async {
   final ncnnEngine = NcnnEngine.tryCreate();
   final onnxEngine = OnnxEngine.tryCreate();
   final lanczosEngine = LanczosEngine();
-  final engines = <UpscaleEngine>[
-    if (ncnnEngine != null) ncnnEngine,
-    if (onnxEngine != null) onnxEngine,
-    lanczosEngine,
-  ];
+  final engines = <UpscaleEngine>[?ncnnEngine, ?onnxEngine, lanczosEngine];
   final engineRegistry = EngineRegistry(engines: engines);
 
   final jobManager = JobManager(
@@ -75,7 +71,8 @@ Future<void> main() async {
       basePlan: plan,
       replanForRetry: replanStandard,
     ),
-    engineSelector: (ctx) => engineRegistry.pick(ctx.plan.model, ctx.device),
+    engineSelector: (ctx) =>
+        engineRegistry.pick(ctx.plan.model, ctx.device) ?? engines.first,
     storage: storage,
     haptics: NoopHaptics(),
   );
