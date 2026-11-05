@@ -33,6 +33,9 @@ class RealScaleApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeNotifier);
     final settings = ref.watch(settingsProvider);
+    // Theme/language/format changes are persisted in a mutable service, so
+    // the app shell must watch the revision counter to rebuild with them.
+    ref.watch(settingsRevisionProvider);
     return MaterialYouColors(
       enabled: settings.dynamicColor,
       builder: (context, lightDynamic, darkDynamic) {
@@ -121,6 +124,22 @@ class _MaterialYouColorsState extends State<MaterialYouColors> {
     } catch (_) {
       // Any failure (missing plugin, unsupported OS) → brand themes stay.
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant MaterialYouColors oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Dynamic color toggled ON later must fetch the palette now; toggled OFF
+    // must drop the previously fetched one so the brand theme comes back.
+    if (oldWidget.enabled == widget.enabled) return;
+    if (!widget.enabled) {
+      setState(() {
+        _light = null;
+        _dark = null;
+      });
+      return;
+    }
+    if (_light == null || _dark == null) _load();
   }
 
   @override

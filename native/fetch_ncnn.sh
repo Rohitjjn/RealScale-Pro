@@ -1,36 +1,46 @@
 #!/usr/bin/env bash
-# Fetches a prebuilt ncnn release for the target platform and prints the
-# NCNN_DIR to use with native/CMakeLists.txt. Run once per build machine.
-#
-#   bash native/fetch_ncnn.sh <android|windows|linux> [ncnn-version]
-#
-# The ncnn library is BSD-3-Clause (see licenses.md).
+# Fetches pinned prebuilt Tencent ncnn (BSD-3-Clause) binaries into
+# native/third_party/ncnn-<platform>. Used by CI and local native builds.
 set -euo pipefail
 
-PLATFORM="${1:-android}"
-VERSION="${2:-20240410}"
-OUT="$(pwd)/native/third_party"
-mkdir -p "$OUT"
+NCNN_VER="20240410"
+PLATFORM="${1:-linux}" # linux | android | windows
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$SCRIPT_DIR/third_party"
+DEST="$ROOT/ncnn-$PLATFORM"
+
+if [ -f "$DEST/lib/cmake/ncnn/ncnnConfig.cmake" ] || \
+   [ -f "$DEST/arm64-v8a/lib/cmake/ncnn/ncnnConfig.cmake" ]; then
+  echo "ncnn ($PLATFORM) already present at $DEST"
+  exit 0
+fi
+
+mkdir -p "$ROOT"
 
 case "$PLATFORM" in
+  linux)
+    ASSET="ncnn-${NCNN_VER}-ubuntu-2204-shared.zip"
+    ;;
   android)
-    ASSET="ncnn-${VERSION}-android-shared.zip"
+    ASSET="ncnn-${NCNN_VER}-android-vulkan.zip"
     ;;
   windows)
-    ASSET="ncnn-${VERSION}-windows-vs2022.zip"
+    ASSET="ncnn-${NCNN_VER}-windows-vs2022-shared.zip"
     ;;
-  linux)
-    ASSET="ncnn-${VERSION}-ubuntu-2204-shared.zip"
+  *)
+    echo "Unknown platform: $PLATFORM" >&2
+    exit 2
     ;;
-  *) echo "unknown platform $PLATFORM"; exit 1 ;;
 esac
 
-URL="https://github.com/Tencent/ncnn/releases/download/${VERSION}/${ASSET}"
+URL="https://github.com/Tencent/ncnn/releases/download/${NCNN_VER}/${ASSET}"
+ZIP="$ROOT/$ASSET"
+EXTRACT_DIR="$ROOT/${ASSET%.zip}"
+
 echo "Downloading $URL"
-curl -L --retry 3 -o "$OUT/ncnn.zip" "$URL"
-mkdir -p "$OUT/ncnn-$PLATFORM"
-unzip -o -q "$OUT/ncnn.zip" -d "$OUT/ncnn-$PLATFORM"
-rm -f "$OUT/ncnn.zip"
-echo "NCNN_DIR=$OUT/ncnn-$PLATFORM/$ASSET%.zip"
-ls "$OUT/ncnn-$PLATFORM"
-echo "Done. Pass this dir as -DNCNN_DIR when configuring native/CMakeLists.txt."
+curl -fL --retry 3 --retry-delay 2 "$URL" -o "$ZIP"
+rm -rf "$DEST" "$EXTRACT_DIR"
+unzip -q "$ZIP" -d "$ROOT"
+mv "$EXTRACT_DIR" "$DEST"
+rm -f "$ZIP"
+echo "Installed ncnn ($PLATFORM) -> $DEST"

@@ -5,6 +5,42 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-05 — Phase 2 — Broken-code fixes + release Android APK workflow
+- Fixed crashes and wrong behaviour found in a full source audit:
+  - `BeforeAfterSlider` read `context.size` inside `build()` (a guaranteed
+    crash on the result screen); it now uses `LayoutBuilder`.
+  - Native ncnn tiles ran on the UI isolate and could freeze the screen for
+    seconds; they now run on a persistent worker isolate, and `Cancel` still
+    reaches `rs_cancel` atomically.
+  - The native engine now returns the documented codes (0 ok / 1 error /
+    2 cancelled / 3 out of memory) instead of negative numbers, so the
+    recovery chain retries only on real failures.
+  - `ModelManager` saved ONNX (Ultra pack) weights as `<id>-nullx.param`;
+    they now land at `<id>.onnx`. Download archives (`z_*.zip`) are always
+    cleaned up, and `install` resumes instead of re-downloading.
+  - `realesr-animevideov3` ships only its x4 graph in the APK, so Auto 2x/3x
+    anime runs silently failed; Auto now falls back to a starter model whose
+    files are really on disk.
+  - Each job now picks its engine per model (registry `pick`) instead of
+    always using the first one, so Pro/ONNX/no-native devices behave right.
+  - `DeviceProfiler` reported free storage in KiB labelled as MB (every
+    device looked ~1000× fuller); it now divides by 1024.
+  - Settings toggles did not rebuild the screen; a settings revision counter
+    now drives live updates, and dynamic colour is re-read when toggled on.
+  - The processing screen no longer traps the user behind a non-poppable
+    scope when a job throws, never leaves the screen awake, and shows the
+    honest 0–100% bar (it was double-scaled to 72%).
+  - Saved images are offered to the Android gallery, temp inputs are cleaned
+    on reset, `.webp` output is recognised, and Advanced JPEG quality is
+    honoured.
+- Added `.github/workflows/android-release-apk.yml`: format + analyze + tests
+  + a real native ncnn run on all four starter models, then a signed-ready
+  **release** APK (universal and per-ABI), verified for `libapp.so`,
+  `librealscale_ncnn.so` and `apksigner`, uploaded for 30 days.
+- Added `test/regression_fixes_test.dart` covering the slider crash, live
+  settings toggles, storage math, model file layout and offline starter
+  readiness.
+
 ## 2026-11-05 — Phase 2 — Full model catalog verified against official releases
 - Downloaded the official Real-ESRGAN v0.2.5.0 and Real-CUGAN 20220728 zips and
   re-computed every checksum. One Real-CUGAN row had wrong entries and a corrupt

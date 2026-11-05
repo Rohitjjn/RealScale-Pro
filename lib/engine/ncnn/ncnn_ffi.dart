@@ -34,8 +34,11 @@ class NcnnLibrary {
     if (_instance != null) return _instance;
     if (_loadFailed) return null;
     try {
+      final envOverride = Platform.environment['REALSCALE_NCNN_LIB'];
       final DynamicLibrary lib;
-      if (Platform.isAndroid || Platform.isLinux) {
+      if (envOverride != null && envOverride.isNotEmpty) {
+        lib = DynamicLibrary.open(envOverride);
+      } else if (Platform.isAndroid || Platform.isLinux) {
         lib = DynamicLibrary.open('librealscale_ncnn.so');
       } else if (Platform.isWindows) {
         lib = DynamicLibrary.open('realscale_ncnn.dll');

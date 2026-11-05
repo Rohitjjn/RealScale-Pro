@@ -10,6 +10,10 @@ class AppLogger {
     }());
   }
 
+  static void w(String tag, String message, [Object? error]) {
+    dev.log('[$tag] $message', name: 'RealScale', error: error);
+  }
+
   static void e(
     String tag,
     String message, [

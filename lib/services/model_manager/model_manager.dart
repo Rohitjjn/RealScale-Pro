@@ -206,6 +206,8 @@ class ModelManager {
     if (_initialized) return;
     _initialized = true;
     await Directory(modelDir).create(recursive: true);
+    // Start clean: interrupted downloads leave half-written archives behind.
+    await _purgeTempZips();
     final saved = await _readInstallRegistry();
     for (final model in catalog.models) {
       final registered = saved.contains(model.id);
@@ -247,7 +249,10 @@ class ModelManager {
     if (!model.available) {
       throw ModelMissingException('$modelId is unavailable in this build');
     }
-    if (isInstalled(modelId)) return;
+    // Already fully present? Nothing to do. A partially present model (some
+    // scales of a multi-scale pack still missing) continues to fetch the
+    // rest instead of being treated as done.
+    if (isInstalled(modelId) && _allFilesExist(model)) return;
     _states[modelId] =
         (_states[modelId] ??
                 ModelInstallInfo(
@@ -269,7 +274,15 @@ class ModelManager {
       final zipsSeen = <String, String>{};
 
       for (final file in model.files) {
-        final destPath = _destPath(model.id, file);
+        final destination = destPath(model.id, file);
+        // Resume-friendly: a file already on disk with the right checksum is
+        // never downloaded twice.
+        final existing = File(destination);
+        if (existing.existsSync() &&
+            sha256Hex(await existing.readAsBytes()) == file.sha256) {
+          done += file.sizeBytes;
+          continue;
+        }
         final bytes = await _obtainFileBytes(
           file: file,
           modelId: modelId,
@@ -307,7 +320,7 @@ class ModelManager {
             checksumFailed: true,
           );
         }
-        await File(destPath).writeAsBytes(bytes, flush: true);
+        await File(destination).writeAsBytes(bytes, flush: true);
         done += file.sizeBytes;
       }
 
@@ -333,8 +346,28 @@ class ModelManager {
         error: 'Could not download this model',
       );
       onEvent?.call('Download failed');
+    } finally {
+      // Temp zip archives never linger (rules.md golden rule 8).
+      await _purgeTempZips();
     }
     _emit();
+  }
+
+  /// Removes every temporary download/extract artifact from the model dir.
+  Future<void> _purgeTempZips() async {
+    try {
+      final dir = Directory(modelDir);
+      if (!await dir.exists()) return;
+      await for (final entity in dir.list()) {
+        if (entity is File &&
+            entity.uri.pathSegments.last.startsWith('z_') &&
+            entity.uri.pathSegments.last.endsWith('.zip')) {
+          await _deleteQuietly(entity);
+        }
+      }
+    } catch (e, st) {
+      AppLogger.w('ModelManager', 'temp cleanup failed', e, st);
+    }
   }
 
   Future<Uint8List?> _obtainFileBytes({
@@ -527,9 +560,9 @@ class ModelManager {
     final model = catalog.byId(modelId);
     if (model == null) return;
     for (final file in model.files) {
-      await _deleteQuietly(File(_destPath(modelId, file)));
+      await _deleteQuietly(File(destPath(modelId, file)));
     }
-    await _deleteQuietly(File('$modelDir/z_$modelId.zip'));
+    await _purgeTempZips();
     _states[modelId] = ModelInstallInfo(
       modelId: modelId,
       status: InstallStatus.notInstalled,
@@ -538,28 +571,128 @@ class ModelManager {
     _emit();
   }
 
+  /// True when the native engine has everything it needs on disk to run
+  /// [model] at [scale]: the shared `.bin` weights plus the matching
+  /// `-<scale>x.param` graph.
+  ///
+  /// Note: the bundled `realesr-animevideov3` weights are the official x4
+  /// checkpoint, so only the 4x graph is usable offline until the 2x/3x
+  /// weights are downloaded.
+  bool hasUsableNativeFiles(ModelDef model, int scale) {
+    if (model.engine != 'ncnn') return false;
+    final param = File('$modelDir/${model.id}-${scale}x.param');
+    final bin = File('$modelDir/${model.id}.bin');
+    return param.existsSync() && bin.existsSync();
+  }
+
+  /// True when every file a model needs is already on disk.
+  bool isReady(ModelDef model, {int? scale}) {
+    if (!_filesExist(model)) return false;
+    if (scale != null && model.engine == 'ncnn') {
+      return hasUsableNativeFiles(model, scale);
+    }
+    return true;
+  }
+
+  /// Materializes the bundled Starter-pack assets (offline-first: the four
+  /// starter models ship inside the APK, so no download is needed). Safe and
+  /// idempotent — files already present are left untouched.
+  Future<void> ensureBundledFiles() async {
+    await Directory(modelDir).create(recursive: true);
+    for (final model in catalog.models) {
+      if (model.pack != 'starter') continue;
+      if (_allFilesExist(model)) {
+        _markInstalled(model.id);
+        continue;
+      }
+      final loader = ModelManager.assetLoader;
+      if (loader == null) continue;
+      for (final file in model.files) {
+        final asset = file.assetPath;
+        // Files without a bundled asset are downloaded on demand.
+        if (asset == null) continue;
+        final destFile = File(destPath(model.id, file));
+        if (destFile.existsSync() &&
+            sha256Hex(destFile.readAsBytesSync()) == file.sha256) {
+          continue;
+        }
+        Uint8List? data;
+        try {
+          data = await loader(asset);
+        } catch (e) {
+          AppLogger.d('ModelManager', 'bundled asset unavailable: $asset ($e)');
+        }
+        if (data == null) continue;
+        if (sha256Hex(data) != file.sha256) {
+          AppLogger.w('ModelManager', 'bundled asset checksum: $asset');
+          continue;
+        }
+        await destFile.writeAsBytes(data, flush: true);
+      }
+      if (_filesExist(model)) _markInstalled(model.id);
+    }
+    await _purgeTempZips();
+    await _writeInstallRegistry();
+    _emit();
+  }
+
+  void _markInstalled(String modelId) {
+    _states[modelId] = ModelInstallInfo(
+      modelId: modelId,
+      status: InstallStatus.installed,
+      progress: 1,
+    );
+  }
+
   /// Storage accounting for the Model Manager storage bar.
   Future<int> installedBytes() async {
     var total = 0;
     for (final model in catalog.models) {
       for (final file in model.files) {
-        final f = File(_destPath(model.id, file));
+        final f = File(destPath(model.id, file));
         if (await f.exists()) total += await f.length();
       }
     }
     return total;
   }
 
-  String _destPath(String modelId, ModelFileSpec file) {
+  /// Where a model file lives once installed. Kept public so the engine
+  /// layer resolves files exactly the way the installer writes them:
+  ///   `<dir>/<id>.bin`, `<dir>/<id>-<scale>x.param`, `<dir>/<id>.onnx`.
+  String destPath(String modelId, ModelFileSpec file) {
     if (file.kind == 'bin') return '$modelDir/$modelId.bin';
+    if (file.kind == 'onnx') return '$modelDir/$modelId.onnx';
     return '$modelDir/$modelId-${file.scale}x.param';
   }
 
-  bool _filesExist(ModelDef model) {
+  /// Every single file of [model] is on disk (full, complete install).
+  bool _allFilesExist(ModelDef model) {
+    if (model.files.isEmpty) return false;
     for (final file in model.files) {
-      if (!File(_destPath(model.id, file)).existsSync()) return false;
+      if (!File(destPath(model.id, file)).existsSync()) return false;
     }
     return true;
+  }
+
+  /// [model] is usable: its weights are on disk and at least one graph
+  /// (`.param`) is present.
+  ///
+  /// Multi-scale packs such as `realesr-animevideov3` ship only their x4
+  /// graph inside the APK (the x2/x3 graphs are downloaded on demand), so
+  /// requiring every file would wrongly report the starter model as
+  /// uninstalled while it can perfectly run at 4x offline.
+  bool _filesExist(ModelDef model) {
+    if (model.files.isEmpty) return false;
+    var hasParam = false;
+    for (final file in model.files) {
+      final exists = File(destPath(model.id, file)).existsSync();
+      if (file.kind == 'bin') {
+        if (!exists) return false;
+      } else if (exists) {
+        hasParam = true;
+      }
+    }
+    return hasParam || model.engine != 'ncnn';
   }
 
   void _onDownloaderEvent(DownloaderEvent e) {

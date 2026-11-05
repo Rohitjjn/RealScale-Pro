@@ -73,6 +73,25 @@ final settingsProvider = Provider<SettingsService>(
   (ref) => ref.watch(servicesProvider).settings,
 );
 
+/// Revision counter bumped after every settings write (theme, language,
+/// output format, quality …). Widgets that read [SettingsService] directly
+/// watch this so they rebuild live instead of showing stale values.
+final settingsRevisionProvider = NotifierProvider<SettingsRevisionNotifier, int>(
+  SettingsRevisionNotifier.new,
+);
+
+class SettingsRevisionNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  /// Call after a setting has been persisted.
+  void bump() => state = state + 1;
+}
+
+/// Convenience: bump the settings revision from anywhere.
+void invalidateSettings(WidgetRef ref) =>
+    ref.read(settingsRevisionProvider.notifier).bump();
+
 /// Theme mode snapshot so MaterialApp rebuilds on change.
 final themeModeNotifier = NotifierProvider<ThemeModeNotifier, ThemeMode>(
   ThemeModeNotifier.new,
@@ -488,7 +507,24 @@ class ConfigNotifier extends Notifier<ConfigState> {
     );
   }
 
-  void reset() => state = const ConfigState();
+  /// Clears the configuration and deletes any temp input the 2 MB rule
+  /// created (rules.md golden rule 8: no temp litter).
+  Future<void> reset() async {
+    final previous = state;
+    state = const ConfigState();
+    await _cleanupTempInput(previous);
+  }
+
+  Future<void> _cleanupTempInput(ConfigState previous) async {
+    final path = previous.tempInputUsed ? previous.path : null;
+    if (path == null) return;
+    try {
+      final f = File(path);
+      if (await f.exists()) await f.delete();
+    } catch (e) {
+      AppLogger.w('ConfigNotifier', 'temp input cleanup failed: $e');
+    }
+  }
 }
 
 // --- Job runner ---------------------------------------------------------------------
@@ -534,10 +570,15 @@ class JobNotifier extends Notifier<JobViewState> {
     final device = await ref.read(deviceProfileProvider.future);
     if (cfg.path == null || cfg.originalBytes == null) return null;
 
+    // Offline first: the four Starter-pack models ship inside the APK, so
+    // make sure they are materialized before any model is resolved.
+    await services.modelManager.ensureBundledFiles();
+
     // Resolve model (mode-aware: Super Resolution picks from the SR table).
     final effectiveType = cfg.typeName;
-    final resolved =
-        cfg.level != SettingLevel.defaultLevel && cfg.selectedModelId != null
+    final explicitModel =
+        cfg.level != SettingLevel.defaultLevel && cfg.selectedModelId != null;
+    final resolved = explicitModel
         ? cfg.selectedModelId
         : services.planner.autoModelId(
                 mode: cfg.mode,
@@ -547,7 +588,7 @@ class JobNotifier extends Notifier<JobViewState> {
               ) ??
               services.modelManager.fallbackModel(effectiveType);
     final modelId = resolved ?? '';
-    final model = services.catalog.byId(modelId);
+    var model = services.catalog.byId(modelId);
     if (model == null || !model.available) {
       throw ModelMissingException(modelId);
     }
@@ -555,11 +596,24 @@ class JobNotifier extends Notifier<JobViewState> {
       throw ModelMissingException(modelId);
     }
 
+    // A hand-picked (Manual/Advanced) or Super Resolution model must really
+    // be installed — never silently swap the user's choice for another one.
+    if (explicitModel || cfg.isSrMode) {
+      if (!services.modelManager.isInstalled(model.id)) {
+        throw ModelMissingException(model.id);
+      }
+    } else {
+      // Auto: if the picked model can't run natively at this scale (only the
+      // x4 weights ship offline for realesr-animevideov3), fall back to a
+      // starter model whose files are actually on disk.
+      model = _offlineReadyModel(services, model, cfg) ?? model;
+    }
+
     final decoded = await services.image.decodeForEngine(
       cfg.effectiveBytes ?? cfg.originalBytes!,
       sourceName: cfg.path!,
     );
-    final spec = _specFor(cfg, modelId, decoded);
+    final spec = _specFor(cfg, model.id, decoded);
     final plan = services.planner.plan(
       spec: spec,
       device: device,
@@ -603,7 +657,10 @@ class JobNotifier extends Notifier<JobViewState> {
       outputWriter: _outputWriter(services),
     );
 
-    // Live progress (subscribe without awaiting — broadcast stream).
+    // Live progress (subscribe without awaiting — broadcast stream). The
+    // previous subscription is always closed first so a second run never
+    // double-emits into the same view.
+    await _sub?.cancel();
     _sub = services.jobManager.progress.listen((event) {
       state = JobViewState(
         stage: event.stage,
@@ -618,23 +675,32 @@ class JobNotifier extends Notifier<JobViewState> {
       );
     });
 
-    final result = await services.jobManager.runJob(
-      spec: spec.copyWith(tileSize: plan.tileSize),
-      ctx: ctx,
-      originalName: cfg.path!
-          .split(Platform.pathSeparator)
-          .last
-          .split('/')
-          .last,
-      originalJpegBytes: cfg.originalBytes!,
-      keepMetadata: services.settings.keepMetadata,
-      outputKind: _outputKind(services, cfg),
-      outputQuality: services.settings.outputQuality,
-      hasAlpha: decoded.hasAlpha,
-    );
+    // `late` (not a plain declaration): the finally block runs even when the
+    // job throws, so definite-assignment analysis can't prove the variable
+    // is set — and the throw propagates before it is ever read.
+    late ProgressEvent result;
+    try {
+      result = await services.jobManager.runJob(
+        spec: spec.copyWith(tileSize: plan.tileSize),
+        ctx: ctx,
+        originalName: cfg.path!
+            .split(Platform.pathSeparator)
+            .last
+            .split('/')
+            .last,
+        originalJpegBytes: cfg.originalBytes!,
+        keepMetadata: services.settings.keepMetadata,
+        outputKind: _outputKind(services, cfg),
+        outputQuality: _outputQuality(services, cfg),
+        hasAlpha: decoded.hasAlpha,
+      );
+    } finally {
+      await _sub?.cancel();
+      _sub = null;
+      _activeJobId = null;
+    }
 
     if (result.stage == JobStage.done) {
-      _activeJobId = null;
       state = JobViewState(
         stage: JobStage.done,
         percent: 1,
@@ -643,7 +709,6 @@ class JobNotifier extends Notifier<JobViewState> {
       );
       return result.message;
     }
-    _activeJobId = null;
     state = JobViewState(
       stage: result.stage,
       percent: 0,
@@ -652,21 +717,82 @@ class JobNotifier extends Notifier<JobViewState> {
     return null;
   }
 
+  /// JPEG quality actually used for the save: the Advanced level exposes its
+  /// own slider, every other level uses the Settings value.
+  int _outputQuality(Services services, ConfigState cfg) =>
+      cfg.level == SettingLevel.advanced
+      ? cfg.advanced.quality
+      : services.settings.outputQuality;
+
+  /// Offline starter fallback (Auto level only): returns a bundled starter
+  /// model whose native files are really on disk when the Auto pick can't run
+  /// at the requested scale offline — e.g. `realesr-animevideov3` ships only
+  /// its x4 graph inside the APK, so an anime 2x/3x Auto run moves to
+  /// `realcugan-se-2x-denoise1x` instead of failing.
+  ModelDef? _offlineReadyModel(
+    Services services,
+    ModelDef model,
+    ConfigState cfg,
+  ) {
+    final imageType = model.bestFor.contains('anime') ? 'anime' : cfg.typeName;
+    final chain = services.planner.resolveScaleChain(
+      model: model,
+      targetScale: cfg.scale,
+      imageType: imageType,
+    );
+    if (services.modelManager.hasUsableNativeFiles(model, chain.nativeScale)) {
+      return null;
+    }
+    final preferred = <String>[
+      if (imageType == 'anime') 'realcugan-se-2x-denoise1x',
+      if (imageType == 'anime') 'waifu2x-upconv-anime-2x',
+      if (imageType != 'anime') 'waifu2x-upconv-photo-2x',
+      if (imageType != 'anime') 'realcugan-se-2x-denoise1x',
+      'realesr-animevideov3',
+    ];
+    for (final id in preferred) {
+      final candidate = services.catalog.byId(id);
+      if (candidate == null || !candidate.available) continue;
+      if (candidate.engine != 'ncnn') continue;
+      if (!services.modelManager.isInstalled(candidate.id)) continue;
+      final cChain = services.planner.resolveScaleChain(
+        model: candidate,
+        targetScale: cfg.scale,
+        imageType: candidate.bestFor.contains('anime') ? 'anime' : 'photo',
+      );
+      if (services.modelManager.hasUsableNativeFiles(
+        candidate,
+        cChain.nativeScale,
+      )) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
   OutputKind _outputKind(Services services, ConfigState cfg) {
     // Super Resolution Mode promise: no recompression — always lossless
     // PNG out, metadata preserved (phases.md Phase 3).
     if (cfg.isSrMode) return OutputKind.png;
-    if (cfg.level == SettingLevel.advanced) {
-      switch (cfg.advanced.format) {
-        case 'jpeg':
-          return OutputKind.jpeg;
-        case 'png':
-          return OutputKind.png;
-      }
-    }
-    return switch (services.settings.outputFormat) {
+    final format = cfg.level == SettingLevel.advanced
+        ? cfg.advanced.format
+        : services.settings.outputFormat;
+    return switch (format) {
       'jpeg' => OutputKind.jpeg,
+      'webp' => OutputKind.webp,
       'png' => OutputKind.png,
+      // 'sameAsSource' keeps the source format: a JPEG stays a JPEG
+      // (re-encoded once at the chosen quality), everything else stays
+      // lossless PNG (prd §7.3).
+      _ => _sourceKind(cfg.path),
+    };
+  }
+
+  OutputKind _sourceKind(String? path) {
+    if (path == null) return OutputKind.png;
+    return switch (path.toLowerCase().split('.').last) {
+      'jpg' || 'jpeg' => OutputKind.jpeg,
+      'webp' => OutputKind.webp,
       _ => OutputKind.png,
     };
   }

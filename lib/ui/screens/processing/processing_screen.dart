@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../app/app.dart';
+import '../../../core/app_exception.dart';
+import '../../../core/app_logger.dart';
 import '../../../engine/upscale_engine.dart' show JobStage;
 import '../../../l10n/app_localizations.dart';
 import '../../../state/providers.dart';
@@ -38,11 +40,27 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen> {
       await WakelockPlus.enable();
       _wakelockEnabled = true;
     }
-    await ref.read(jobProvider.notifier).run();
+    String? failure;
+    try {
+      await ref.read(jobProvider.notifier).run();
+    } on AppException catch (e) {
+      failure = e.message;
+    } catch (e, st) {
+      AppLogger.e('ProcessingScreen', 'job run threw', e, st);
+      failure = null;
+    } finally {
+      // Always release the wakelock: a throwing job must never leave the
+      // screen on and the user trapped behind PopScope(canPop: false).
+      await _releaseWakelock();
+    }
     if (!mounted) return;
     final state = ref.read(jobProvider);
-    // Only touch the wakelock plugin when we actually enabled it above.
-    if (_wakelockEnabled) await WakelockPlus.disable();
+    // Any thrown error (missing model, infeasible SR run …) is surfaced the
+    // same way as a failed job instead of freezing the screen.
+    if (failure != null && state.stage != JobStage.done) {
+      unawaited(_showFailure(failure));
+      return;
+    }
     if (state.stage == JobStage.done) {
       if (!mounted || _navigatedAway) return;
       _navigatedAway = true;
@@ -50,6 +68,17 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen> {
     } else if (state.stage == JobStage.failed) {
       if (!mounted) return;
       unawaited(_showFailure(state.message));
+    }
+  }
+
+  Future<void> _releaseWakelock() async {
+    // Only touch the wakelock plugin when we actually enabled it above.
+    if (!_wakelockEnabled) return;
+    _wakelockEnabled = false;
+    try {
+      await WakelockPlus.disable();
+    } catch (e, st) {
+      AppLogger.w('ProcessingScreen', 'wakelock disable failed: $e', st);
     }
   }
 
@@ -110,11 +139,15 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen> {
                           padding: const EdgeInsets.symmetric(
                             horizontal: RsSpacing.xl,
                           ),
-                          child: TileGridOverlay(fill: state.percent * 0.85),
+                          // The engine already reports 0–0.85 for the
+                          // upscale stage (saving takes it to 1), so the
+                          // raw value is shown — scaling again here would
+                          // cap the bar at 72%.
+                          child: TileGridOverlay(fill: state.percent),
                         ),
                       ),
                       const SizedBox(height: RsSpacing.xxl),
-                      BigPercent(percent: state.percent * 0.85),
+                      BigPercent(percent: state.percent),
                       const SizedBox(height: RsSpacing.s),
                       if (state.tileTotal > 0)
                         Text(
@@ -175,8 +208,12 @@ class _ProcessingScreenState extends ConsumerState<ProcessingScreen> {
                           );
                           if (confirmed == true && context.mounted) {
                             await ref.read(jobProvider.notifier).cancel();
-                            ref.read(configProvider.notifier).reset();
+                            await _releaseWakelock();
+                            await ref
+                                .read(configProvider.notifier)
+                                .reset();
                             if (!context.mounted) return;
+                            _navigatedAway = true;
                             context.go(Routes.home);
                           }
                         },

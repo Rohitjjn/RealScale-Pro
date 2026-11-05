@@ -40,8 +40,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Downloaded AI models (never commit weights)
+# Downloaded AI models & native prebuilts (never commit weights/binaries)
 /models_cache/
+/native/third_party/
+/native/build*/
+/test/fixtures/
 *.param
 *.bin
 !/**/assets/models_starter/**

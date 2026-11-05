@@ -213,9 +213,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     await SharePlus.instance.share(ShareParams(files: [XFile(path)]));
   }
 
-  void _newImage() {
-    ref.read(configProvider.notifier).reset();
+  Future<void> _newImage() async {
+    await ref.read(configProvider.notifier).reset();
     ref.read(jobProvider.notifier).resetView();
+    if (!context.mounted) return;
     context.go(Routes.home);
   }
 }

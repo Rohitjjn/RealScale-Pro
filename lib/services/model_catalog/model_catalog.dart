@@ -48,7 +48,7 @@ class ModelFileSpec {
       throw const CatalogException('Model URLs must be HTTPS');
     }
     return ModelFileSpec(
-      kind: kindResolved,
+      kind: kind!,
       scale: (m['scale'] as num?)?.toInt(),
       url: url,
       sourceZipEntry: m['sourceZipEntry'] as String?,
