@@ -37,6 +37,29 @@ foreach(_cand
   endif()
 endforeach()
 
+# Header location: prebuilt Android archives put headers under <abi>/include,
+# desktop archives under include/. Added to our own target explicitly so the
+# build never depends on a package config's baked-in (and often stale) paths.
+#
+# The shim includes <net.h> / <gpu.h> exactly the way ncnn's own config does,
+# so the `include/ncnn` directory is the one that must be on the search path.
+# The plain `include` directory is added too so <ncnn/net.h> also resolves.
+set(NCNN_INCLUDE_BASE "")
+foreach(_cand
+    "${NCNN_DIR}/${ANDROID_ABI}/include"
+    "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/include"
+    "${NCNN_DIR}/include")
+  if(EXISTS "${_cand}" AND NCNN_INCLUDE_BASE STREQUAL "")
+    set(NCNN_INCLUDE_BASE "${_cand}")
+  endif()
+endforeach()
+if(EXISTS "${NCNN_INCLUDE_BASE}/ncnn/net.h")
+  set(NCNN_INCLUDE_DIR "${NCNN_INCLUDE_BASE}/ncnn")
+else()
+  set(NCNN_INCLUDE_DIR "${NCNN_INCLUDE_BASE}")
+endif()
+message(STATUS "ncnn headers: ${NCNN_INCLUDE_DIR}")
+
 set(NCNN_HAVE_PACKAGE FALSE)
 if(NOT NCNN_CMAKE_DIR STREQUAL "")
   # QUIET (not REQUIRED): some prebuilt configs fail their own dependency
@@ -103,6 +126,9 @@ add_library(realscale_ncnn SHARED realscale_ncnn.cpp)
 target_link_libraries(realscale_ncnn PRIVATE ncnn)
 if(NOT NCNN_INCLUDE_DIR STREQUAL "")
   target_include_directories(realscale_ncnn PRIVATE "${NCNN_INCLUDE_DIR}")
+endif()
+if(NOT NCNN_INCLUDE_BASE STREQUAL "")
+  target_include_directories(realscale_ncnn PRIVATE "${NCNN_INCLUDE_BASE}")
 endif()
 
 if(ENABLE_VULKAN)
