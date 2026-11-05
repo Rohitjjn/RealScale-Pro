@@ -46,12 +46,16 @@ class JobManager {
     required this.recoveryChainFactory,
     required this.storage,
     required this.haptics,
+    this.engineSelector,
   });
 
   final UpscaleEngine engine;
   final RecoveryChain Function(PipelinePlan plan) recoveryChainFactory;
   final StorageService storage;
   final JobHaptics haptics;
+  final UpscaleEngine Function(PipelineContext ctx)? engineSelector;
+
+  UpscaleEngine? _activeEngine;
 
   JobStage get stage => _stage;
   JobStage _stage = JobStage.preparing;
@@ -90,7 +94,15 @@ class JobManager {
     _pendingCompleter = completer;
     _cancelRequested = false;
 
-    final chain = recoveryChainFactory(ctx.plan);
+    final selectedEngine = engineSelector?.call(ctx);
+    _activeEngine = selectedEngine ?? engine;
+    final chain = selectedEngine != null
+        ? RecoveryChain(
+            engine: selectedEngine,
+            basePlan: ctx.plan,
+            replanForRetry: replanStandard,
+          )
+        : recoveryChainFactory(ctx.plan);
     _sub = chain
         .runWithRecovery(spec, ctx)
         .listen(
@@ -383,7 +395,8 @@ class JobManager {
   Future<void> cancel(String jobId) async {
     if (_activeJobId != jobId) return;
     _cancelRequested = true;
-    await engine.cancel(jobId);
+    await (_activeEngine ?? engine).cancel(jobId);
+    _activeEngine = null;
     await _sub?.cancel();
     _sub = null;
     final pending = _pendingCompleter;
@@ -405,13 +418,12 @@ class JobManager {
     JobSpec? spec,
   ) {
     _activeJobId = null;
+    _activeEngine = null;
     _stage = e.stage;
     _pendingCompleter = null;
     if (completer != null && !completer.isCompleted) completer.complete(e);
   }
 
-  @override
-  // ignore: override_on_non_overriding_member
   Future<void> dispose() async {
     await _sub?.cancel();
     await _progressController.close();

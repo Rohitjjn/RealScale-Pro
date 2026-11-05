@@ -58,11 +58,11 @@ Future<void> main() async {
 
   // Engine registry: native engines first (ncnn for CNN models, ONNX
   // Runtime for the Ultra pack), pure-Dart fallback always there.
-  final engines = <UpscaleEngine>[
-    if (NcnnEngine.tryCreate() != null) NcnnEngine.tryCreate()!,
-    if (OnnxEngine.tryCreate() != null) OnnxEngine.tryCreate()!,
-    LanczosEngine(),
-  ];
+  final ncnnEngine = NcnnEngine.tryCreate();
+  final onnxEngine = OnnxEngine.tryCreate();
+  final lanczosEngine = LanczosEngine();
+  final engines = <UpscaleEngine>[?ncnnEngine, ?onnxEngine, lanczosEngine];
+  final engineRegistry = EngineRegistry(engines: engines);
 
   final jobManager = JobManager(
     engine: engines.first,
@@ -71,6 +71,8 @@ Future<void> main() async {
       basePlan: plan,
       replanForRetry: replanStandard,
     ),
+    engineSelector: (ctx) =>
+        engineRegistry.pick(ctx.plan.model, ctx.device) ?? engines.first,
     storage: storage,
     haptics: NoopHaptics(),
   );
@@ -97,9 +99,15 @@ Future<void> main() async {
     catalog: catalog,
     modelManager: modelManager,
     jobManager: jobManager,
-    engineRegistry: EngineRegistry(engines: engines),
+    engineRegistry: engineRegistry,
     modelDir: modelDir,
     tempDir: tempDir,
+  );
+
+  // Offline first: materialize the bundled Starter pack (the four starter
+  // models ship inside the APK) so the app is usable with no network.
+  unawaited(
+    modelManager.initialize().then((_) => modelManager.ensureBundledFiles()),
   );
 
   // Temp hygiene at app start (rules.md golden rule 8).

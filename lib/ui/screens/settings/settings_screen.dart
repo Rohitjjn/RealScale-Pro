@@ -17,6 +17,10 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     final settings = ref.watch(settingsProvider);
+    // SettingsService is a mutable object, so watching it alone never
+    // rebuilds. The revision counter is bumped after every write, which
+    // makes each toggle move instantly.
+    ref.watch(settingsRevisionProvider);
     final cs = Theme.of(context).colorScheme;
     final deviceAsync = ref.watch(deviceProfileProvider);
 
@@ -69,7 +73,9 @@ class SettingsScreen extends ConsumerWidget {
                 title: Text(l.settingsDynamicColor),
                 subtitle: Text(l.settingsDynamicColorBody, style: RsType.label),
                 value: settings.dynamicColor,
-                onChanged: (v) => ref.read(settingsProvider).setDynamicColor(v),
+                onChanged: (v) => _write(ref, () {
+                  return ref.read(settingsProvider).setDynamicColor(v);
+                }),
               ),
             ],
           ),
@@ -81,16 +87,18 @@ class SettingsScreen extends ConsumerWidget {
                 secondary: const Icon(Icons.vibration_outlined),
                 title: Text(l.settingsHaptics),
                 value: settings.hapticsEnabled,
-                onChanged: (v) =>
-                    ref.read(settingsProvider).setHapticsEnabled(v),
+                onChanged: (v) => _write(ref, () {
+                  return ref.read(settingsProvider).setHapticsEnabled(v);
+                }),
               ),
               SwitchListTile(
                 secondary: const Icon(Icons.local_fire_department_outlined),
                 title: Text(l.settingsKeepAwake),
                 subtitle: Text(l.settingsKeepAwakeBody, style: RsType.label),
                 value: settings.keepScreenAwake,
-                onChanged: (v) =>
-                    ref.read(settingsProvider).setKeepScreenAwake(v),
+                onChanged: (v) => _write(ref, () {
+                  return ref.read(settingsProvider).setKeepScreenAwake(v);
+                }),
               ),
               ListTile(
                 leading: const Icon(Icons.translate_rounded),
@@ -122,8 +130,9 @@ class SettingsScreen extends ConsumerWidget {
                 secondary: const Icon(Icons.battery_saver_outlined),
                 title: Text(l.settingsThrottle),
                 value: settings.throttleOnBattery,
-                onChanged: (v) =>
-                    ref.read(settingsProvider).setThrottleOnBattery(v),
+                onChanged: (v) => _write(ref, () {
+                  return ref.read(settingsProvider).setThrottleOnBattery(v);
+                }),
               ),
               ListTile(
                 leading: const Icon(Icons.image_outlined),
@@ -134,7 +143,9 @@ class SettingsScreen extends ConsumerWidget {
                 secondary: const Icon(Icons.description_outlined),
                 title: Text(l.settingsOutputMetadata),
                 value: settings.keepMetadata,
-                onChanged: (v) => ref.read(settingsProvider).setKeepMetadata(v),
+                onChanged: (v) => _write(ref, () {
+                  return ref.read(settingsProvider).setKeepMetadata(v);
+                }),
               ),
             ],
           ),
@@ -146,7 +157,9 @@ class SettingsScreen extends ConsumerWidget {
                 secondary: const Icon(Icons.wifi_outlined),
                 title: Text(l.settingsWifiOnly),
                 value: settings.wifiOnly,
-                onChanged: (v) => ref.read(settingsProvider).setWifiOnly(v),
+                onChanged: (v) => _write(ref, () {
+                  return ref.read(settingsProvider).setWifiOnly(v);
+                }),
               ),
             ],
           ),
@@ -195,14 +208,17 @@ class SettingsScreen extends ConsumerWidget {
                 secondary: const Icon(Icons.bar_chart_outlined),
                 title: Text(l.settingsAnonymousStats),
                 value: settings.anonymousStats,
-                onChanged: (v) =>
-                    ref.read(settingsProvider).setAnonymousStats(v),
+                onChanged: (v) => _write(ref, () {
+                  return ref.read(settingsProvider).setAnonymousStats(v);
+                }),
               ),
               SwitchListTile(
                 secondary: const Icon(Icons.bug_report_outlined),
                 title: Text(l.settingsCrashReports),
                 value: settings.crashReports,
-                onChanged: (v) => ref.read(settingsProvider).setCrashReports(v),
+                onChanged: (v) => _write(ref, () {
+                  return ref.read(settingsProvider).setCrashReports(v);
+                }),
               ),
             ],
           ),
@@ -312,11 +328,14 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
+    // Material, not a colored Container/DecoratedBox: ListTile paints its
+    // ink splashes on the nearest Material ancestor, so a DecoratedBox
+    // background here would hide every tap ripple (Flutter asserts on it).
+    return Material(
+      color: cs.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: RsRadius.cardBorder,
-        border: Border.all(color: cs.outline),
+        side: BorderSide(color: cs.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: children),
@@ -370,6 +389,13 @@ Future<void> _pickLanguage(
     ),
   );
   if (picked != null) {
-    await ref.read(settingsProvider).setLanguage(picked);
+    await _write(ref, () => ref.read(settingsProvider).setLanguage(picked));
   }
+}
+
+/// Persists a setting and bumps the settings revision so every widget that
+/// reads SettingsService rebuilds right away (toggles move instantly).
+Future<void> _write(WidgetRef ref, Future<void> Function() persist) async {
+  await persist();
+  invalidateSettings(ref);
 }

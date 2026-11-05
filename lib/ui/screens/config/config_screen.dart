@@ -433,6 +433,25 @@ class _StickyBar extends ConsumerWidget {
       if (go != true || !context.mounted) return;
     }
 
+    // Native runs need the model on disk. A not-yet-downloaded Pro/Super
+    // Resolution model is reported here with a friendly way to get it —
+    // instead of failing later on the processing screen.
+    if (model != null && !services.modelManager.isInstalled(model.id)) {
+      Haptics.warning(ref);
+      if (!context.mounted) return;
+      final open = await AppBottomSheet.show<bool>(
+        context,
+        title: l.configModelNeededTitle,
+        child: _ModelNeededSheet(
+          body: l.configModelNeededBody(model.name),
+          actionLabel: l.configModelNeededOpen,
+        ),
+      );
+      if (open != true || !context.mounted) return;
+      await context.push(Routes.modelManager);
+      return;
+    }
+
     Haptics.medium(ref);
     if (!context.mounted) return;
     unawaited(context.push(Routes.processing));
@@ -571,6 +590,50 @@ class _HeavyConfirmSheet extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown when the model chosen for this run is not installed yet — offers a
+/// one-tap jump to the Model Manager.
+class _ModelNeededSheet extends StatelessWidget {
+  const _ModelNeededSheet({required this.body, required this.actionLabel});
+
+  final String body;
+  final String actionLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        RsSpacing.xl,
+        0,
+        RsSpacing.xl,
+        RsSpacing.xl,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(body, style: RsType.body, textAlign: TextAlign.center),
+          const SizedBox(height: RsSpacing.xl),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => context.pop(true),
+              child: Text(actionLabel),
+            ),
+          ),
+          const SizedBox(height: RsSpacing.s),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: () => context.pop(false),
+              child: Text(l.cancel),
+            ),
           ),
         ],
       ),

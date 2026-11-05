@@ -487,71 +487,84 @@ class _BeforeAfterSliderState extends State<BeforeAfterSlider> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    return GestureDetector(
-      onHorizontalDragUpdate: (d) => setState(() {
-        _position = (d.localPosition.dx / context.size!.width).clamp(
-          0.05,
-          0.95,
-        );
-      }),
-      onLongPressStart: (_) => setState(() => _holdCompare = true),
-      onLongPressEnd: (_) => setState(() => _holdCompare = false),
-      child: ClipRRect(
-        borderRadius: RsRadius.cardBorder,
-        child: SizedBox(
-          height: widget.height,
-          width: double.infinity,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              widget.before,
-              if (!_holdCompare)
-                ClipRect(clipper: _RightClip(_position), child: widget.after),
-              if (!_holdCompare)
-                Positioned(
-                  left: _position * context.size!.width - 1,
-                  top: 0,
-                  bottom: 0,
-                  width: 2,
-                  child: Container(color: Colors.white),
-                ),
-              Positioned(
-                bottom: 12,
-                left: 12,
-                child: _ComparePill(label: l.resultBefore),
-              ),
-              Positioned(
-                bottom: 12,
-                right: 12,
-                child: _ComparePill(
-                  label: _holdCompare ? l.resultAfter : l.resultAfter,
-                ),
-              ),
-              Positioned(
-                top: 0,
-                bottom: 0,
-                left: _position * context.size!.width - 16,
-                width: 32,
-                child: Center(
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
+    // LayoutBuilder, not context.size: `context.size` is only valid during
+    // paint, so reading it inside build() throws (and would crash the result
+    // screen on every render).
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final safeWidth = width.isFinite && width > 0 ? width : 1.0;
+        return GestureDetector(
+          onHorizontalDragUpdate: (d) => setState(() {
+            _position = (d.localPosition.dx / safeWidth).clamp(0.05, 0.95);
+          }),
+          onLongPressStart: (_) => setState(() => _holdCompare = true),
+          onLongPressEnd: (_) => setState(() => _holdCompare = false),
+          child: ClipRRect(
+            borderRadius: RsRadius.cardBorder,
+            child: SizedBox(
+              height: widget.height,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  widget.before,
+                  if (!_holdCompare)
+                    ClipRect(
+                      clipper: _RightClip(_position),
+                      child: widget.after,
                     ),
-                    child: Icon(
-                      Icons.drag_indicator_rounded,
-                      size: 16,
-                      color: cs.onSurface,
+                  if (!_holdCompare)
+                    Positioned(
+                      left: (_position * safeWidth - 1).clamp(
+                        0.0,
+                        safeWidth - 2,
+                      ),
+                      top: 0,
+                      bottom: 0,
+                      width: 2,
+                      child: Container(color: Colors.white),
+                    ),
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
+                    child: _ComparePill(label: l.resultBefore),
+                  ),
+                  Positioned(
+                    bottom: 12,
+                    right: 12,
+                    child: _ComparePill(label: l.resultAfter),
+                  ),
+                  Positioned(
+                    top: 0,
+                    bottom: 0,
+                    left: (_position * safeWidth - 16).clamp(
+                      0.0,
+                      safeWidth - 32,
+                    ),
+                    width: 32,
+                    child: Center(
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.drag_indicator_rounded,
+                          size: 16,
+                          color: cs.onSurface,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

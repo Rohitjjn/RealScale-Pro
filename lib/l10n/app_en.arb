@@ -190,6 +190,23 @@
     }
   },
   "configModelUnavailable": "Unavailable",
+  "configModelNeededTitle": "Download this model first",
+  "@configModelNeededTitle": {
+    "description": "Title of the sheet shown when starting an upscale whose model is not installed"
+  },
+  "configModelNeededBody": "{model} is not installed yet. Download it from Model Manager, then start the upscale again.",
+  "@configModelNeededBody": {
+    "description": "Body of the model-needed sheet",
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "configModelNeededOpen": "Open Model Manager",
+  "@configModelNeededOpen": {
+    "description": "Action that opens the Model Manager screen"
+  },
   "processingTitle": "Upscaling",
   "processingStagePreparing": "Preparing image",
   "processingStageUpscaling": "Upscaling tiles",

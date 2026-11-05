@@ -3,6 +3,7 @@ import 'dart:async';
 import '../core/app_logger.dart';
 import 'engine_types.dart';
 import 'ncnn/ncnn_ffi.dart';
+import 'tiling_engine.dart' show CancelledJobException;
 
 /// RecoveryChain (architecture.md §5, prd §8.5): when a tile/job fails the
 /// engine retries automatically, in this order, before giving up with a
@@ -42,6 +43,26 @@ class RecoveryChain {
             controller.add(event);
           }
         }
+        await controller.close();
+      } on CancelledJobException {
+        controller.add(
+          ProgressEvent(
+            jobId: job.jobId,
+            stage: JobStage.cancelled,
+            percent: 0,
+            message: 'Cancelled',
+          ),
+        );
+        await controller.close();
+      } on NcnnCancelledException {
+        controller.add(
+          ProgressEvent(
+            jobId: job.jobId,
+            stage: JobStage.cancelled,
+            percent: 0,
+            message: 'Cancelled',
+          ),
+        );
         await controller.close();
       } on NcnnOomException {
         if (step < maxSteps) {

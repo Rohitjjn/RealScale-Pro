@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 
@@ -182,7 +183,7 @@ class StorageService {
     String? thumbnailPath,
   }) async {
     final dir = await saveDir();
-    final ext = tempPath.endsWith('.png') ? 'png' : 'jpg';
+    final ext = _extensionOf(tempPath);
     final name = outputFileName(
       originalName: originalName,
       scale: scale,
@@ -212,7 +213,36 @@ class StorageService {
     final database = await db;
     await database.insert(_table, record.toMap());
     AppLogger.d('StorageService', 'saved $destPath ($size B)');
+    await _publishToGallery(destPath, name);
     return record;
+  }
+
+  static String _extensionOf(String path) {
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.png')) return 'png';
+    if (lower.endsWith('.webp')) return 'webp';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'jpg';
+    return 'png';
+  }
+
+  /// Registers the saved image with the system gallery (MediaStore on
+  /// Android) so it shows up in Google Photos / the Gallery app. Best
+  /// effort only: a denial or an unsupported platform must never fail the
+  /// save — the file already lives in Pictures/RealScale-Pro.
+  Future<void> _publishToGallery(String path, String title) async {
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+    try {
+      final permitted = await PhotoManager.requestPermissionExtend();
+      if (!permitted.hasAccess) {
+        AppLogger.d('StorageService', 'gallery permission not granted');
+        return;
+      }
+      // `saveImageWithPath(path, title:)` copies the file into the
+      // Pictures/RealScale-Pro album and registers it with MediaStore.
+      await PhotoManager.editor.saveImageWithPath(path, title: title);
+    } catch (e, st) {
+      AppLogger.w('StorageService', 'gallery publish skipped: $e', st);
+    }
   }
 
   Future<List<UpscaleRecord>> history({int limit = 200}) async {
@@ -248,14 +278,34 @@ class StorageService {
   }
 
   /// Cache/temp cleanup — never touches installed models (task 2.10).
+  ///
+  /// Best effort by design: the system temp dir is shared with every other
+  /// process on the device, so a locked or already-deleted file must never
+  /// make cleanup throw (rules.md golden rule 5).
   Future<void> clearCaches() async {
-    final tmp = Directory.systemTemp;
-    await for (final e in tmp.list()) {
-      if (e is File && e.path.contains('rs_')) {
+    await _purgeTempDir(Directory.systemTemp);
+    try {
+      final docs = await getApplicationDocumentsDirectory();
+      await _purgeTempDir(Directory('${docs.path}/rs_temp'));
+    } catch (e, st) {
+      AppLogger.w('StorageService', 'cache cleanup skipped: $e', st);
+    }
+  }
+
+  Future<void> _purgeTempDir(Directory dir) async {
+    try {
+      if (!await dir.exists()) return;
+      await for (final e in dir.list()) {
+        if (e is! File) continue;
+        if (!e.uri.pathSegments.last.startsWith('rs_')) continue;
         try {
           await e.delete();
-        } catch (_) {}
+        } catch (_) {
+          // Locked by another process — leave it for the next sweep.
+        }
       }
+    } catch (e, st) {
+      AppLogger.w('StorageService', 'temp dir cleanup skipped: $e', st);
     }
   }
 }

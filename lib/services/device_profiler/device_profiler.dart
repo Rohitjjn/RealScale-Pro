@@ -141,9 +141,7 @@ class DeviceProfiler {
   Future<int> _freeStorageMb() async {
     try {
       if (Platform.isAndroid || Platform.isLinux) {
-        final cwd = Directory.systemTemp;
-        final stat = await _statFs(cwd.path);
-        return stat;
+        return await freeStorageMb(Directory.systemTemp.path);
       }
     } catch (e) {
       AppLogger.d('DeviceProfiler', 'storage stat failed: $e');
@@ -151,17 +149,25 @@ class DeviceProfiler {
     return 0;
   }
 
-  Future<int> _statFs(String path) async {
-    // df -k reports available space in KiB on Android/Linux.
-    final res = await Process.run('df', ['-k', path]);
-    if (res.exitCode == 0) {
-      final lines = (res.stdout as String).trim().split('\n');
-      if (lines.length >= 2) {
-        final cols = lines.last.split(RegExp(r'\s+'));
-        if (cols.length >= 4) {
-          return int.tryParse(cols[3]) ?? 0;
+  /// Free space at [path], in **megabytes**.
+  static Future<int> freeStorageMb(String path) async {
+    // `df -k` reports the available column in KiB — divide by 1024 so the
+    // profile stores megabytes (it used to publish KiB as MB, which made
+    // every device look ~1000x fuller than it was).
+    try {
+      final res = await Process.run('df', ['-k', path]);
+      if (res.exitCode == 0) {
+        final lines = (res.stdout as String).trim().split('\n');
+        if (lines.length >= 2) {
+          final cols = lines.last.split(RegExp(r'\s+'));
+          if (cols.length >= 4) {
+            final availKb = int.tryParse(cols[3]) ?? 0;
+            return availKb ~/ 1024;
+          }
         }
       }
+    } catch (e) {
+      AppLogger.d('DeviceProfiler', 'df failed: $e');
     }
     return 0;
   }
