@@ -226,12 +226,8 @@ jobs:
           flutter build apk --release 2>&1 | tee build-universal.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
-            grep -n -A 40 'What went wrong' build-universal.log | head -n 70 \
-              | while IFS= read -r line; do
-                echo "::error file=android::$line"
-              done
-            grep -n -E 'CMake Error|FAILED:|error:|ninja: build stopped|Execution failed' build-universal.log \
-              | head -n 40 | while IFS= read -r line; do
+            grep -nE '^e: |error:|Unresolved|Caused by|Execution failed|CMake Error|FAILED:|ninja: build stopped' build-universal.log \
+              | head -n 30 | while IFS= read -r line; do
                 echo "::error file=android::$line"
               done
             exit 1
@@ -244,12 +240,8 @@ jobs:
           flutter build apk --release --split-per-abi 2>&1 | tee build-abi.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
-            grep -n -A 40 'What went wrong' build-abi.log | head -n 70 \
-              | while IFS= read -r line; do
-                echo "::error file=android::$line"
-              done
-            grep -n -E 'CMake Error|FAILED:|error:|ninja: build stopped|Execution failed' build-abi.log \
-              | head -n 40 | while IFS= read -r line; do
+            grep -nE '^e: |error:|Unresolved|Caused by|Execution failed|CMake Error|FAILED:|ninja: build stopped' build-abi.log \
+              | head -n 30 | while IFS= read -r line; do
                 echo "::error file=android::$line"
               done
             exit 1
