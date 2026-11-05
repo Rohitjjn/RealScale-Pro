@@ -125,10 +125,11 @@ jobs:
             echo "flutter test: all green"
             exit 0
           fi
-          grep -E '^\[E\]|failed|Exception|Error|Expected:|  Actual:' test.log \
-            | head -n 60 | while IFS= read -r line; do
-              echo "::error file=test::$line"
-            done
+          # The interesting detail is always in the tail: the failing test,
+          # the thrown exception and the Expected/Actual lines.
+          tail -n 140 test.log | while IFS= read -r line; do
+            echo "::error file=test::$line"
+          done
           exit 1
 
       # --- native engine: build the Linux shim and run a REAL upscale ---------
