@@ -178,15 +178,20 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Set up Flutter ${{ env.FLUTTER_VERSION }}
         uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+
+      # The runner image ships the Android SDK; only the licenses are left to
+      # accept. `flutter doctor --android-licenses` does that non-interactively.
+      - name: Accept Android SDK licenses
+        run: |
+          ls -1 "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" | tail -n 5
+          yes | flutter doctor --android-licenses >/dev/null 2>&1
+          flutter doctor --android-licenses 2>&1 | tail -n 3
 
       - name: Install dependencies
         run: flutter pub get
