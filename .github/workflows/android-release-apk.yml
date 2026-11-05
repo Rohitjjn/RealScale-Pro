@@ -226,19 +226,6 @@ jobs:
         continue-on-error: true
         run: bash native/fetch_ncnn.sh android
 
-      # Diagnostic: the exact layout of the pinned archive decides how
-      # native/CMakeLists.txt has to find ncnn.
-      - name: Report ncnn layout
-        run: |
-          if [ -d native/third_party/ncnn-android ]; then
-            find native/third_party/ncnn-android -maxdepth 4 -name 'ncnn*' \
-              | head -n 40 | while IFS= read -r line; do
-                echo "::error file=ncnn::$line"
-              done
-          else
-            echo "::error file=ncnn::ncnn-android not fetched"
-          fi
-
       - name: Build universal release APK
         run: |
           set +e
@@ -254,20 +241,6 @@ jobs:
                 echo "::error file=cmake::$line"
               done
             exit 1
-          fi
-
-      # Reads back the diagnostic written by native/CMakeLists.txt.
-      - name: Report how ncnn was resolved
-        if: always()
-        continue-on-error: true
-        run: |
-          f=$(find build android/app/.cxx -name ncnn_report.txt 2>/dev/null | head -n 1)
-          if [ -n "$f" ]; then
-            while IFS= read -r line; do
-              echo "::error file=ncnn-report::$line"
-            done < "$f"
-          else
-            echo "::error file=ncnn-report::no ncnn_report.txt"
           fi
 
       - name: Build per-ABI release APKs

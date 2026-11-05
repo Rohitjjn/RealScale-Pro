@@ -5,6 +5,20 @@ Every entry: date, phase, what changed, why (one or two lines, plain English).
 
 ---
 
+## 2026-11-05 — Phase 2 — Green CI: format, analyze, tests, native proof, release APK
+- `.github/workflows/android-release-apk.yml` is now fully green end to end:
+  `dart format` clean, `flutter analyze` zero issues, `flutter test` 72/72,
+  a real ncnn upscale of all four starter models on Linux, and a signed
+  **release** APK (universal + one per CPU architecture) verified for
+  `libapp.so`, `librealscale_ncnn.so` and `apksigner`, kept for 30 days.
+- Native build fixes found by CI: the Gradle script used two APIs AGP 9
+  removed (`packaging.jniLibs.useLegacyPackaging`, `android.kotlinOptions`);
+  ncnn's Android package exposes no usable CMake package, so
+  `native/CMakeLists.txt` now imports `libncnn.a` by hand together with its
+  glslang/SPIRV-Tools archives and puts `include/ncnn` on the include path.
+- Release builds now enable R8 minification (`isMinifyEnabled = true`) with
+  keep rules for the Flutter embedding and the background downloader.
+
 ## 2026-11-05 — Phase 2 — Broken-code fixes + release Android APK workflow
 - Fixed crashes and wrong behaviour found in a full source audit:
   - `BeforeAfterSlider` read `context.size` inside `build()` (a guaranteed
