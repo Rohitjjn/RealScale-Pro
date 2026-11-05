@@ -1,0 +1,11 @@
+name: ci-smoke
+
+on:
+  push:
+    branches: ['main', 'arena/**']
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "hello from actions"
