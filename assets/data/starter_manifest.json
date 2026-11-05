@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-05",
+  "source": "https://github.com/nihui/waifu2x-ncnn-vulkan/releases/tag/20250915",
+  "license": "MIT (nihui/waifu2x-ncnn-vulkan repository distribution)",
+  "files": [
+    {
+      "assetPath": "assets/models_starter/waifu2x-upconv-photo-2x.param",
+      "originZipEntry": "models-upconv_7_photo/scale2.0x_model.param",
+      "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6",
+      "sizeBytes": 1047
+    },
+    {
+      "assetPath": "assets/models_starter/waifu2x-upconv-photo-2x.bin",
+      "originZipEntry": "models-upconv_7_photo/scale2.0x_model.bin",
+      "sha256": "25a2bb25b29e43e63179aac216cd87690791243a436328506d4ef9fca88ee962",
+      "sizeBytes": 1106248
+    },
+    {
+      "assetPath": "assets/models_starter/waifu2x-upconv-anime-2x.param",
+      "originZipEntry": "models-upconv_7_anime_style_art_rgb/scale2.0x_model.param",
+      "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6",
+      "sizeBytes": 1047
+    },
+    {
+      "assetPath": "assets/models_starter/waifu2x-upconv-anime-2x.bin",
+      "originZipEntry": "models-upconv_7_anime_style_art_rgb/scale2.0x_model.bin",
+      "sha256": "27d880903ff81390a3b4a900b67af3381c465279e34297546c9a58781855f7ef",
+      "sizeBytes": 1106248
+    }
+  ]
+}

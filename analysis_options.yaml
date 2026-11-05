@@ -1,0 +1,18 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - "**/*.g.dart"
+    - "**/l10n/app_localizations*.dart"
+    - android/**
+    - windows/**
+
+linter:
+  rules:
+    prefer_single_quotes: true
+    unawaited_futures: true
+    always_declare_return_types: true
+    avoid_redundant_argument_values: false
+    use_super_parameters: true
+    sort_pub_dependencies: false

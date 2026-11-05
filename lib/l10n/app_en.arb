@@ -1,0 +1,588 @@
+{
+  "@@locale": "en",
+  "appName": "RealScale-Pro",
+  "appTagline": "Offline AI photo upscaler",
+  "guideSkip": "Skip",
+  "guideNext": "Next",
+  "guideGetStarted": "Get started",
+  "guide1Title": "Make small photos big",
+  "guide1Body": "Turn old, small or compressed photos into sharp high-resolution images — up to 5×, right on your phone.",
+  "guide2Title": "Private by design",
+  "guide2Body": "Everything runs on this device. Your photos never leave it. No account, no cloud, no uploads.",
+  "guide3Title": "One tap with Default",
+  "guide3Body": "RealScale-Pro picks the best model and settings for your photo automatically. Just tap Upscale.",
+  "guide4Title": "Choose your quality",
+  "guide4Body": "Switch to Manual to pick a specific model, scale and face restoration when you want full control.",
+  "permissionPhotosTitle": "Allow photo access?",
+  "permissionPhotosBody": "RealScale-Pro uses your photo library to show recent photos and to save finished results into your gallery.",
+  "permissionPhotosAllow": "Allow photo access",
+  "permissionPhotosNotNow": "Not now",
+  "permissionPhotosDeniedCardTitle": "Allow photo access",
+  "permissionPhotosDeniedCardBody": "Without photo access you can still import with Files, Camera or the system picker.",
+  "permissionPhotosOpenSettings": "Open settings",
+  "permissionNotificationsTitle": "Stay notified during upscaling",
+  "permissionNotificationsBody": "A notification shows progress when you keep upscaling running in the background.",
+  "permissionNotificationsAllow": "Allow notifications",
+  "permissionNotificationsNotNow": "Not now",
+  "permissionSelectedPhotos": "Selected photos only — you can add more in system settings.",
+  "deviceCheckTitle": "Checking your device",
+  "deviceCheckBody": "We measure a small sample to pick the right quality for your phone. This takes a moment.",
+  "deviceCheckDone": "Your device is ready for",
+  "deviceCheckTierLight": "Light quality",
+  "deviceCheckTierStandard": "Standard quality",
+  "deviceCheckTierPowerful": "Powerful quality",
+  "setupTitle": "Setup",
+  "setupStarterPack": "Starter Pack",
+  "setupStarterSubtitle": "The models needed for Default quality",
+  "setupIncluded": "Included",
+  "setupDownload": "Download",
+  "setupDownloading": "Downloading…",
+  "setupPaused": "Paused",
+  "setupInstalled": "Installed",
+  "setupOverallProgress": "{percent} · {mb} MB · {speed} · ETA {eta}",
+  "@setupOverallProgress": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      },
+      "mb": {
+        "type": "String"
+      },
+      "speed": {
+        "type": "String"
+      },
+      "eta": {
+        "type": "String"
+      }
+    }
+  },
+  "setupMobileDataTitle": "Use mobile data?",
+  "setupMobileDataBody": "You are not on Wi-Fi. Downloads are set to Wi-Fi-only. Allow mobile data for this download?",
+  "setupAllowMobileData": "Allow this time",
+  "setupKeepWifiOnly": "Keep Wi-Fi only",
+  "setupContinue": "Continue",
+  "setupResumeHint": "Downloads resume automatically if the app closes.",
+  "homeGreeting": "RealScale-Pro",
+  "homeSettingsTooltip": "Settings",
+  "homeRecents": "Recent photos",
+  "homeSeeAll": "See all",
+  "homeRecentsEmptyTitle": "No photos yet",
+  "homeRecentsEmptyBody": "Import a photo to get started.",
+  "homeImportSection": "Import",
+  "homeImportGallery": "Gallery",
+  "homeImportFiles": "Files",
+  "homeImportCamera": "Camera",
+  "homeImportMore": "More",
+  "homeOptionsSection": "Options",
+  "homeModeUpscaleTitle": "Upscale",
+  "homeModeUpscaleBody": "Fast, smart, default quality",
+  "homeModeSrTitle": "Super Resolution",
+  "homeModeSrBody": "Maximum quality, no recompression",
+  "homeModeSrBadge": "PRO",
+  "homeOptionMyUpscales": "My Upscales",
+  "homeOptionModelManager": "Model Manager",
+  "homeOptionSettings": "Settings",
+  "homeOptionVideo": "Video Upscale",
+  "homeVideoComingSoonTitle": "Video upscaling is coming",
+  "homeVideoComingSoonBody": "We are finishing video support. Photos work great already — give one a try!",
+  "homeSrWarningTitle": "Before you start Super Resolution",
+  "homeSrWarningBody": "Super Resolution keeps every original pixel and can take much longer. On {tier} devices we recommend starting with Upscale.",
+  "homeSrWarningChipFit": "Fits your device",
+  "homeSrWarningChipHeavy": "Heavy on this device",
+  "homeSrWarningUseUpscale": "Use Upscale instead",
+  "homeSrWarningContinue": "Continue anyway",
+  "homePermissionCard": "Allow photo access to see your recent photos",
+  "galleryTitle": "All photos",
+  "galleryEmpty": "No photos found",
+  "galleryPermissionNeeded": "Photo access needed to show your gallery",
+  "galleryAllow": "Allow",
+  "viewerUpscale": "Upscale",
+  "viewerDetails": "Details",
+  "viewerShare": "Share",
+  "viewerDelete": "Delete",
+  "viewerModeChipUpscale": "Upscale",
+  "viewerModeChipSr": "Super Res",
+  "detailsResolution": "Resolution",
+  "detailsSize": "File size",
+  "detailsModified": "Modified",
+  "moreSheetTitle": "Import from",
+  "moreClipboard": "Paste from clipboard",
+  "moreClipboardEmpty": "No image found in clipboard",
+  "moreSystemPicker": "System photo picker",
+  "moreCancel": "Cancel",
+  "configTitle": "Upscale",
+  "configPreviewSwap": "Compare",
+  "configLevelDefault": "Default",
+  "configLevelManual": "Manual",
+  "configLevelAdvanced": "Advanced",
+  "configAdvancedComingSoon": "Advanced settings arrive in a later version.",
+  "configDetectedPhoto": "Photo",
+  "configDetectedAnime": "Anime",
+  "configDetectedPrefix": "Detected:",
+  "configScaleLabel": "{scale}× · Auto",
+  "@configScaleLabel": {
+    "placeholders": {
+      "scale": {
+        "type": "int"
+      }
+    }
+  },
+  "configNotSure": "Not sure — Change?",
+  "configChangeLink": "Change",
+  "configManualComingSoon": "Manual configuration is coming in this version.",
+  "configFaceToggle": "Restore faces",
+  "configFaceHint": "Finds faces and restores them after upscaling.",
+  "configFaceDetectorHint": "{count} face(s) detected",
+  "@configFaceDetectorHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "configFaceNone": "No faces detected",
+  "configFaceUnavailable": "Face restoration needs the Face Pack.",
+  "configFaceDownload": "Download Face Pack ({size})",
+  "configOutputSize": "{width} × {height} px",
+  "@configOutputSize": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
+  "configEta": "about {duration}",
+  "@configEta": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "configUpscaleButton": "Upscale",
+  "configHeavyTitle": "Heavy model on this device",
+  "configHeavyBody": "{model} is large for your device and may take longer or stall. Continue anyway?",
+  "@configHeavyBody": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "configHeavyContinue": "Continue",
+  "configHeavyCancel": "Cancel",
+  "configManualSection": "Model",
+  "configScaleSection": "Scale",
+  "configScaleExtraStep": "5× uses an extra resize step",
+  "configModelRecommended": "Recommended",
+  "configModelDeviceFit": "Fits device",
+  "configModelHeavy": "Heavy",
+  "configModelDownload": "Download ({size})",
+  "configModelDownloading": "Downloading… {percent}",
+  "@configModelDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "configModelUnavailable": "Unavailable",
+  "processingTitle": "Upscaling",
+  "processingStagePreparing": "Preparing image",
+  "processingStageUpscaling": "Upscaling tiles",
+  "processingStageFaces": "Restoring faces",
+  "processingStageSaving": "Saving result",
+  "processingTileCount": "{index} / {total} tiles",
+  "@processingTileCount": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "processingEtaEstimating": "Estimating…",
+  "processingEta": "{duration} left",
+  "@processingEta": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "processingCancel": "Cancel",
+  "processingCancelConfirmTitle": "Cancel this upscale?",
+  "processingCancelConfirmBody": "Progress will be discarded and temporary files removed.",
+  "processingCancelYes": "Cancel upscale",
+  "processingCancelNo": "Keep going",
+  "processingBackground": "Continue in background",
+  "processingBackgroundNote": "You can leave this screen — a notification shows progress.",
+  "processingTip1": "Tip: Default quality is one tap and fits every photo.",
+  "processingTip2": "Tip: Super Resolution keeps original quality but takes longer.",
+  "processingTip3": "Tip: Restore faces after upscaling group photos.",
+  "processingFailedTitle": "The upscale didn't finish",
+  "processingFailedBody": "This can happen on large photos or low memory.",
+  "processingTrySafer": "Try safer settings",
+  "processingCancelled": "Cancelled",
+  "processingSlowNote": "Running slower than usual — battery saver or heat can slow the device.",
+  "resultTitle": "Result",
+  "resultSavedTo": "Saved to gallery",
+  "resultInfoResolution": "{width} × {height}",
+  "@resultInfoResolution": {
+    "placeholders": {
+      "width": {
+        "type": "int"
+      },
+      "height": {
+        "type": "int"
+      }
+    }
+  },
+  "resultInfoScale": "{scale}× {model}",
+  "@resultInfoScale": {
+    "placeholders": {
+      "scale": {
+        "type": "int"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "resultInfoTime": "{seconds} s",
+  "@resultInfoTime": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "resultBefore": "Before",
+  "resultAfter": "After",
+  "resultShare": "Share",
+  "resultUpscaleAgain": "Upscale again",
+  "resultNewImage": "New image",
+  "resultMore": "More",
+  "resultHoldToCompare": "Hold to compare",
+  "resultFacesRestored": "{count} face(s) restored",
+  "@resultFacesRestored": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resultRecoveredNote": "Finished with adjusted settings for this device",
+  "resultTempInputNote": "Large input processed via a quality-90 copy (original untouched)",
+  "myUpscalesTitle": "My Upscales",
+  "myUpscalesEmptyTitle": "Nothing upscaled yet",
+  "myUpscalesEmptyBody": "Finished images appear here automatically.",
+  "myUpscalesDelete": "Delete",
+  "myUpscalesShare": "Share",
+  "myUpscalesOpen": "Open",
+  "myUpscalesSelect": "Select",
+  "myUpscalesSelectedCount": "{count} selected",
+  "@myUpscalesSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "myUpscalesDeleteConfirm": "Delete {count} image(s)? This also removes them from your gallery folder.",
+  "@myUpscalesDeleteConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "myUpscalesDeleteConfirmTitle": "Delete upscaled images?",
+  "modelManagerTitle": "Model Manager",
+  "modelManagerStorage": "{used} of {total} used",
+  "@modelManagerStorage": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "modelManagerFreeSpace": "{free} free",
+  "@modelManagerFreeSpace": {
+    "placeholders": {
+      "free": {
+        "type": "String"
+      }
+    }
+  },
+  "modelManagerPackStarter": "Starter Pack",
+  "modelManagerPackPro": "Pro Pack",
+  "modelManagerPackFace": "Face Pack",
+  "modelManagerPackUltra": "Ultra Pack (coming soon)",
+  "modelManagerPackCommunity": "Community Pack",
+  "modelManagerFilterAll": "All",
+  "modelManagerFilterPhoto": "Photo",
+  "modelManagerFilterAnime": "Anime",
+  "modelManagerFilterFace": "Face",
+  "modelManagerDownloadAll": "Download pack",
+  "modelManagerDeleteAll": "Delete pack",
+  "modelManagerUpdate": "Update available",
+  "modelManagerStatusInstalled": "Installed",
+  "modelManagerStatusNotInstalled": "Not installed",
+  "modelManagerStatusDownloading": "Downloading…",
+  "modelManagerStatusPaused": "Paused",
+  "modelManagerStatusError": "Error — tap to retry",
+  "modelManagerStatusUnavailable": "Unavailable",
+  "modelManagerUnavailableChecksum": "Source verification pending",
+  "modelManagerUnavailableLicense": "License does not permit use",
+  "modelManagerUnavailableSoon": "Coming in a later version",
+  "modelManagerLicense": "License",
+  "modelManagerSource": "Source",
+  "modelManagerDeleteFallback": "Default model will be used again for this photo type.",
+  "modelManagerDeleteConfirmTitle": "Delete this model?",
+  "modelManagerDeleteConfirmBody": "You can download it again any time.",
+  "modelManagerSpeed": "{speed}/s",
+  "@modelManagerSpeed": {
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
+  },
+  "modelManagerSize": "{size}",
+  "@modelManagerSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsTitle": "Settings",
+  "settingsAppearance": "Appearance",
+  "settingsTheme": "Theme",
+  "settingsThemeSystem": "System",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsDynamicColor": "Dynamic color",
+  "settingsDynamicColorBody": "Match app colors to your wallpaper (Material You).",
+  "settingsFeel": "Feel",
+  "settingsHaptics": "Haptics",
+  "settingsKeepAwake": "Keep screen awake",
+  "settingsKeepAwakeBody": "Prevents sleep while upscaling.",
+  "settingsLanguage": "Language",
+  "settingsLanguageEnglish": "English",
+  "settingsLanguageMore": "More languages coming",
+  "settingsDefaults": "Upscaling defaults",
+  "settingsDefaultMode": "Default mode",
+  "settingsCompute": "Compute preference",
+  "settingsComputeAuto": "Auto",
+  "settingsComputeGpu": "GPU",
+  "settingsComputeCpu": "CPU",
+  "settingsThrottle": "Slow down on battery or heat",
+  "settingsOutput": "Output",
+  "settingsOutputFormat": "Format",
+  "settingsOutputFormatSame": "Same as source",
+  "settingsOutputMetadata": "Keep photo metadata",
+  "settingsOutputNaming": "File names",
+  "settingsOutputNamingRealscale": "RealScale_<name>",
+  "settingsOutputNamingOriginal": "Keep original name",
+  "settingsDownloads": "Downloads",
+  "settingsWifiOnly": "Download only on Wi-Fi",
+  "settingsStorage": "Storage",
+  "settingsClearCache": "Clear temporary files",
+  "settingsClearCacheBody": "Installed models are kept.",
+  "settingsClearCacheDone": "Temporary files cleared",
+  "settingsRerunDeviceCheck": "Run device check again",
+  "settingsDeviceTier": "Device profile",
+  "settingsPrivacy": "Privacy",
+  "settingsPrivacyBody": "RealScale-Pro works fully offline. Photos never leave this device.",
+  "settingsAnonymousStats": "Share anonymous usage stats",
+  "settingsCrashReports": "Send crash reports",
+  "settingsSupport": "Support",
+  "settingsReplayGuide": "Replay the introduction",
+  "settingsFaq": "FAQ & feedback",
+  "settingsAbout": "About RealScale-Pro",
+  "settingsLicenses": "Open-source licenses",
+  "settingsPrivacyStatement": "Privacy statement",
+  "settingsModelCredits": "Model credits",
+  "settingsCreditsBody": "Real-ESRGAN (BSD-3), Real-CUGAN (MIT) and ncnn (BSD-3) power the upscaling engine. Face restoration uses GFPGAN (Apache-2.0).",
+  "aboutVersion": "Version",
+  "aboutBuiltWith": "Built with Flutter · ncnn engine",
+  "privacyTitle": "Privacy statement",
+  "privacyBody1": "RealScale-Pro processes every photo entirely on this device. No photo, no result and no personal data is ever uploaded.",
+  "privacyBody2": "The app uses the network for exactly one thing: downloading AI models when you ask for them. Model downloads check the source and file checksum before installing.",
+  "privacyBody3": "No account is created, no analytics profile is built, and nothing is shared. Optional anonymous statistics and crash reports are off by default and only send technical data — never images.",
+  "faqTitle": "FAQ & feedback",
+  "faqQ1": "Why does the first upscale take longer?",
+  "faqA1": "The model loads once and is kept ready afterwards. Later upscales are much faster.",
+  "faqQ2": "Where are results saved?",
+  "faqA2": "In your gallery under RealScale-Pro, and in My Upscales inside the app.",
+  "faqQ3": "Are my photos uploaded anywhere?",
+  "faqA3": "Never. Upscaling happens fully offline on this device.",
+  "faqFeedbackSubject": "RealScale-Pro feedback",
+  "faqFeedbackBody": "Tell us what works, what doesn't, or what you'd like next.",
+  "licensesTitle": "Open-source licenses",
+  "errorGenericTitle": "Something went wrong",
+  "errorGenericBody": "Please try again.",
+  "errorRetry": "Retry",
+  "errorNoPhotos": "No photos available",
+  "errorImageTooLarge": "This image is too large for this device",
+  "errorOutOfMemory": "Not enough memory — try safer settings",
+  "errorDiskFull": "Not enough free storage",
+  "errorSaveFailed": "Could not save the result",
+  "errorNetwork": "Network unavailable — check your connection",
+  "errorChecksum": "Download failed verification and will retry",
+  "loading": "Loading…",
+  "durationSeconds": "{n} s",
+  "@durationSeconds": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMinutes": "{n} min",
+  "@durationMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMinutesSeconds": "{m} min {s} s",
+  "@durationMinutesSeconds": {
+    "placeholders": {
+      "m": {
+        "type": "int"
+      },
+      "s": {
+        "type": "int"
+      }
+    }
+  },
+  "sizeMb": "{n} MB",
+  "@sizeMb": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "sizeKb": "{n} KB",
+  "@sizeKb": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "sizeGb": "{n} GB",
+  "@sizeGb": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "cancel": "Cancel",
+  "ok": "OK",
+  "close": "Close",
+  "delete": "Delete",
+  "share": "Share",
+  "retry": "Retry",
+  "comingSoon": "Coming soon",
+  "proBadge": "PRO",
+  "configAdvancedSection": "Advanced pipeline",
+  "configAdvancedTile": "Tile size",
+  "configAdvancedTileHint": "Smaller tiles use less memory. Auto picks by device.",
+  "configAdvancedOverlap": "Tile overlap",
+  "configAdvancedOverlapHint": "Higher overlap hides seams better but costs time.",
+  "configAdvancedThreads": "CPU threads",
+  "configAdvancedCompute": "Compute",
+  "configAdvancedComputeGpu": "GPU (Vulkan)",
+  "configAdvancedComputeCpu": "CPU",
+  "configAdvancedFormat": "Output format",
+  "configAdvancedQuality": "JPEG quality",
+  "configAdvancedCap": "Output size limit",
+  "configAdvancedCapHint": "Caps output megapixels to protect memory.",
+  "configAuto": "Auto",
+  "configMpUnit": "MP",
+  "configFormatSameAsSource": "Same as source",
+  "configSrBadge": "Super Resolution",
+  "configSrLosslessInfo": "No recompression: your original pixels are kept, the result is saved as lossless PNG.",
+  "configSrFeasibilityTitle": "Device check",
+  "configSrFeasibilityGreen": "Fits this device comfortably",
+  "configSrFeasibilityAmber": "Heavy but possible",
+  "configSrFeasibilityRed": "Too heavy for this device",
+  "configSrFeasibilityMemory": "Estimated peak memory {mb} of {total} MB",
+  "@configSrFeasibilityMemory": {
+    "placeholders": {
+      "mb": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "configSrFeasibilityOutput": "Output {mp} MP",
+  "@configSrFeasibilityOutput": {
+    "placeholders": {
+      "mp": {
+        "type": "int"
+      }
+    }
+  },
+  "configSrFeasibilityOverCap": "Output exceeds the {cap} MP limit for this device",
+  "@configSrFeasibilityOverCap": {
+    "placeholders": {
+      "cap": {
+        "type": "int"
+      }
+    }
+  },
+  "configSrFeasibilitySlow": "May take a long time on this device",
+  "configSrFeasibilityLargeSource": "Very large source image",
+  "configSrConfirmAmberTitle": "Continue with Super Resolution?",
+  "configSrConfirmAmberBody": "This photo is heavy for your device. It can take a while and may slow other apps down.",
+  "configSrBlockedTitle": "Super Resolution is too heavy here",
+  "configSrBlockedBody": "Try a smaller scale, or preview a crop first.",
+  "configSrBlockedUseUpscale": "Use Upscale mode instead",
+  "configPreviewSection": "Preview first",
+  "configPreviewHint": "Pick a small area and upscale only that — see the quality before the long run.",
+  "configPreviewPick": "Choose area",
+  "configPreviewChange": "Change area",
+  "configPreviewClear": "Clear",
+  "configPreviewRun": "Preview",
+  "configPreviewTitle": "Preview result",
+  "configPreviewRunning": "Upscaling preview…",
+  "configPreviewBefore": "Original",
+  "configPreviewAfter": "Super Resolution",
+  "configPreviewFull": "Upscale full image",
+  "configPreviewTime": "{n} s",
+  "@configPreviewTime": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "cropTitle": "Choose preview area",
+  "cropHint": "Drag the box to pick what RealScale-Pro should preview.",
+  "cropApply": "Use this area",
+  "cropReset": "Reset",
+  "settingsLanguageSystem": "System default",
+  "@settingsLanguageSystem": {},
+  "settingsLanguageHindi": "हिन्दी",
+  "@settingsLanguageHindi": {},
+  "settingsLanguagePick": "Choose language",
+  "@settingsLanguagePick": {}
+}
