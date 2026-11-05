@@ -36,13 +36,16 @@ class ModelFileSpec {
     if (sha == null || !_sha256Pattern.hasMatch(sha)) {
       throw const CatalogException('Invalid sha256 in model file entry');
     }
-    if (kind != 'param' && kind != 'bin') {
-      throw const CatalogException("File kind must be 'param' or 'bin'");
+    // 'onnx' is the single-file ONNX Runtime weight used by the Ultra pack;
+    // ModelManager stores it as `<id>.onnx`.
+    if (kind != 'param' && kind != 'bin' && kind != 'onnx') {
+      throw const CatalogException(
+        "File kind must be 'param', 'bin' or 'onnx'",
+      );
     }
     if (size == null || size < 0) {
       throw const CatalogException('Invalid sizeBytes in model file entry');
     }
-    final kindResolved = kind ?? '';
     final url = m['url'] as String?;
     if (url != null && !url.startsWith('https://')) {
       throw const CatalogException('Model URLs must be HTTPS');
