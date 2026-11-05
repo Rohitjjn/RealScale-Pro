@@ -328,11 +328,14 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surface,
+    // Material, not a colored Container/DecoratedBox: ListTile paints its
+    // ink splashes on the nearest Material ancestor, so a DecoratedBox
+    // background here would hide every tap ripple (Flutter asserts on it).
+    return Material(
+      color: cs.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: RsRadius.cardBorder,
-        border: Border.all(color: cs.outline),
+        side: BorderSide(color: cs.outline),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: children),
