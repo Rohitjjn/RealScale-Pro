@@ -5,12 +5,12 @@
 # no local Flutter/Android SDK is required.
 #
 #   Actions tab → "Android release APK" → Run workflow → download the
-#   `realscale-pro-release-apk` artifact → install the .apk on the phone.
+#   `realscale-pro-release-apk-<run>` artifact → install the .apk.
 #
-# Signing: drop a `key.properties` file in `android/` (as a repository
-# secret/file) to sign with the real upload key. Without it the build falls
-# back to the auto-generated debug certificate — still a release build with
-# R8 minification, just not store-ready.
+# Signing: put the base64 of a `key.properties` file into the
+# KEY_PROPERTIES repository secret to sign with the real upload key.
+# Without it the build falls back to the auto-generated certificate —
+# still a release build (AOT + R8), just not store-ready.
 name: Android release APK
 
 on:
@@ -21,16 +21,19 @@ on:
         type: boolean
         default: true
       include_native_ncnn:
-        description: 'Build the native ncnn engine (needs model support)'
+        description: 'Build the native ncnn engine (model support)'
         type: boolean
         default: true
   push:
     # 'arena/**' keeps the agent's working branch building on every push, so
-    # the release APK is always downloadable without opening a PR.
+    # the release APK is always downloadable without opening a pull request.
     branches: ['main', 'arena/**']
-    paths-ignore: ['**.md', 'docs/**', 'reports/**']
+    paths-ignore: ['**.md', 'docs/**', 'reports/**', 'ci-reports/**']
   pull_request:
     branches: ['main']
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -39,7 +42,6 @@ concurrency:
 env:
   FLUTTER_VERSION: '3.47.9'
   JAVA_VERSION: '21'
-  NCNN_VERSION: '20240410'
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -48,6 +50,7 @@ jobs:
   verify:
     name: Analyze, format & test
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,25 +74,50 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # Formatting gate. It prints the exact `dart format` diff when the tree
-      # is not clean, so the fix is a one-command copy/paste.
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      # Formatting gate: prints the exact `dart format` diff when the tree is
+      # not clean, so the fix is a copy/paste away.
       - name: Check formatting (dart format must be clean)
-        id: format
-        continue-on-error: true
         run: |
+          set +e
           dart format .
-          if ! git diff --quiet; then
-            echo "::error::dart format changed files — run 'dart format .' and commit"
-            git --no-pager diff
-            exit 1
+          if git diff --quiet; then
+            echo "dart format: clean"
+            exit 0
           fi
-          echo "dart format: clean"
+          git --no-pager diff > format.diff
+          message=$(head -n 120 format.diff | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error file=format.diff::$message"
+          exit 1
 
       - name: Analyze (must report zero issues)
-        run: flutter analyze --fatal-warnings
+        run: |
+          set +e
+          flutter analyze --fatal-warnings 2>&1 | tee analyze.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -eq 0 ]; then
+            echo "flutter analyze: clean"
+            exit 0
+          fi
+          message=$(tail -n 100 analyze.log | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error file=lib::$message"
+          exit 1
 
       - name: Run tests
-        run: flutter test --reporter expanded
+        run: |
+          set +e
+          flutter test --reporter expanded 2>&1 | tee test.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -eq 0 ]; then
+            echo "flutter test: all green"
+            exit 0
+          fi
+          message=$(grep -n -E '^[0-9]+:[0-9]+:|\[E\]|failed|Error' test.log \
+            | tail -n 80 | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error file=test::$message"
+          exit 1
 
       # --- native engine: build the Linux shim and run a REAL upscale ---------
       - name: Fetch pinned ncnn (BSD-3-Clause) for Linux
@@ -107,8 +135,17 @@ jobs:
 
       - name: Run native smoke test on all four starter models
         run: |
+          set +e
           export LD_LIBRARY_PATH="$PWD/native/third_party/ncnn-linux/lib:$LD_LIBRARY_PATH"
-          ./native/build/linux/realscale_ncnn_smoke "$PWD"
+          ./native/build/linux/realscale_ncnn_smoke "$PWD" 2>&1 | tee smoke.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -eq 0 ]; then
+            echo "native smoke test: all four starter models upscaled"
+            exit 0
+          fi
+          message=$(tail -n 60 smoke.log | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error file=native::$message"
+          exit 1
 
   # ---------------------------------------------------------------------------
   # 2. The release APK itself.
@@ -116,6 +153,7 @@ jobs:
   build-release-apk:
     name: Build release APK
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     needs: verify
     steps:
       - name: Checkout
@@ -162,15 +200,30 @@ jobs:
       - name: Fetch pinned ncnn (BSD-3-Clause) for Android
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.include_native_ncnn }}
         continue-on-error: true
-        id: ncnn
         run: bash native/fetch_ncnn.sh android
 
       - name: Build universal release APK
-        run: flutter build apk --release
+        run: |
+          set +e
+          flutter build apk --release 2>&1 | tee build-universal.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            message=$(tail -n 80 build-universal.log | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error file=android::$message"
+            exit 1
+          fi
 
       - name: Build per-ABI release APKs
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.split_per_abi }}
-        run: flutter build apk --release --split-per-abi
+        run: |
+          set +e
+          flutter build apk --release --split-per-abi 2>&1 | tee build-abi.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            message=$(tail -n 80 build-abi.log | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error file=android::$message"
+            exit 1
+          fi
 
       - name: Verify the APK contents
         run: |
