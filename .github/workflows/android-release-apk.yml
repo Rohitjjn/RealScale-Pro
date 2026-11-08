@@ -317,6 +317,9 @@ jobs:
           set -euo pipefail
           APK_DIR=build/app/outputs/flutter-apk
           ls -la "$APK_DIR"
+          REPORT="$RUNNER_TEMP/apk-report.txt"
+          : > "$REPORT"
+          echo "RealScale-Pro APK verification — commit ${{ github.sha }}" >> "$REPORT"
           mapfile -t APKS < <(find "$APK_DIR" -name '*.apk' | sort)
           [ "${#APKS[@]}" -gt 0 ] || { echo "::error::No APK produced"; exit 1; }
           SHIPPED=0
@@ -336,7 +339,16 @@ jobs:
             fi
             echo "--- ABIs ---"
             unzip -l "$apk" | awk '{print $4}' | grep -E '^lib/[^/]+/' | cut -d/ -f2 | sort -u
+            {
+              echo
+              echo "=== $(basename "$apk") — $(du -h "$apk" | cut -f1) ==="
+              echo "sha256: $(sha256sum "$apk" | cut -d' ' -f1)"
+              unzip -l "$apk" | awk '{print $1, $4}' | grep -E 'lib/|assets/flutter_assets/(kernel_blob|AssetManifest)' | sort -k2
+            } >> "$REPORT"
           done
+          echo "::group::APK verification report"
+          cat "$REPORT"
+          echo "::endgroup::"
           if [ -f "$RS_THIRD_PARTY_DIR/ncnn-android/arm64-v8a/lib/libncnn.a" ] && [ "$SHIPPED" -ne 1 ]; then
             echo "::error::ncnn was fetched but the APK engine has no ncnn backend"
             exit 1
@@ -369,6 +381,7 @@ jobs:
             esac
             mv "$f" "realscale-pro-${VERSION}-${suffix}.apk"
           done
+          cp "$RUNNER_TEMP/apk-report.txt" .
           {
             echo "# RealScale-Pro — release Android APK"
             echo
@@ -381,6 +394,8 @@ jobs:
             echo "(use the arm64-v8a APK for modern phones, universal if unsure)"
             echo
             sha256sum ./*.apk
+            echo
+            echo "Per-APK contents, sizes and hashes: apk-report.txt"
           } > README-APK.txt
           ls -la
           cat README-APK.txt

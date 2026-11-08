@@ -34,6 +34,39 @@ bash tools/build_native.sh          # host .so + test binaries + rscli
 
 Override the location with `RS_THIRD_PARTY_DIR=/abs/path` on any of them.
 
+## CI status — measured, not assumed
+
+| Run | Result |
+| --- | --- |
+| [42489793933](https://github.com/Rohitjjn/RealScale-Pro/actions/runs/42489793933) | `verify` **green**; `android-apk` **red** — real defect found (`cpu.h` not found: the ncnn engine source was compiled even when ncnn was absent) |
+| [42491000086](https://github.com/Rohitjjn/RealScale-Pro/actions/runs/42491000086) | **both jobs green** — artifact `realscale-pro-release-apk-34` (86.1 MB): universal + arm64-v8a + armeabi-v7a + x86_64 APKs |
+
+What that run proves, step by step (all steps succeeded):
+
+- `flutter pub get`, `flutter analyze --fatal-warnings` → zero issues.
+- Host ncnn built from the pinned commit; `test_tile_layout` 9/9,
+  `test_feather_blend` 8/8, `test_engine` 10/10 including
+  `engine_real_inference_full_pipeline` (real ncnn inference on the
+  committed model) and the OOM-recovery path via `RS_TEST_FAIL_TILES`.
+- `rscli` upscale of the committed 220×220 JPEG → 880×880 PNG asserted in
+  the job.
+- `flutter test` — the full Dart suite, including the REAL FFI inference
+  tests (they are skipped only when the `.so` or model fixture is missing;
+  the workflow fails if they skip).
+- `flutter build apk --release` and `--split-per-abi` with the ncnn engine
+  compiled by the NDK for three ABIs; every APK unzipped and checked for
+  `libapp.so` + `librealscale_native.so`, the arm64 engine grepped for the
+  `ncnn-cpu` backend string, and `apksigner verify` run on each file.
+
+### Native build matrix verified locally (this sandbox)
+
+| Configuration | Result |
+| --- | --- |
+| ncnn found (pinned prebuilt) | real engine, 10/10 native tests, `rscli` writes a real 880×880 PNG |
+| ncnn absent, `RS_REQUIRE_NCNN=OFF` | interface-only `.so`; `dlopen` succeeds and `rs_engine_create` returns the honest "compiled WITHOUT the ncnn backend" error |
+| ncnn absent, `RS_REQUIRE_NCNN=ON` | configure fails with an actionable message (never a silent stub) |
+| `RS_BUILD_NCNN=OFF` | interface-only `.so`, links with `-Wl,--no-undefined` |
+
 ## Environment facts (verified 2026-11-06 in this sandbox)
 
 - Debian 13, 2 × x86_64, 3.9 GB RAM, no swap, no sudo, ~10 GB rootfs.

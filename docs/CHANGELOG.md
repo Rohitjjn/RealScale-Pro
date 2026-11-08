@@ -1,5 +1,68 @@
 # Changelog
 
+## 2026-11-08 — CI repair: the release APK builds and verifies on GitHub Actions
+
+### Workflow (`android-release-apk.yml`) — rewritten for the current codebase
+
+- Removed the `flutter gen-l10n` gate: the localization setup it targeted no
+  longer exists, so the job failed before any real check ran.
+- `verify` now runs what the repo actually has: analyze, native unit tests,
+  a REAL ncnn inference run on a committed model fixture (with
+  `RS_TEST_FAIL_TILES` exercising OOM recovery), an `rscli` upscale whose PNG
+  geometry is asserted, and the Dart suite — failing if the real-inference
+  tests skip.
+- `android-apk` builds universal + per-ABI release APKs, checks every APK for
+  `libapp.so` + `librealscale_native.so`, greps the arm64 engine for the
+  `ncnn-cpu` backend (the stub can never be shipped silently), runs
+  `apksigner verify`, and uploads a per-APK report with sizes and SHA-256.
+- Jobs are independent (`needs` removed): a lint nit cannot hide the APK
+  result, and a broken APK cannot be masked by green tests.
+- Formatting is advisory (`continue-on-error`) instead of blocking.
+
+### Native build fixes (found by CI, reproduced and fixed locally)
+
+- `engine_ncnn.cpp` is only compiled after ncnn is located; previously the
+  documented interface-only fallback failed with `cpu.h: No such file`.
+- Exactly one backend is always compiled. With `RS_BUILD_NCNN=OFF` the stub
+  was omitted, producing a `.so` with an undefined `create_ncnn_engine()` that
+  failed to `dlopen()` on device (verified with a dlopen probe, now fixed and
+  guarded by `-Wl,--no-undefined` on host builds).
+- `RS_NCNN_INCLUDE` accepts an include root or the directory holding `net.h`;
+  ncnn + glslang/SPIRV archives link inside one `--start-group` so archive
+  order cannot break the link.
+- 16 KB ELF page alignment (`-Wl,-z,max-page-size=16384`) for Android 15+.
+
+### Android build config
+
+- Gradle honours `RS_THIRD_PARTY_DIR` (CI's cached prebuilt tree) with the
+  in-repo `../third_party` as fallback, so Gradle and `tools/` always agree.
+- All three Flutter ABIs are built; `abiFilters` is skipped when
+  `--split-per-abi` is used (the Flutter plugin owns that configuration).
+- Release signing restored: `android/key.properties` → upload key, with the
+  debug certificate as the documented fallback.
+- `ANDROID_STL=c++_static` to match the official prebuilts.
+- Gradle heap raised to 4 GB (three ABIs + NDK exceeded the old 2 GB).
+- `CAMERA` permission removed: `image_picker` captures via the system camera
+  app, and declaring it without a runtime request breaks capture on Android 6+.
+
+### Tooling
+
+- `tools/fetch_ncnn.sh` routes `linux|android|stb|all`, honours
+  `RS_THIRD_PARTY_DIR`, and is idempotent; `fetch_ncnn_android.sh` fetches any
+  subset of ABIs with retries; `build_native.sh` builds ncnn on demand and
+  copies the real engine to `build/native/` for the FFI tests.
+- Committed the fixtures the tests already referenced: a 220×220 JPEG and the
+  1.25 MB BSD-3 `realesr-animevideov3-x4` model pair, SHA-256 verified against
+  `assets/models/registry.json`.
+
+### Verified
+
+- Run [42491000086](https://github.com/Rohitjjn/RealScale-Pro/actions/runs/42491000086):
+  both jobs green, artifact `realscale-pro-release-apk-34` (86.1 MB, four APKs).
+- Local: native matrix (real/stub/require/off) as tabulated in BUILD.md,
+  `test_engine` 10/10 with real inference, `rscli` → real 880×880 PNG.
+
+
 ## 2026-11-06 — Prompt 2: native AI engine, real image processing,
 device adaptation & end-to-end integration
 
