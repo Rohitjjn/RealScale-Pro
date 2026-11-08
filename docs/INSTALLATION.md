@@ -14,7 +14,9 @@ size:    52,552,131 bytes (52.6 MB)
   versionCode 1, minSdk 24 (Android 7.0), targetSdk 36.
 - ABIs: `arm64-v8a` (primary), plus `armeabi-v7a` and `x86_64` engine
   builds compiled from the same pinned source.
-- Permissions: `INTERNET` (model downloads only) and `CAMERA` (capture).
+- Permissions: `INTERNET` only (consented model downloads). No camera or
+  storage permission is declared: capture goes through the system camera
+  app via `image_picker`, and gallery saves go through MediaStore.
 
 **The APK is signed with the Android debug key** so it can be installed
 for testing without any credentials. No signing key was invented or

@@ -2,8 +2,11 @@
     <!-- Model downloads (explicit user consent; the app is otherwise
          fully offline). -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Camera capture via image_picker. -->
-    <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- No CAMERA permission on purpose: image_picker captures through the
+         system camera app (ACTION_IMAGE_CAPTURE), which needs no permission.
+         Declaring CAMERA here would make the OS demand a runtime grant the
+         app never requests, and the capture would fail with a
+         SecurityException on Android 6+. -->
     <application
         android:label="RealScale Pro"
         android:name="${applicationName}"

@@ -1,5 +1,72 @@
 # BUILD.md
 
+## CI: the APK is built on GitHub Actions (the primary path)
+
+`.github/workflows/android-release-apk.yml` is the supported way to get an
+installable APK without any local toolchain. Two independent jobs:
+
+| Job | What it proves |
+| --- | --- |
+| `verify` | `dart format` (advisory), `flutter analyze --fatal-warnings`, all Dart tests, native unit tests, and a **real** ncnn inference run on the committed model fixture (`RS_TEST_FAIL_TILES` also exercises OOM recovery), plus an `rscli` end-to-end upscale whose output PNG is checked for the expected 880×880 geometry. |
+| `android-apk` | `flutter build apk --release` (universal) and `--split-per-abi`, with the engine compiled by the NDK for `arm64-v8a`, `armeabi-v7a` and `x86_64`. The job unzips every APK and asserts `libapp.so` + `librealscale_native.so` are inside, greps the arm64 engine for the `ncnn-cpu` backend string (so the interface-only stub can never be shipped silently), and runs `apksigner verify` on each file. |
+
+Trigger: Actions → **Android release APK** → *Run workflow* (inputs:
+`split_per_abi`, `include_native_ncnn`), or any push to `main` / `arena/**`.
+Artifacts: `realscale-pro-release-apk-<run>` containing
+`realscale-pro-<version>-universal.apk`, `…-arm64-v8a.apk`,
+`…-armeabi-v7a.apk`, `…-x86_64.apk` and `README-APK.txt` with SHA-256 sums.
+
+Signing in CI: set the `KEY_PROPERTIES` repository secret to the base64 of an
+`android/key.properties` file (`storeFile`, `storePassword`, `keyAlias`,
+`keyPassword`). Without it the release APK is signed with the debug
+certificate — still a full release build (AOT Dart + native ncnn), just not
+store-ready.
+
+The workflows download everything they need into `../third_party` (outside the
+checkout, so Gradle never treats the prebuilts as project inputs):
+
+```bash
+bash tools/fetch_ncnn.sh linux      # pinned host ncnn source (09981a0…)
+bash tools/fetch_ncnn.sh android    # official android-vulkan prebuilts, 3 ABIs
+bash tools/fetch_ncnn.sh stb        # header-only stb for rscli
+bash tools/build_native.sh          # host .so + test binaries + rscli
+```
+
+Override the location with `RS_THIRD_PARTY_DIR=/abs/path` on any of them.
+
+## CI status — measured, not assumed
+
+| Run | Result |
+| --- | --- |
+| [42489793933](https://github.com/Rohitjjn/RealScale-Pro/actions/runs/42489793933) | `verify` **green**; `android-apk` **red** — real defect found (`cpu.h` not found: the ncnn engine source was compiled even when ncnn was absent) |
+| [42491000086](https://github.com/Rohitjjn/RealScale-Pro/actions/runs/42491000086) | **both jobs green** — artifact `realscale-pro-release-apk-34` (86.1 MB): universal + arm64-v8a + armeabi-v7a + x86_64 APKs |
+
+What that run proves, step by step (all steps succeeded):
+
+- `flutter pub get`, `flutter analyze --fatal-warnings` → zero issues.
+- Host ncnn built from the pinned commit; `test_tile_layout` 9/9,
+  `test_feather_blend` 8/8, `test_engine` 10/10 including
+  `engine_real_inference_full_pipeline` (real ncnn inference on the
+  committed model) and the OOM-recovery path via `RS_TEST_FAIL_TILES`.
+- `rscli` upscale of the committed 220×220 JPEG → 880×880 PNG asserted in
+  the job.
+- `flutter test` — the full Dart suite, including the REAL FFI inference
+  tests (they are skipped only when the `.so` or model fixture is missing;
+  the workflow fails if they skip).
+- `flutter build apk --release` and `--split-per-abi` with the ncnn engine
+  compiled by the NDK for three ABIs; every APK unzipped and checked for
+  `libapp.so` + `librealscale_native.so`, the arm64 engine grepped for the
+  `ncnn-cpu` backend string, and `apksigner verify` run on each file.
+
+### Native build matrix verified locally (this sandbox)
+
+| Configuration | Result |
+| --- | --- |
+| ncnn found (pinned prebuilt) | real engine, 10/10 native tests, `rscli` writes a real 880×880 PNG |
+| ncnn absent, `RS_REQUIRE_NCNN=OFF` | interface-only `.so`; `dlopen` succeeds and `rs_engine_create` returns the honest "compiled WITHOUT the ncnn backend" error |
+| ncnn absent, `RS_REQUIRE_NCNN=ON` | configure fails with an actionable message (never a silent stub) |
+| `RS_BUILD_NCNN=OFF` | interface-only `.so`, links with `-Wl,--no-undefined` |
+
 ## Environment facts (verified 2026-11-06 in this sandbox)
 
 - Debian 13, 2 × x86_64, 3.9 GB RAM, no swap, no sudo, ~10 GB rootfs.

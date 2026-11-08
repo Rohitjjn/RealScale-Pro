@@ -33,6 +33,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(RS_BUILD_NCNN "Build the ncnn inference engine" ON)
+option(RS_REQUIRE_NCNN "Fail the configure step when ncnn cannot be found (Android release builds set this from Gradle)" OFF)
 option(RS_BUILD_TESTS "Build native tests (host only)" OFF)
 option(RS_BUILD_CLI "Build the rscli harness (host only)" OFF)
 option(RS_TEST_HOOKS "Enable test failure-injection hooks" OFF)
@@ -48,8 +49,11 @@ set(RS_CORE_SOURCES
 )
 
 if(RS_BUILD_NCNN)
-  list(APPEND RS_CORE_SOURCES src/engine_ncnn.cpp)
-
+  # NOTE: src/engine_ncnn.cpp is added to the source list only AFTER ncnn has
+  # been located (bottom of this block). Compiling it unconditionally made the
+  # documented interface-only fallback impossible: the file includes <net.h>
+  # and <cpu.h>, so the build failed instead of dropping to the stub.
+  #
   # Locate ncnn, in priority order:
   #   1. RS_NCNN_LIB + RS_NCNN_INCLUDE — explicit prebuilt static lib
   #      (fast; used by the host verification build and by Android).
@@ -74,25 +78,61 @@ if(RS_BUILD_NCNN)
     set(_rs_ncnn_prefix "${RS_NCNN_ANDROID_DIR}/${_rs_android_abi}")
     if(EXISTS "${_rs_ncnn_prefix}/lib/libncnn.a")
       set(RS_NCNN_LIB "${_rs_ncnn_prefix}/lib/libncnn.a")
-      set(RS_NCNN_INCLUDE "${_rs_ncnn_prefix}/include/ncnn")
-      # Vulkan builds also need the glslang/SPIRV static family.
-      set(RS_NCNN_VULKAN_EXTRA_LIBS
-        "${_rs_ncnn_prefix}/lib/libglslang-default-resource-limits.a"
-        "${_rs_ncnn_prefix}/lib/libglslang.a"
-        "${_rs_ncnn_prefix}/lib/libMachineIndependent.a"
-        "${_rs_ncnn_prefix}/lib/libGenericCodeGen.a"
-        "${_rs_ncnn_prefix}/lib/libOSDependent.a"
-        "${_rs_ncnn_prefix}/lib/libSPIRV.a")
-      set(RS_NCNN_VULKAN ON)
-      message(STATUS "realscale_native: android ncnn prebuilt (${_rs_android_abi}, vulkan)")
+      # The official prebuilts keep the headers in <abi>/include/ncnn, a plain
+      # install tree in <abi>/include. Support both instead of failing with
+      # "net.h not found".
+      if(EXISTS "${_rs_ncnn_prefix}/include/ncnn/net.h")
+        set(RS_NCNN_INCLUDE "${_rs_ncnn_prefix}/include/ncnn")
+      else()
+        set(RS_NCNN_INCLUDE "${_rs_ncnn_prefix}/include")
+      endif()
+      # Vulkan builds also need the glslang/SPIRV static family. Link every
+      # archive that ships next to libncnn.a (newer releases split/rename
+      # them) except libncnn.a itself, which is already handled above.
+      file(GLOB _rs_ncnn_extra "${_rs_ncnn_prefix}/lib/*.a")
+      set(RS_NCNN_VULKAN_EXTRA_LIBS "")
+      foreach(_rs_a IN LISTS _rs_ncnn_extra)
+        get_filename_component(_rs_n "${_rs_a}" NAME)
+        if(NOT _rs_n STREQUAL "libncnn.a")
+          list(APPEND RS_NCNN_VULKAN_EXTRA_LIBS "${_rs_a}")
+        endif()
+      endforeach()
+      if(RS_NCNN_VULKAN_EXTRA_LIBS)
+        set(RS_NCNN_VULKAN ON)
+      endif()
+      message(STATUS "realscale_native: android ncnn prebuilt (${_rs_android_abi})")
     else()
-      message(WARNING "RS_NCNN_ANDROID_DIR set but ${_rs_ncnn_prefix}/lib/libncnn.a is missing")
+      message(STATUS
+        "realscale_native: no ncnn prebuilt for ${_rs_android_abi} under "
+        "${RS_NCNN_ANDROID_DIR} — this ABI is built interface-only")
     endif()
   endif()
 
   if(RS_NCNN_LIB AND RS_NCNN_INCLUDE AND EXISTS "${RS_NCNN_LIB}")
     set(RS_NCNN_LIBRARIES "${RS_NCNN_LIB}")
-    set(RS_NCNN_INCLUDE_DIRS "${RS_NCNN_INCLUDE}")
+    # Headers may be given as the include root (which itself contains ncnn/)
+    # or directly as the directory holding net.h. Accept both: a wrong guess
+    # here is the difference between a two-minute build and a 13-minute one.
+    set(RS_NCNN_INCLUDE_DIRS "")
+    foreach(_inc IN LISTS RS_NCNN_INCLUDE)
+      # Keep every directory the caller listed (source trees put net.h in
+      # <root>/src while the generated platform.h lives in the *build* dir,
+      # so both entries matter), and add <root>/ncnn for install trees.
+      list(APPEND RS_NCNN_INCLUDE_DIRS "${_inc}")
+      if(EXISTS "${_inc}/ncnn/net.h")
+        list(APPEND RS_NCNN_INCLUDE_DIRS "${_inc}/ncnn")
+      endif()
+    endforeach()
+    set(_rs_has_net_h FALSE)
+    foreach(_inc IN LISTS RS_NCNN_INCLUDE_DIRS)
+      if(EXISTS "${_inc}/net.h")
+        set(_rs_has_net_h TRUE)
+      endif()
+    endforeach()
+    if(NOT _rs_has_net_h)
+      message(FATAL_ERROR
+        "RS_NCNN_INCLUDE (${RS_NCNN_INCLUDE}) does not contain net.h.")
+    endif()
     set(RS_HAS_NCNN ON)
     message(STATUS "realscale_native: using prebuilt ncnn: ${RS_NCNN_LIB}")
   else()
@@ -129,7 +169,21 @@ if(RS_BUILD_NCNN)
   endif()
 endif()
 
-if(NOT RS_HAS_NCNN AND RS_BUILD_NCNN)
+if(RS_BUILD_NCNN AND NOT RS_HAS_NCNN AND RS_REQUIRE_NCNN)
+  message(FATAL_ERROR
+    "ncnn was requested (RS_REQUIRE_NCNN=ON) but could not be located. "
+    "Fetch the pinned prebuilts with `bash native/fetch_ncnn.sh android` "
+    "(or host ncnn with `bash native/fetch_ncnn.sh linux`) and re-run.")
+endif()
+
+# Exactly one backend implementation must be compiled. The stub is required
+# whenever the real engine is absent — including RS_BUILD_NCNN=OFF, where
+# skipping it used to leave create_ncnn_engine() undefined, producing a
+# shared library that failed to dlopen() at runtime instead of reporting
+# "engine unavailable".
+if(RS_HAS_NCNN)
+  list(APPEND RS_CORE_SOURCES src/engine_ncnn.cpp)
+else()
   list(APPEND RS_CORE_SOURCES src/engine_stub.cpp)
 endif()
 
@@ -141,15 +195,18 @@ target_compile_definitions(realscale_native PRIVATE RS_ABI_VERSION_DEF=1)
 
 if(RS_HAS_NCNN)
   target_include_directories(realscale_native PRIVATE ${RS_NCNN_INCLUDE_DIRS})
-  target_link_libraries(realscale_native PRIVATE ${RS_NCNN_LIBRARIES})
   if(RS_NCNN_VULKAN_EXTRA_LIBS)
-    foreach(_vk_lib IN LISTS RS_NCNN_VULKAN_EXTRA_LIBS)
-      if(EXISTS "${_vk_lib}")
-        target_link_libraries(realscale_native PRIVATE "${_vk_lib}")
-      else()
-        message(WARNING "vulkan helper lib missing: ${_vk_lib}")
-      endif()
-    endforeach()
+    # ncnn + its glslang/SPIRV archives reference each other in both
+    # directions, and static archives are resolved left-to-right exactly once.
+    # Wrapping the whole set in a linker group makes the order irrelevant
+    # (and survives ncnn releases that rename or re-split those archives).
+    target_link_libraries(realscale_native PRIVATE
+      -Wl,--start-group
+      ${RS_NCNN_LIBRARIES}
+      ${RS_NCNN_VULKAN_EXTRA_LIBS}
+      -Wl,--end-group)
+  else()
+    target_link_libraries(realscale_native PRIVATE ${RS_NCNN_LIBRARIES})
   endif()
   if(RS_NCNN_VULKAN)
     # Enables the engine's Vulkan code paths (GPU probe + optional GPU
@@ -177,8 +234,13 @@ endif()
 if(ANDROID)
   target_link_libraries(realscale_native PRIVATE log android jnigraphics dl)
   # ncnn android prebuilts are compiled with OpenMP; the NDK only ships
-  # the static runtime, so link it statically.
-  target_link_options(realscale_native PRIVATE -fopenmp -static-openmp)
+  # the static runtime, so link it statically (no libomp.so at runtime).
+  # max-page-size=16384 aligns the ELF segments for Android 15/16 devices
+  # with 16 KB pages (required by Google Play from November 2025 for
+  # apps targeting Android 15+).
+  target_link_options(realscale_native PRIVATE
+    -fopenmp -static-openmp
+    -Wl,-z,max-page-size=16384)
   set_target_properties(realscale_native PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 endif()
@@ -187,6 +249,10 @@ endif()
 # Host-only extras.
 # ------------------------------------------------------------------ #
 if(NOT ANDROID)
+  # A shared library with an unresolved symbol only fails when the app
+  # dlopen()s it on a phone — too late. Fail at link time instead.
+  target_link_options(realscale_native PRIVATE -Wl,--no-undefined)
+
   if(RS_BUILD_CLI)
     add_executable(rscli tools/rscli.cpp)
     target_link_libraries(rscli PRIVATE realscale_native)
