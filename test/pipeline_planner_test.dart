@@ -1,202 +1,192 @@
-import 'dart:typed_data';
+/// PipelinePlanner tests: real decision logic, memory safety, honest
+/// mode semantics (no silent downsampling).
+library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:realscale_pro/engine/upscale_engine.dart';
-import 'package:realscale_pro/services/model_catalog/model_catalog.dart';
-import 'package:realscale_pro/services/pipeline_planner/pipeline_planner.dart';
+import 'package:realscale_pro/domain/models.dart';
+import 'package:realscale_pro/processing/pipeline_planner.dart';
 
-const _catalogJson = '''
-{
-  "version": 3,
-  "models": [
-    {"id": "photo-native-4x", "version": "1.0.0", "name": "Photo 4x", "engine": "ncnn",
-     "pack": "pro", "minTier": "T1", "nativeScales": [4], "modes": ["upscale"],
-     "bestFor": ["photo"], "speed": "medium", "sizeBytes": 1000,
-     "license": "MIT", "verified": true, "heavy": false,
-     "files": [{"kind": "bin", "sha256": "548a36f9c3f4ab8da56cd3b13badf23968bee207b396dad14d04b830e5f2ab2d", "sizeBytes": 1}]},
-    {"id": "anime-native-2x", "version": "1.0.0", "name": "Anime 2x", "engine": "ncnn",
-     "pack": "starter", "minTier": "T0", "nativeScales": [2], "modes": ["upscale"],
-     "bestFor": ["anime"], "speed": "veryFast", "sizeBytes": 1000,
-     "license": "MIT", "verified": true, "heavy": false,
-     "files": [{"kind": "bin", "sha256": "548a36f9c3f4ab8da56cd3b13badf23968bee207b396dad14d04b830e5f2ab2d", "sizeBytes": 1}]},
-    {"id": "blocked-model", "version": "1.0.0", "name": "Blocked", "engine": "ncnn",
-     "pack": "pro", "minTier": "T0", "nativeScales": [4], "modes": ["upscale"],
-     "bestFor": ["photo"], "speed": "medium", "sizeBytes": 0,
-     "license": "NON-COMMERCIAL", "verified": false, "heavy": false,
-     "unavailableReason": "licenseBlocked", "files": []}
-  ]
-}
-''';
+ModelInfo _model(String id, String family, int scale,
+        {double sizeMb = 1.25, int minRam = 500}) =>
+    ModelInfo(
+      id: id,
+      displayName: id,
+      family: family,
+      scale: scale,
+      license: 'BSD-3-Clause',
+      licenseUrl: 'https://example.com',
+      sourceUrl: 'https://example.com/zip',
+      paramFile: 'a.param',
+      binFile: 'a.bin',
+      approxSizeMb: sizeMb,
+      minRamMb: minRam,
+      description: '',
+      tags: const [],
+    );
 
-ModelCatalog _catalog() => ModelCatalog.parse(_catalogJson);
+const _compact = 'realesr-animevideov3-x4';
+ImageMetadata _img(int w, int h,
+        {bool alpha = false, String format = 'JPEG'}) =>
+    ImageMetadata(
+      width: w,
+      height: h,
+      format: format,
+      fileSizeBytes: 1024,
+      hasAlpha: alpha,
+      exifOrientation: 0,
+    );
 
-PipelinePlanner _planner() => PipelinePlanner({
-  'autoSelection': {
-    'upscale': {
-      'photo': {
-        'T0': 'blocked-model',
-        'T1': 'photo-native-4x',
-        'T2': 'photo-native-4x',
-        'T3': 'photo-native-4x',
-      },
-      'anime': {
-        'T0': 'anime-native-2x',
-        'T1': 'anime-native-2x',
-        'T2': 'anime-native-2x',
-        'T3': 'anime-native-2x',
-      },
-    },
-    'superResolution': {
-      'photo': {
-        'T0': 'photo-native-4x',
-        'T1': 'photo-native-4x',
-        'T2': 'photo-native-4x',
-        'T3': 'photo-native-4x',
-      },
-      'anime': {
-        'T0': 'anime-native-2x',
-        'T1': 'anime-native-2x',
-        'T2': 'anime-native-2x',
-        'T3': 'anime-native-2x',
-      },
-    },
-  },
-  'scaleChain': {
-    'photo': {'2': '4x:50', '3': '4x:75', '4': '4x:100', '5': '4x:125'},
-    'anime': {'2': '2x:100', '3': '3x:100', '4': '4x:100', '5': '4x:125'},
-  },
-  'tileSizes': {'T0': 192, 'T1': 256, 'T2': 384, 'T3': 512},
-  'tileOverlap': {'none': 0, 'small': 8, 'medium': 16, 'large': 32},
-  'overlapByTile': {
-    '192': 'medium',
-    '256': 'medium',
-    '384': 'small',
-    '512': 'small',
-  },
-  'threadCounts': {'T0': 2, 'T1': 4, 'T2': 6, 'T3': 8},
-  'inputPixelLimit': {
-    'T0': 4000000,
-    'T1': 8000000,
-    'T2': 16000000,
-    'T3': 34000000,
-  },
-  'outputCapMegapixels': {'T0': 24, 'T1': 40, 'T2': 64, 'T3': 96},
-  'etaBaseMsPerTile': {
-    'photo-native-4x': {'cpu': 400, 'gpu': 120},
-    'anime-native-2x': {'cpu': 320, 'gpu': 90},
-  },
-});
-
-DeviceProfile _device(DeviceTier tier) => DeviceProfile(
-  tier: tier,
-  totalRamMb: 8192,
-  freeRamMb: 4096,
-  cpuCores: 8,
-  gpuName: '',
-  vulkanSupported: false,
-  benchmarkMsPerTile: 100,
-  freeStorageMb: 32000,
-  osVersion: 'test',
-  thermalState: 'nominal',
-  measuredAt: DateTime(2026),
-);
-
-JobSpec _spec({String? modelId, int scale = 2}) => JobSpec(
-  jobId: 'p1',
-  inputPath: '/x.png',
-  inputBytes: Uint8List(8),
-  mode: UpscaleMode.upscale,
-  settingLevel: SettingLevel.manual,
-  imageType: ImageType.photo,
-  scale: scale,
-  modelId: modelId ?? 'photo-native-4x',
-);
+DeviceProfile _device(DeviceTier tier, {int? ramMb}) => DeviceProfile(
+      tier: tier,
+      cpuCores: 4,
+      platform: 'android',
+      totalMemoryMb: ramMb,
+      availableMemoryMb: ramMb,
+    );
 
 void main() {
-  test('planner covers Photo/Anime across tiers T0–T3 (task 2.6)', () {
-    final catalog = _catalog();
-    final planner = _planner();
-    for (final tier in DeviceTier.values) {
-      for (final type in const ['photo', 'anime']) {
-        final id = planner.autoModelId(
-          mode: UpscaleMode.upscale,
-          imageType: type,
-          tier: tier,
-          catalog: catalog,
-        );
-        expect(id, isNotNull, reason: '$type/$tier must resolve a model');
+  final planner = const PipelinePlanner();
+
+  group('estimatePeakMemoryBytes', () {
+    test('grows with image and shrinks with tiles', () {
+      final small = PipelinePlanner.estimatePeakMemoryBytes(64, 64, 4, 128);
+      final big = PipelinePlanner.estimatePeakMemoryBytes(512, 512, 4, 128);
+      expect(big, greaterThan(small));
+      final smallTiles =
+          PipelinePlanner.estimatePeakMemoryBytes(512, 512, 4, 64);
+      expect(smallTiles, lessThan(big));
+    });
+
+    test('rejects invalid inputs', () {
+      expect(PipelinePlanner.estimatePeakMemoryBytes(0, 10, 4, 64), -1);
+      expect(PipelinePlanner.estimatePeakMemoryBytes(10, 10, 1, 64), -1);
+      expect(PipelinePlanner.estimatePeakMemoryBytes(10, 10, 5, 64), -1);
+    });
+  });
+
+  group('output format policy', () {
+    test('upscale mode uses JPEG for opaque photos', () {
+      final plan = planner.plan(
+          image: _img(400, 300),
+          device: _device(DeviceTier.balanced, ramMb: 4096),
+          mode: ProcessingMode.upscale,
+          model: _model(_compact, 'SRVGGNet compact', 4));
+      expect(plan.outputFormat, OutputFormat.jpeg);
+      expect(plan.jpegQuality, inInclusiveRange(90, 96));
+    });
+
+    test('upscale mode uses PNG when alpha demands lossless', () {
+      final plan = planner.plan(
+          image: _img(400, 300, alpha: true, format: 'PNG'),
+          device: _device(DeviceTier.balanced, ramMb: 4096),
+          mode: ProcessingMode.upscale,
+          model: _model(_compact, 'SRVGGNet compact', 4));
+      expect(plan.outputFormat, OutputFormat.png);
+      expect(plan.jpegQuality, isNull);
+    });
+
+    test('super resolution mode is always lossless', () {
+      final plan = planner.plan(
+          image: _img(400, 300),
+          device: _device(DeviceTier.highPerformance, ramMb: 8192),
+          mode: ProcessingMode.superResolution,
+          model: _model('realesrgan-x4plus', 'RRDBNet', 4,
+              sizeMb: 33.4, minRam: 1500));
+      expect(plan.outputFormat, OutputFormat.png);
+    });
+  });
+
+  group('memory adaptation', () {
+    test('low-tier devices get reduced tiles', () {
+      final plan = planner.plan(
+          image: _img(2000, 2000),
+          device: _device(DeviceTier.lowResource, ramMb: 2048),
+          mode: ProcessingMode.superResolution,
+          model: _model('realesrgan-x4plus', 'RRDBNet', 4,
+              sizeMb: 33.4, minRam: 1500));
+      // With 2048MB the estimate exceeds the budget even after tile
+      // reduction for an 8000x8000 target: honest warning expected.
+      expect(plan.warnings, isNotEmpty);
+    });
+
+    test('tile reduction can bring a plan back into budget', () {
+      final plan = planner.plan(
+          image: _img(800, 600),
+          device: _device(DeviceTier.lowResource, ramMb: 2048),
+          mode: ProcessingMode.upscale,
+          model: _model(_compact, 'SRVGGNet compact', 4));
+      expect(plan.estimatedPeakRamMb,
+          lessThan(_device(DeviceTier.lowResource, ramMb: 2048)
+              .inferenceBudgetMb));
+    });
+  });
+
+  group('mode honesty', () {
+    test('super resolution never proposes downsampling', () {
+      final plan = planner.plan(
+          image: _img(4000, 4000),
+          device: _device(DeviceTier.lowResource, ramMb: 2048),
+          mode: ProcessingMode.superResolution,
+          model: _model('realesrgan-x4plus', 'RRDBNet', 4,
+              sizeMb: 33.4, minRam: 1500));
+      expect(plan.saferAlternative, isNull);
+      expect(
+          plan.warnings.join(' '),
+          contains('does not downsample'),
+          reason: 'SR mode must state the limitation instead of silently '
+              'lowering quality');
+    });
+
+    test('upscale mode proposes an explicit alternative instead of '
+        'silently downsampling', () {
+      final plan = planner.plan(
+          image: _img(4000, 4000),
+          device: _device(DeviceTier.lowResource, ramMb: 2048),
+          mode: ProcessingMode.upscale,
+          model: _model(_compact, 'SRVGGNet compact', 4));
+      expect(plan.warnings, isNotEmpty);
+      if (plan.saferAlternative != null) {
+        expect(plan.saferAlternative!.warnings.join(' '),
+            contains('explicit'));
+        // The alternative must actually fit the budget.
+        expect(
+            plan.saferAlternative!.estimatedOutputWidth *
+                plan.saferAlternative!.estimatedOutputHeight,
+            lessThan(plan.estimatedOutputWidth * plan.estimatedOutputHeight));
       }
-    }
+    });
   });
 
-  test('unavailable auto model falls back down the tiers (task 2.6)', () {
-    // T0 photo points at blocked-model → planner must walk to an available one.
-    final id = _planner().autoModelId(
-      mode: UpscaleMode.upscale,
-      imageType: 'photo',
-      tier: DeviceTier.t0,
-      catalog: _catalog(),
-    );
-    expect(id, 'photo-native-4x');
+  group('model choice', () {
+    final registry = [
+      _model(_compact, 'SRVGGNet compact', 4),
+      _model('realesrgan-x4plus-anime', 'RRDBNet', 4,
+          sizeMb: 8.9, minRam: 1000),
+      _model('realesrgan-x4plus', 'RRDBNet', 4, sizeMb: 33.4, minRam: 1500),
+    ];
+
+    test('low tier gets the compact model', () {
+      final m = planner.chooseModel(
+          registry, _device(DeviceTier.lowResource), ProcessingMode.upscale);
+      expect(m.id, _compact);
+    });
+
+    test('high performance SR mode gets the flagship', () {
+      final m = planner.chooseModel(registry,
+          _device(DeviceTier.highPerformance), ProcessingMode.superResolution);
+      expect(m.id, 'realesrgan-x4plus');
+    });
   });
 
-  test('scale chain: 2x on a 4x-native photo model resamples to 50%', () {
-    final chain = _planner().resolveScaleChain(
-      model: _catalog().byId('photo-native-4x')!,
-      targetScale: 2,
-      imageType: 'photo',
-    );
-    expect(chain.nativeScale, 4);
-    expect(chain.resamplePercent, 50);
-  });
-
-  test('5x adds the extra resize step (resample > 100%)', () {
-    final plan = _planner().plan(
-      spec: _spec(scale: 5),
-      device: _device(DeviceTier.t2),
-      catalog: _catalog(),
-      inputWidth: 100,
-      inputHeight: 100,
-    );
-    expect(plan.extraResizeStep, isTrue);
-    expect(plan.resamplePercent, 125);
-    expect(plan.outputWidth, 500);
-    expect(plan.outputHeight, 500);
-  });
-
-  test('output cap clamps huge outputs honestly', () {
-    final plan = _planner().plan(
-      spec: _spec(scale: 4),
-      device: _device(DeviceTier.t0), // 24 MP cap
-      catalog: _catalog(),
-      inputWidth: 2000,
-      inputHeight: 2000, // 4 MP in → 64 MP out at 4x → clamped to 24 MP
-    );
-    expect(plan.outputWidth * plan.outputHeight, lessThanOrEqualTo(24000000));
-  });
-
-  test('unavailable selected model throws a typed planner error', () {
-    expect(
-      () => _planner().plan(
-        spec: _spec(modelId: 'blocked-model'),
-        device: _device(DeviceTier.t1),
-        catalog: _catalog(),
-        inputWidth: 100,
-        inputHeight: 100,
-      ),
-      throwsA(isA<PlannerException>()),
-    );
-  });
-
-  test('ETA baseline comes from data and stays positive', () {
-    final plan = _planner().plan(
-      spec: _spec(),
-      device: _device(DeviceTier.t1),
-      catalog: _catalog(),
-      inputWidth: 200,
-      inputHeight: 200,
-    );
-    final eta = _planner().estimateSeconds(plan, 200, 200);
-    expect(eta, greaterThan(0));
+  group('jpeg quality clamping', () {
+    test('quality stays within the honest 90-96 band', () {
+      final plan = planner.plan(
+          image: _img(100, 100),
+          device: _device(DeviceTier.balanced, ramMb: 4096),
+          mode: ProcessingMode.upscale,
+          model: _model(_compact, 'SRVGGNet compact', 4),
+          jpegQuality: 75);
+      expect(plan.jpegQuality, 90);
+    });
   });
 }

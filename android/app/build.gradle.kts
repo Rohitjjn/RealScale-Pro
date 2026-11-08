@@ -1,36 +1,12 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
-    // The Flutter Gradle Plugin must be applied after the Android Gradle plugin.
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Release signing: drop a `key.properties` next to this file (storeFile,
-// storePassword, keyAlias, keyPassword). Without it the build falls back to
-// the auto-generated certificate so `flutter build apk --release` always works.
-val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
-}
-val hasReleaseKeystore =
-    keystorePropertiesFile.exists() &&
-        !keystoreProperties.getProperty("storeFile").isNullOrBlank()
-
-// Native ncnn engine: only wired in when the pinned prebuilt ncnn is on disk
-// (`bash native/fetch_ncnn.sh android`). Without it the APK still builds and
-// ships the honest pure-Dart Lanczos engine.
-val nativeCmakeFile =
-    rootProject.projectDir.resolve("../native/CMakeLists.txt").canonicalFile
-val ncnnAndroidDir =
-    rootProject.projectDir.resolve("../native/third_party/ncnn-android")
-        .canonicalFile
-
 android {
-    namespace = "app.realscale.realscale_pro"
-    // permission_handler_android requires API 37.
-    compileSdk = 37
+    namespace = "dev.realscale.realscale_pro"
+    compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -39,62 +15,58 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.realscale.realscale_pro"
-        minSdk = 26
-        targetSdk = 37
+        applicationId = "dev.realscale.realscale_pro"
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        if (ncnnAndroidDir.exists()) {
-            externalNativeBuild {
-                cmake {
-                    cppFlags += "-std=c++17"
-                    arguments += listOf(
-                        "-DNCNN_DIR=${ncnnAndroidDir.absolutePath}",
-                        "-DANDROID_STL=c++_shared",
-                        "-DENABLE_VULKAN=ON",
-                    )
-                }
-            }
+        // Native engine ABI set. This build ships arm64-v8a — the primary
+        // physical-device target (verified in this environment). To widen
+        // the APK, also fetch the matching ncnn prebuilts:
+        //   NCNN_ANDROID_ARCHS="arm64-v8a armeabi-v7a x86_64" tools/fetch_ncnn_android.sh
+        // and add the ABIs below.
+        ndk {
+            abiFilters += listOf("arm64-v8a")
         }
-    }
 
-    if (ncnnAndroidDir.exists()) {
         externalNativeBuild {
             cmake {
-                path = nativeCmakeFile
+                // Per-ABI prebuilt ncnn (Vulkan build; CPU path verified on
+                // host, GPU is opt-in with CPU fallback). Fetched by
+                // tools/fetch_ncnn_android.sh — see docs/BUILD.md.
+                arguments += listOf(
+                    "-DRS_NCNN_ANDROID_DIR=${project.rootDir}/../third_party/ncnn-android"
+                )
             }
         }
     }
 
-    signingConfigs {
-        if (hasReleaseKeystore) {
-            create("release") {
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
-            }
+    // Builds librealscale_native.so from the shared native/ module and
+    // bundles it into the APK for dart:ffi to load. ncnn is linked from
+    // prebuilt static libraries fetched by tools/fetch_ncnn_android.sh
+    // (pinned commit; see docs/native-engine-design.md).
+    externalNativeBuild {
+        cmake {
+            path = file("../../native/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
 
     buildTypes {
         release {
-            signingConfig =
-                if (hasReleaseKeystore) {
-                    signingConfigs.getByName("release")
-                } else {
-                    signingConfigs.getByName("debug")
-                }
-            // Real release build: AOT + R8 (tree-shaken, obfuscated stack
-            // traces aside). proguard-rules.pro keeps the Flutter embedding
-            // and the background downloader intact.
-            isMinifyEnabled = true
+            // Release signing is NOT configured here on purpose: no signing
+            // credentials exist in this repository and none were invented.
+            // The release APK is signed with the debug key so it can be
+            // installed for testing. For a store-ready build follow
+            // docs/INSTALLATION.md § Signing (keytool + apksigner).
+            signingConfig = signingConfigs.getByName("debug")
+            // R8 minification intentionally left off: the Dart side is
+            // already AOT-compiled and the native engine is not touched by
+            // R8; enabling it only shrinks a small amount of plugin glue
+            // while adding build memory/time on low-resource machines.
+            isMinifyEnabled = false
             isShrinkResources = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-            )
         }
     }
 }

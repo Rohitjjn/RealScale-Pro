@@ -1,74 +1,124 @@
-# RealScale-Pro — AI Agent Kickoff & Repo Guide
+# RealScale-Pro
 
-**Product:** RealScale-Pro — offline, on-device AI image upscaler (Flutter).
-**Owner:** Non-coder product owner. All code is written and tested by AI agents.
-**Status:** Phase 1 ready to build. Video upscaling is locked — do not implement it.
+Offline-first AI image enhancement for Android. Flutter frontend, native
+C/C++ inference engine (ncnn) through a stable C ABI and dart:ffi.
 
----
+> **Status: v1.0.0 — Prompt 3 of 3 complete (final).**
+> Real tiled AI inference is implemented and verified end-to-end on the
+> host build; a release APK was built and programmatically verified in
+> this environment. See `docs/CHANGELOG.md`, `docs/QA-REPORT.md`,
+> `docs/PERFORMANCE-REPORT.md` and `docs/KNOWN-LIMITATIONS.md`.
 
-## What this repo contains (read in this order)
+## What this is
 
-| Order | File | What it tells you |
-| --- | --- | --- |
-| 1 | `README.md` (this file) | How to work on this project |
-| 2 | `prd.md` | The full product requirements document — the source of truth |
-| 3 | `rules.md` | Binding coding, reuse, licensing and reporting rules |
-| 4 | `architecture.md` | Modules, folders, interfaces and data contracts |
-| 5 | `phases.md` | Task lists and exit checks for Phases 0–4 |
-| 6 | `design-system.md` | Colors, typography, components, motion, haptics |
-| 7 | `models.md` | Model catalog, packs, manifest format, download rules |
-| 8 | `agents.md` | Roles, prompt templates and the phase-report format |
-| 9 | `licenses.md` | Every reused component and its license (keep updated) |
-| 10 | `qa-checklist.md` | Device matrix, test images and acceptance checks |
+- **Upscale Mode** — practical enhancement: controlled output-size
+  optimization, JPEG quality 90–96, explicit (never silent) downsampling
+  proposals, original preserved.
+- **Super Resolution Mode** — quality-first: lossless processing chain,
+  tiling with seam-free feathered blending, never a silent downsample.
+- **Offline by design** — images never leave the device. The only network
+  use is the consented, checksum-verified, resumable model download.
+- **Honest engineering** — no fabricated progress, no fake inference, no
+  silent quality reduction. Unverifiable states are reported as such.
 
-## The working loop (one phase at a time)
+## Supported platforms
 
-1. Read all docs above. Ask the owner only if something is genuinely ambiguous.
-2. Implement the current phase task-by-task, exactly as written in `phases.md`.
-3. Test against `qa-checklist.md`. Fix failures before moving on.
-4. Update `changelog.md` after every meaningful change.
-5. Write the phase report into `reports/` using the template in `agents.md`.
-6. Stop. Wait for the owner to say "start phase N+1".
+| Platform | State |
+| --- | --- |
+| Android arm64-v8a | **Release APK built and verified** (52.6 MB, ncnn engine with Vulkan-capable build, CPU execution verified on host) |
+| Android armeabi-v7a / x86_64 | Engine built from the same source in the APK (CPU); not device-tested here |
+| Web | Compiles and runs; the engine is honestly reported unavailable (no fake inference) |
+| Linux host | Full verification environment for the engine and tests |
 
-**Never start the next phase without the phase report of the current one.**
+## Supported models (all verified by real inference tests)
 
-## Kickoff prompt (paste this to the AI build agent / arena AI, build mode)
+| Model | Role | Size | Scale |
+| --- | --- | --- | --- |
+| `realesr-animevideov3-x4` | compact default — low/balanced devices | 1.25 MB | 4× |
+| `realesrgan-x4plus-anime` | illustration quality step-up | 8.94 MB | 4× |
+| `realesrgan-x4plus` | flagship photographic | 33.42 MB | 4× |
+
+All weights are official Real-ESRGAN release artifacts (BSD-3-Clause),
+downloaded on explicit consent with SHA-256 verification against values
+recorded from the official package — never bundled into the APK.
+`realesr-general-x4v3` (the compact *general* model) is NOT included:
+upstream publishes only PyTorch weights with quantization-aware keys, and
+the conversion could not be completed honestly in this environment — see
+`docs/model-compatibility-matrix.md` for the full investigation.
+
+## Install
+
+See `docs/INSTALLATION.md` for: installing the built APK on a device,
+first-run model download, and the release signing procedure (the shipped
+APK is signed with the debug key for testability; no credentials were
+invented).
+
+## Build
+
+See `docs/BUILD.md` for the exact, verified commands: host verification
+build (ncnn + native engine + `flutter test`), the Android release APK
+(arm64 first), and the web build. The Android toolchain arithmetic for
+small disks is documented there too.
+
+## Run the tests
+
+```bash
+flutter analyze                    # No issues found
+flutter test                       # 59/59, includes REAL FFI inference tests
+# native suites (host):
+third_party/rs-host-build/test_tile_layout        # 9/9
+third_party/rs-host-build/test_feather_blend      # 8/8
+RS_TEST_MODEL_PARAM=… RS_TEST_MODEL_BIN=… RS_TEST_MODEL_SCALE=4 \
+  third_party/rs-host-build/test_engine           # 10/10 per model × 5
+```
+
+Full results and what each suite actually covers: `docs/QA-REPORT.md`.
+
+## Offline capabilities
+
+Everything except the one-time model download works with no network:
+image import (gallery/camera), inspection, planning, inference, encoding,
+saving, sharing. No analytics, no tracking, no telemetry — the manifest
+requests only `INTERNET` (model downloads) and `CAMERA` (capture).
+
+## Known limitations
+
+Honestly listed in `docs/KNOWN-LIMITATIONS.md` — including: no physical
+Android device was available in this environment (verification levels are
+labeled per claim), the Vulkan GPU path is compiled in but its execution
+was not testable here (CPU is the default with automatic fallback), and
+the general-x4v3 conversion is deferred with its technical rationale.
+
+## Repository layout
 
 ```
-You are the senior Flutter build agent for the RealScale-Pro project in this repository.
-The owner is a non-developer: never use unexplained jargon, and when a real decision
-is needed, present 2–3 options with a clear recommendation instead of asking
-technical questions.
-
-FIRST: read every markdown file in this repo in the order listed in README.md
-(prd.md, rules.md, architecture.md, phases.md, design-system.md, models.md,
-agents.md, licenses.md, qa-checklist.md). Treat prd.md + rules.md as binding.
-
-THEN do Phase 0 (feasibility spike) and Phase 1 exactly as specified in phases.md:
-- Phase 0: verify the ncnn reuse path and candidate packages, document results in reports/phase-0.md.
-- Phase 1: build the complete core app (Android + Windows): splash, guide, permission
-  primers, device check, Starter Pack download, Home screen (recents carousel, viewer,
-  import tiles, mode selector, app options, locked Video card), Upscale Mode with the
-  Default level, processing screen with real progress and ETA, result screen,
-  auto-save to the RealScale-Pro folder, My Upscales, basic Settings.
-
-HARD RULES:
-- Follow rules.md in everything (reuse-first, permissive licenses only, pinned versions,
-  no video code anywhere, never crash).
-- Work in small commits after each task in phases.md.
-- Test against qa-checklist.md as you go; every acceptance item must pass.
-- If a PRD decision cannot be resolved from the docs, ask the owner in plain language.
-
-FINALLY: write reports/phase-1.md using the phase-report template in agents.md
-(summary, what was built with file paths, how to run/test, test results vs the
-qa-checklist, known issues, risks, notes for Phase 2). Update changelog.md.
-
-Do not start Phase 2. Stop after the report and give the owner a short plain-English summary.
+lib/            Flutter app (core/, domain/, services/, processing/, engine/, features/)
+native/         C/C++ engine: stable C ABI, tiling, blending, ncnn engine, tests, rscli
+android/        Android embedding (gradle externalNativeBuild -> native/)
+assets/models/  registry.json (metadata + recorded SHA-256; no weights bundled)
+test/           Dart tests incl. REAL FFI integration tests
+tools/          build_native.sh, fetch_ncnn*.sh, benchmark_host.sh, bench_encode.dart,
+                generate_icon.py
+docs/           all project documentation (index below)
 ```
 
-## Owner's cheat sheet (non-technical)
+## Documentation index
 
-- **Start a phase:** paste the kickoff prompt above (say "start phase 1").
-- **Next phase:** say "start phase 2" — the agent must read `reports/phase-1.md` first.
-- **Check progress:** read `changelog.md` and `reports/phase-N.md`.
-- **Something looks wrong:** tell the agent in plain words; it must fix and re-test.
+- `AGENT_RULES.md` — binding engineering rules (honesty first)
+- `docs/PRD.md` — product requirements
+- `docs/architecture.md` — system architecture
+- `docs/native-engine-design.md` — C ABI, engine internals, GPU path
+- `docs/image-pipeline.md` — the full processing pipeline
+- `docs/DEVICE-COMPATIBILITY.md` — device tiers, adaptation, save strategy
+- `docs/models.md` + `docs/model-compatibility-matrix.md` — model registry
+- `docs/inference-test-report.md` — REAL inference verification record
+- `docs/PERFORMANCE-REPORT.md` — measured benchmarks
+- `docs/QA-REPORT.md` + `docs/QA-CHECKLIST.md` — test results
+- `docs/INSTALLATION.md` — install, models, signing
+- `docs/BUILD.md` — verified build instructions
+- `docs/dependency-inventory.md`, `docs/LICENSES.md`
+- `docs/design-system.md` — Paper-Crafted design language
+- `docs/KNOWN-LIMITATIONS.md` — what is NOT verified or NOT done
+- `docs/IMPLEMENTATION-ROADMAP.md`, `docs/CHANGELOG.md`
+- `docs/requirements-traceability.md`
+- `docs/PROMPT2_REPORT.md`, `docs/PROMPT3_REPORT.md` — session reports

@@ -1,208 +1,211 @@
-cmake_minimum_required(VERSION 3.18)
-project(realscale_ncnn LANGUAGES CXX)
+# RealScale-Pro — native engine CMake build.
+#
+# Targets:
+#   librealscale_native   — shared library loaded by Flutter through FFI
+#                           (Android: bundled into the APK; Linux: used
+#                           by flutter_test integration tests).
+#   rscli                 — host-only CLI harness (real end-to-end runs).
+#   rs_native_tests       — host-only native unit tests.
+#
+# Options:
+#   RS_BUILD_NCNN (ON)  — build the real ncnn inference engine. When
+#                         OFF the ABI still builds but rs_run returns
+#                         RS_ERR_UNSUPPORTED (interface-only builds).
+#   RS_NCNN_DIR          — path to an ncnn source tree or a directory
+#                          containing an installed ncnn (with
+#                          lib/cmake/ncnn). Defaults to the pinned
+#                          checkout fetched by tools/fetch_ncnn.sh.
+#   RS_BUILD_TESTS (host only) — build the native test binaries.
+#   RS_BUILD_CLI  (host only) — build rscli.
+#   RS_TEST_HOOKS (host tests only) — enable failure-injection hooks.
+#
+# Copyright 2026 RealScale-Pro contributors. MIT License.
+cmake_minimum_required(VERSION 3.16)
+
+project(realscale_native LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-option(ENABLE_VULKAN "Enable ncnn Vulkan GPU backend when available" ON)
-option(BUILD_SMOKE_TEST "Build native CLI smoke test binary" OFF)
-
-if(NOT DEFINED NCNN_DIR OR "${NCNN_DIR}" STREQUAL "")
-  if(ANDROID AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ncnn-android")
-    set(NCNN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ncnn-android")
-  elseif(UNIX AND NOT APPLE AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ncnn-linux")
-    set(NCNN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ncnn-linux")
-  elseif(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ncnn-windows")
-    set(NCNN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ncnn-windows")
-  endif()
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
 endif()
 
-if(NOT DEFINED NCNN_DIR OR "${NCNN_DIR}" STREQUAL "")
-  message(FATAL_ERROR
-    "NCNN_DIR not set and no prebuilt ncnn found under third_party/. "
-    "Run: bash native/fetch_ncnn.sh <android|linux|windows>")
-endif()
+option(RS_BUILD_NCNN "Build the ncnn inference engine" ON)
+option(RS_BUILD_TESTS "Build native tests (host only)" OFF)
+option(RS_BUILD_CLI "Build the rscli harness (host only)" OFF)
+option(RS_TEST_HOOKS "Enable test failure-injection hooks" OFF)
+option(RS_NCNN_VULKAN "The linked ncnn was built with Vulkan support" OFF)
+set(RS_NCNN_DIR "" CACHE PATH "ncnn source or install directory")
+set(RS_NCNN_ANDROID_DIR "" CACHE PATH "ncnn-android prebuilt tree (per-ABI subdirs)")
 
-# --- Locate ncnn ---------------------------------------------------------------
-# Prebuilt Android archives place the CMake package under <abi>/lib/cmake/ncnn,
-# desktop archives under lib/cmake/ncnn.
-set(NCNN_CMAKE_DIR "")
-foreach(_cand
-    "${NCNN_DIR}/${ANDROID_ABI}/lib/cmake/ncnn"
-    "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/lib/cmake/ncnn"
-    "${NCNN_DIR}/lib/cmake/ncnn")
-  if(EXISTS "${_cand}" AND NCNN_CMAKE_DIR STREQUAL "")
-    set(NCNN_CMAKE_DIR "${_cand}")
-  endif()
-endforeach()
-
-# Header location: prebuilt Android archives put headers under <abi>/include,
-# desktop archives under include/. Added to our own target explicitly so the
-# build never depends on a package config's baked-in (and often stale) paths.
-#
-# The shim includes <net.h> / <gpu.h> exactly the way ncnn's own config does,
-# so the `include/ncnn` directory is the one that must be on the search path.
-# The plain `include` directory is added too so <ncnn/net.h> also resolves.
-set(NCNN_INCLUDE_BASE "")
-foreach(_cand
-    "${NCNN_DIR}/${ANDROID_ABI}/include"
-    "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/include"
-    "${NCNN_DIR}/include")
-  if(EXISTS "${_cand}" AND NCNN_INCLUDE_BASE STREQUAL "")
-    set(NCNN_INCLUDE_BASE "${_cand}")
-  endif()
-endforeach()
-if(EXISTS "${NCNN_INCLUDE_BASE}/ncnn/net.h")
-  set(NCNN_INCLUDE_DIR "${NCNN_INCLUDE_BASE}/ncnn")
-else()
-  set(NCNN_INCLUDE_DIR "${NCNN_INCLUDE_BASE}")
-endif()
-message(STATUS "ncnn headers: ${NCNN_INCLUDE_DIR}")
-
-set(NCNN_HAVE_PACKAGE FALSE)
-if(NOT NCNN_CMAKE_DIR STREQUAL "")
-  # QUIET (not REQUIRED): some prebuilt configs fail their own dependency
-  # probe (a Vulkan-enabled ncnn whose Vulkan lookup misses on Android). In
-  # that case we fall back to importing the archive by hand below instead of
-  # breaking the whole APK build.
-  find_package(ncnn QUIET PATHS "${NCNN_CMAKE_DIR}" NO_DEFAULT_PATH)
-  if(TARGET ncnn)
-    set(NCNN_HAVE_PACKAGE TRUE)
-  elseif(TARGET ncnn::ncnn)
-    # Namespaced export: bridge it to the plain name the shim links against.
-    add_library(ncnn INTERFACE IMPORTED GLOBAL)
-    set_target_properties(ncnn PROPERTIES
-      INTERFACE_LINK_LIBRARIES ncnn::ncnn)
-    set(NCNN_HAVE_PACKAGE TRUE)
-  endif()
-endif()
-
-if(NOT NCNN_HAVE_PACKAGE)
-  set(NCNN_LIBRARY "")
-  foreach(_cand
-      "${NCNN_DIR}/${ANDROID_ABI}/lib/libncnn.a"
-      "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/lib/libncnn.a"
-      "${NCNN_DIR}/lib/libncnn.a"
-      "${NCNN_DIR}/${ANDROID_ABI}/lib/libncnn.so"
-      "${NCNN_DIR}/lib/libncnn.so")
-    if(EXISTS "${_cand}" AND NCNN_LIBRARY STREQUAL "")
-      set(NCNN_LIBRARY "${_cand}")
-    endif()
-  endforeach()
-  if(NCNN_LIBRARY STREQUAL "")
-    message(FATAL_ERROR
-      "Could not locate an ncnn CMake package or library under ${NCNN_DIR}. "
-      "Run: bash native/fetch_ncnn.sh <android|linux|windows>")
-  endif()
-
-  message(STATUS "ncnn: manual import ${NCNN_LIBRARY}")
-
-  # System libs the prebuilt ncnn was linked against.
-  set(NCNN_EXTRA_LIBS "")
-  find_package(Threads QUIET)
-  if(TARGET Threads::Threads)
-    list(APPEND NCNN_EXTRA_LIBS Threads::Threads)
-  endif()
-  find_library(_ncnn_z z)
-  if(_ncnn_z)
-    list(APPEND NCNN_EXTRA_LIBS "${_ncnn_z}")
-  endif()
-  if(ANDROID)
-    list(APPEND NCNN_EXTRA_LIBS log android jnigraphics)
-    if(ENABLE_VULKAN)
-      # NDK stub: present from API 24, which is our minSdk (26).
-      find_library(_ncnn_vulkan vulkan)
-      if(_ncnn_vulkan)
-        list(APPEND NCNN_EXTRA_LIBS "${_ncnn_vulkan}")
-      endif()
-    endif()
-  endif()
-
-  # A Vulkan-enabled ncnn is statically linked against glslang + SPIRV-Tools.
-  # Those archives ship next to libncnn.a, so pick up every one of them in
-  # dependency order (glslang pulls symbols from its own helpers).
-  set(_ncnn_lib_dir "")
-  foreach(_cand
-      "${NCNN_DIR}/${ANDROID_ABI}/lib"
-      "${NCNN_DIR}/${CMAKE_ANDROID_ARCH_ABI}/lib"
-      "${NCNN_DIR}/lib")
-    if(EXISTS "${_cand}" AND _ncnn_lib_dir STREQUAL "")
-      set(_ncnn_lib_dir "${_cand}")
-    endif()
-  endforeach()
-  foreach(_name
-      SPIRV-Tools-opt
-      SPIRV-Tools
-      SPIRV
-      glslang
-      OGLCompiler
-      OSDependent
-      MachineIndependent
-      GenericCodeGen)
-    if(EXISTS "${_ncnn_lib_dir}/lib${_name}.a")
-      list(APPEND NCNN_EXTRA_LIBS "${_ncnn_lib_dir}/lib${_name}.a")
-    endif()
-  endforeach()
-  # Anything else that ships alongside (newer ncnn splits libs differently).
-  file(GLOB _ncnn_other_archives "${_ncnn_lib_dir}/*.a")
-  foreach(_a IN LISTS _ncnn_other_archives)
-    get_filename_component(_n "${_a}" NAME_WE)
-    if(NOT _n STREQUAL "ncnn" AND NOT "${_a}" IN_LIST NCNN_EXTRA_LIBS)
-      list(APPEND NCNN_EXTRA_LIBS "${_a}")
-    endif()
-  endforeach()
-
-  add_library(ncnn STATIC IMPORTED GLOBAL)
-  set_target_properties(ncnn PROPERTIES
-    IMPORTED_LOCATION "${NCNN_LIBRARY}"
-    INTERFACE_LINK_LIBRARIES "${NCNN_EXTRA_LIBS}"
-    INTERFACE_COMPILE_FEATURES "cxx_std_11")
-else()
-  message(STATUS "ncnn: CMake package at ${NCNN_CMAKE_DIR}")
-endif()
-
-file(
-  APPEND "${CMAKE_CURRENT_BINARY_DIR}/ncnn_report.txt"
-  "NCNN_HAVE_PACKAGE=${NCNN_HAVE_PACKAGE}\n"
-  "NCNN_INCLUDE_DIR=${NCNN_INCLUDE_DIR}\n"
-  "NCNN_LIBRARY=${NCNN_LIBRARY}\n"
-  "NCNN_EXTRA_LIBS=${NCNN_EXTRA_LIBS}\n"
+set(RS_CORE_SOURCES
+  src/tile_layout.cpp
+  src/feather_blend.cpp
+  src/error.cpp
+  src/abi.cpp
 )
 
-add_library(realscale_ncnn SHARED realscale_ncnn.cpp)
-target_link_libraries(realscale_ncnn PRIVATE ncnn)
-if(NOT NCNN_INCLUDE_DIR STREQUAL "")
-  target_include_directories(realscale_ncnn PRIVATE "${NCNN_INCLUDE_DIR}")
-endif()
-if(NOT NCNN_INCLUDE_BASE STREQUAL "")
-  target_include_directories(realscale_ncnn PRIVATE "${NCNN_INCLUDE_BASE}")
+if(RS_BUILD_NCNN)
+  list(APPEND RS_CORE_SOURCES src/engine_ncnn.cpp)
+
+  # Locate ncnn, in priority order:
+  #   1. RS_NCNN_LIB + RS_NCNN_INCLUDE — explicit prebuilt static lib
+  #      (fast; used by the host verification build and by Android).
+  #   2. RS_NCNN_DIR with an install tree (lib/cmake/ncnn).
+  #   3. RS_NCNN_DIR as a source tree -> subordinate build (slow, last
+  #      resort; never rebuilds when a prebuilt lib is available).
+  set(RS_NCNN_LIB "" CACHE FILEPATH "path to a prebuilt libncnn.a")
+  set(RS_NCNN_INCLUDE "" CACHE PATH "path to the ncnn src/ (contains net.h)")
+
+  # Android: derive the per-ABI prebuilt paths from RS_NCNN_ANDROID_DIR.
+  # The official ncnn android prebuilts ship as
+  #   <dir>/<abi>/lib/libncnn.a (+ glslang/SPIRV family for Vulkan)
+  #   <dir>/<abi>/include/ncnn/*.h
+  # We link the raw archives instead of the imported CMake target because
+  # that target propagates -fno-exceptions/-fno-rtti to consumers, which
+  # our exception-based recovery engine cannot tolerate.
+  if(NOT RS_NCNN_LIB AND RS_NCNN_ANDROID_DIR AND ANDROID)
+    set(_rs_android_abi "${CMAKE_ANDROID_ARCH_ABI}")
+    if(NOT _rs_android_abi)
+      set(_rs_android_abi "$ENV{ANDROID_ABI}")
+    endif()
+    set(_rs_ncnn_prefix "${RS_NCNN_ANDROID_DIR}/${_rs_android_abi}")
+    if(EXISTS "${_rs_ncnn_prefix}/lib/libncnn.a")
+      set(RS_NCNN_LIB "${_rs_ncnn_prefix}/lib/libncnn.a")
+      set(RS_NCNN_INCLUDE "${_rs_ncnn_prefix}/include/ncnn")
+      # Vulkan builds also need the glslang/SPIRV static family.
+      set(RS_NCNN_VULKAN_EXTRA_LIBS
+        "${_rs_ncnn_prefix}/lib/libglslang-default-resource-limits.a"
+        "${_rs_ncnn_prefix}/lib/libglslang.a"
+        "${_rs_ncnn_prefix}/lib/libMachineIndependent.a"
+        "${_rs_ncnn_prefix}/lib/libGenericCodeGen.a"
+        "${_rs_ncnn_prefix}/lib/libOSDependent.a"
+        "${_rs_ncnn_prefix}/lib/libSPIRV.a")
+      set(RS_NCNN_VULKAN ON)
+      message(STATUS "realscale_native: android ncnn prebuilt (${_rs_android_abi}, vulkan)")
+    else()
+      message(WARNING "RS_NCNN_ANDROID_DIR set but ${_rs_ncnn_prefix}/lib/libncnn.a is missing")
+    endif()
+  endif()
+
+  if(RS_NCNN_LIB AND RS_NCNN_INCLUDE AND EXISTS "${RS_NCNN_LIB}")
+    set(RS_NCNN_LIBRARIES "${RS_NCNN_LIB}")
+    set(RS_NCNN_INCLUDE_DIRS "${RS_NCNN_INCLUDE}")
+    set(RS_HAS_NCNN ON)
+    message(STATUS "realscale_native: using prebuilt ncnn: ${RS_NCNN_LIB}")
+  else()
+    set(_ncnn_root "${RS_NCNN_DIR}")
+    if(NOT _ncnn_root)
+      get_filename_component(_default_root
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/ncnn" ABSOLUTE)
+      set(_ncnn_root "${_default_root}")
+    endif()
+    find_package(ncnn QUIET PATHS "${_ncnn_root}" "${_ncnn_root}/install"
+                 "${_ncnn_root}/build/install" NO_DEFAULT_PATH)
+    if(ncnn_FOUND)
+      set(RS_NCNN_LIBRARIES ncnn)
+      set(RS_NCNN_INCLUDE_DIRS "")
+      set(RS_HAS_NCNN ON)
+      message(STATUS "realscale_native: using installed ncnn config")
+    elseif(EXISTS "${_ncnn_root}/CMakeLists.txt")
+      set(NCNN_VULKAN OFF CACHE BOOL "" FORCE)
+      set(NCNN_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+      set(NCNN_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+      set(NCNN_BUILD_BENCHMARK OFF CACHE BOOL "" FORCE)
+      set(NCNN_PYTHON_TOOLS OFF CACHE BOOL "" FORCE)
+      set(NCNN_SHARED_LIB OFF CACHE BOOL "" FORCE)
+      add_subdirectory("${_ncnn_root}" "${CMAKE_BINARY_DIR}/ncnn-build"
+        EXCLUDE_FROM_ALL)
+      set(RS_NCNN_LIBRARIES ncnn)
+      set(RS_NCNN_INCLUDE_DIRS "${_ncnn_root}/src")
+      set(RS_HAS_NCNN ON)
+    else()
+      message(WARNING
+        "ncnn not found at ${_ncnn_root} — building interface-only engine.")
+      set(RS_HAS_NCNN OFF)
+    endif()
+  endif()
 endif()
 
-if(ENABLE_VULKAN)
-  target_compile_definitions(realscale_ncnn PRIVATE RS_ENABLE_VULKAN=1)
+if(NOT RS_HAS_NCNN AND RS_BUILD_NCNN)
+  list(APPEND RS_CORE_SOURCES src/engine_stub.cpp)
+endif()
+
+add_library(realscale_native SHARED ${RS_CORE_SOURCES})
+target_include_directories(realscale_native
+  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_compile_definitions(realscale_native PRIVATE RS_ABI_VERSION_DEF=1)
+
+if(RS_HAS_NCNN)
+  target_include_directories(realscale_native PRIVATE ${RS_NCNN_INCLUDE_DIRS})
+  target_link_libraries(realscale_native PRIVATE ${RS_NCNN_LIBRARIES})
+  if(RS_NCNN_VULKAN_EXTRA_LIBS)
+    foreach(_vk_lib IN LISTS RS_NCNN_VULKAN_EXTRA_LIBS)
+      if(EXISTS "${_vk_lib}")
+        target_link_libraries(realscale_native PRIVATE "${_vk_lib}")
+      else()
+        message(WARNING "vulkan helper lib missing: ${_vk_lib}")
+      endif()
+    endforeach()
+  endif()
+  if(RS_NCNN_VULKAN)
+    # Enables the engine's Vulkan code paths (GPU probe + optional GPU
+    # compute with CPU fallback). The linked ncnn must be a Vulkan build.
+    target_compile_definitions(realscale_native PRIVATE NCNN_VULKAN=1)
+  endif()
+  # ncnn host builds may be compiled with OpenMP (official Android
+  # prebuilts are); link it only when present.
+  find_package(OpenMP QUIET)
+  if(OpenMP_FOUND)
+    target_link_libraries(realscale_native PRIVATE OpenMP::OpenMP_CXX)
+  endif()
+  target_compile_definitions(realscale_native PRIVATE RS_HAS_NCNN=1)
+  if(RS_BUILD_TESTS)
+    # Test builds compile the failure-injection hooks into the shared
+    # library so recovery paths can be exercised. Production Android
+    # builds never set RS_BUILD_TESTS.
+    target_compile_definitions(realscale_native PRIVATE RS_TEST_HOOKS=1)
+  endif()
 else()
-  target_compile_definitions(realscale_ncnn PRIVATE RS_ENABLE_VULKAN=0)
+  # Interface-only fallback: the ABI reports the engine as unsupported.
+  message(STATUS "realscale_native: interface-only build (no ncnn)")
 endif()
 
 if(ANDROID)
-  target_link_libraries(realscale_ncnn PRIVATE log android)
-  # Link OpenMP statically so the APK needs no standalone libomp.so at
-  # runtime, and align ELF segments to 16 KB for Android 15/16 devices.
-  target_link_options(realscale_ncnn PRIVATE
-    "-fopenmp"
-    "-static-openmp"
-    "-Wl,-z,max-page-size=16384"
-  )
+  target_link_libraries(realscale_native PRIVATE log android jnigraphics dl)
+  # ncnn android prebuilts are compiled with OpenMP; the NDK only ships
+  # the static runtime, so link it statically.
+  target_link_options(realscale_native PRIVATE -fopenmp -static-openmp)
+  set_target_properties(realscale_native PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
 endif()
 
-set_target_properties(realscale_ncnn PROPERTIES
-  OUTPUT_NAME "realscale_ncnn"
-  C_VISIBILITY_PRESET hidden
-  CXX_VISIBILITY_PRESET hidden
-)
+# ------------------------------------------------------------------ #
+# Host-only extras.
+# ------------------------------------------------------------------ #
+if(NOT ANDROID)
+  if(RS_BUILD_CLI)
+    add_executable(rscli tools/rscli.cpp)
+    target_link_libraries(rscli PRIVATE realscale_native)
+    target_include_directories(rscli PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/stb")
+  endif()
 
-if(BUILD_SMOKE_TEST AND NOT ANDROID)
-  add_executable(realscale_ncnn_smoke smoke_test.cpp)
-  target_link_libraries(realscale_ncnn_smoke PRIVATE realscale_ncnn)
+  if(RS_BUILD_TESTS)
+    set(RS_STB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/stb")
+    foreach(t test_tile_layout test_feather_blend test_engine)
+      add_executable(${t} tests/${t}.cpp)
+      target_include_directories(${t} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src" ${RS_STB_DIR})
+      if(t STREQUAL "test_engine")
+        target_link_libraries(${t} PRIVATE realscale_native)
+        target_compile_definitions(${t} PRIVATE RS_TEST_HOOKS=1)
+      else()
+        target_sources(${t} PRIVATE src/tile_layout.cpp src/feather_blend.cpp)
+      endif()
+    endforeach()
+  endif()
 endif()
