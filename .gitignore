@@ -42,14 +42,20 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Downloaded AI models & native prebuilts (never commit weights/binaries)
+# Downloaded AI models & native prebuilts (never commit weights/binaries).
+# The model registry, its checksums and the tiny test fixtures ARE committed:
+# the test suite runs real inference against them in CI.
 /models_cache/
 /native/third_party/
 /native/build*/
-/test/fixtures/
+/test/fixtures/tmp/
+/test/fixtures/out/
 *.param
 *.bin
 !/**/assets/models_starter/**
+!/test/fixtures/**
+# Artifacts produced by the release workflows
+/release-out/
 
 # Local config
 .env

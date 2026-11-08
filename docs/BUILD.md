@@ -1,5 +1,39 @@
 # BUILD.md
 
+## CI: the APK is built on GitHub Actions (the primary path)
+
+`.github/workflows/android-release-apk.yml` is the supported way to get an
+installable APK without any local toolchain. Two independent jobs:
+
+| Job | What it proves |
+| --- | --- |
+| `verify` | `dart format` (advisory), `flutter analyze --fatal-warnings`, all Dart tests, native unit tests, and a **real** ncnn inference run on the committed model fixture (`RS_TEST_FAIL_TILES` also exercises OOM recovery), plus an `rscli` end-to-end upscale whose output PNG is checked for the expected 880×880 geometry. |
+| `android-apk` | `flutter build apk --release` (universal) and `--split-per-abi`, with the engine compiled by the NDK for `arm64-v8a`, `armeabi-v7a` and `x86_64`. The job unzips every APK and asserts `libapp.so` + `librealscale_native.so` are inside, greps the arm64 engine for the `ncnn-cpu` backend string (so the interface-only stub can never be shipped silently), and runs `apksigner verify` on each file. |
+
+Trigger: Actions → **Android release APK** → *Run workflow* (inputs:
+`split_per_abi`, `include_native_ncnn`), or any push to `main` / `arena/**`.
+Artifacts: `realscale-pro-release-apk-<run>` containing
+`realscale-pro-<version>-universal.apk`, `…-arm64-v8a.apk`,
+`…-armeabi-v7a.apk`, `…-x86_64.apk` and `README-APK.txt` with SHA-256 sums.
+
+Signing in CI: set the `KEY_PROPERTIES` repository secret to the base64 of an
+`android/key.properties` file (`storeFile`, `storePassword`, `keyAlias`,
+`keyPassword`). Without it the release APK is signed with the debug
+certificate — still a full release build (AOT Dart + native ncnn), just not
+store-ready.
+
+The workflows download everything they need into `../third_party` (outside the
+checkout, so Gradle never treats the prebuilts as project inputs):
+
+```bash
+bash tools/fetch_ncnn.sh linux      # pinned host ncnn source (09981a0…)
+bash tools/fetch_ncnn.sh android    # official android-vulkan prebuilts, 3 ABIs
+bash tools/fetch_ncnn.sh stb        # header-only stb for rscli
+bash tools/build_native.sh          # host .so + test binaries + rscli
+```
+
+Override the location with `RS_THIRD_PARTY_DIR=/abs/path` on any of them.
+
 ## Environment facts (verified 2026-11-06 in this sandbox)
 
 - Debian 13, 2 × x86_64, 3.9 GB RAM, no swap, no sudo, ~10 GB rootfs.

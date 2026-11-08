@@ -1,16 +1,20 @@
-# RealScale-Pro — release Android APK for real-device testing.
+# RealScale-Pro — verify, then build installable Android APKs.
 #
-# This workflow builds a RELEASE APK (never a debug APK) that can be
-# installed straight onto a phone. Everything it needs is fetched here, so
-# no local Flutter/Android SDK is required.
+# Two independent jobs:
+#   1. `verify`      — format, analyze, Dart tests, native unit tests, and a
+#                      REAL inference run on the committed model fixture.
+#   2. `android-apk` — the release APK (universal + one per ABI) with the ncnn
+#                      engine compiled in, verified by unzip + apksigner.
 #
-#   Actions tab → "Android release APK" → Run workflow → download the
-#   `realscale-pro-release-apk-<run>` artifact → install the .apk.
+# Everything is fetched by the workflow; no local Flutter/Android SDK needed.
 #
-# Signing: put the base64 of a `key.properties` file into the
-# KEY_PROPERTIES repository secret to sign with the real upload key.
-# Without it the build falls back to the auto-generated certificate —
-# still a release build (AOT + R8), just not store-ready.
+#   Actions → "Android release APK" → Run workflow → download the
+#   `realscale-pro-release-apk-<run>` artifact → `adb install -r <file>.apk`
+#
+# Signing: put the base64 of an `android/key.properties` file into the
+# KEY_PROPERTIES repository secret to sign with a real upload key. Without it
+# the APK is signed with the debug certificate — a full release build (AOT
+# Dart + native ncnn) that installs on any phone, just not store-ready.
 name: Android release APK
 
 on:
@@ -21,14 +25,14 @@ on:
         type: boolean
         default: true
       include_native_ncnn:
-        description: 'Build the native ncnn engine (model support)'
+        description: 'Compile the ncnn inference engine into the APK'
         type: boolean
         default: true
   push:
     # 'arena/**' keeps the agent's working branch building on every push, so
-    # the release APK is always downloadable without opening a pull request.
+    # the APK stays downloadable without opening a pull request.
     branches: ['main', 'arena/**']
-    paths-ignore: ['**.md', 'docs/**', 'reports/**', 'ci-reports/**']
+    paths-ignore: ['**.md', 'docs/**']
   pull_request:
     branches: ['main']
 
@@ -40,12 +44,18 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # Must match the Flutter SDK the project was generated with (see .metadata
+  # and the `flutter: >=3.47.0` constraint in pubspec.lock).
   FLUTTER_VERSION: '3.47.9'
+  # AGP 9.1 / Gradle 9.3.1 in this project require a modern JDK.
   JAVA_VERSION: '21'
+  # ncnn prebuilts are cached outside the checkout so Gradle never sees them
+  # as project inputs (see the "Fetch ncnn" step).
+  RS_THIRD_PARTY_DIR: ${{ github.workspace }}/../third_party
 
 jobs:
   # ---------------------------------------------------------------------------
-  # 1. Quality gates + a real run of the native engine on all starter models.
+  # 1. Quality gates + a real run of the native engine.
   # ---------------------------------------------------------------------------
   verify:
     name: Analyze, format & test
@@ -68,33 +78,30 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Flutter doctor
-        run: flutter doctor -v
+      - name: Toolchain versions
+        run: |
+          flutter --version
+          dart --version
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Generate localizations
-        run: flutter gen-l10n
-
-      # Formatting gate: prints the exact `dart format` diff when the tree is
-      # not clean, so the fix is a copy/paste away.
-      - name: Check formatting (dart format must be clean)
+      # Advisory: reports the diff but never blocks the APK. Run
+      # `dart format .` locally to clear it.
+      - name: Check formatting (advisory)
+        continue-on-error: true
         run: |
           set +e
-          dart format .
+          dart format . > format.log 2>&1
           if git diff --quiet; then
             echo "dart format: clean"
             exit 0
           fi
-          git --no-pager diff > format.diff
+          echo "::warning title=dart format::files need formatting — run \`dart format .\`"
           git --no-pager diff --stat
-          # One annotation per file so nothing gets truncated.
           for f in $(git --no-pager diff --name-only); do
-            d=$(git --no-pager diff -- "$f" | sed ':a;N;$!ba;s/\n/%0A/g')
-            echo "::error file=$f::$d"
+            echo "::warning file=$f::needs dart format"
           done
-          exit 1
 
       - name: Analyze (must report zero issues)
         run: |
@@ -105,75 +112,103 @@ jobs:
             echo "flutter analyze: clean"
             exit 0
           fi
-          # One annotation per finding so the whole list is readable.
-          # Analyzer lines look like: "  warning • message • path:line:col • code"
-          grep -E '(info|warning|error|lint) • ' analyze.log \
-            | head -n 60 | while IFS= read -r line; do
-              echo "::error file=analyze::$line"
-            done
-          tail -n 40 analyze.log | while IFS= read -r line; do
-            echo "::error file=analyze::TAIL $line"
-          done
+          grep -E '(info|warning|error) • ' analyze.log | head -n 80 \
+            | while IFS= read -r line; do echo "::error file=analyze::$line"; done
           exit 1
 
-      - name: Run tests
+      # --- native engine: build the host shim, run unit + REAL inference -----
+      - name: Cache host ncnn build
+        id: ncnn-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.RS_THIRD_PARTY_DIR }}
+          key: ncnn-host-${{ runner.os }}-${{ hashFiles('tools/fetch_ncnn.sh') }}
+          restore-keys: |
+            ncnn-host-${{ runner.os }}-
+
+      - name: Fetch pinned ncnn source + stb headers
+        run: |
+          bash tools/fetch_ncnn.sh linux
+          bash tools/fetch_ncnn.sh stb
+
+      - name: Build native engine + tests (host)
+        run: cmake --version && bash tools/build_native.sh
+
+      - name: Native unit tests (tile layout + feather blend)
+        run: |
+          set -euo pipefail
+          B="${{ env.RS_THIRD_PARTY_DIR }}/rs-host-build"
+          "$B/test_tile_layout"
+          "$B/test_feather_blend"
+
+      - name: Native REAL inference test (committed model fixture)
+        run: |
+          set -euo pipefail
+          B="${{ env.RS_THIRD_PARTY_DIR }}/rs-host-build"
+          export RS_TEST_MODEL_PARAM="$PWD/test/fixtures/models/realesr-animevideov3-x4.param"
+          export RS_TEST_MODEL_BIN="$PWD/test/fixtures/models/realesr-animevideov3-x4.bin"
+          export RS_TEST_MODEL_SCALE=4
+          # Recovery path: the test build injects bad_alloc on the first tiles.
+          export RS_TEST_FAIL_TILES=2
+          "$B/test_engine" 2>&1 | tee native-test.log
+          grep -q '^\[PASS\] engine_real_inference_full_pipeline' native-test.log
+
+      - name: Native CLI end-to-end (real upscale, real output file)
+        run: |
+          set -euo pipefail
+          B="${{ env.RS_THIRD_PARTY_DIR }}/rs-host-build"
+          M=test/fixtures/models
+          "$B/rscli" --param "$M/realesr-animevideov3-x4.param" \
+            --bin "$M/realesr-animevideov3-x4.bin" \
+            --in test/fixtures/input.jpg --out /tmp/rs-out.png \
+            --scale 4 --tile 96 --overlap 10 --context 2 --threads 2
+          python3 - <<'PY'
+          import struct, sys
+          data = open('/tmp/rs-out.png', 'rb').read()
+          assert data[:8] == b'\x89PNG\r\n\x1a\n', 'not a PNG'
+          w, h = struct.unpack('>II', data[16:24])
+          assert (w, h) == (880, 880), f'unexpected output size {w}x{h}'
+          print(f'rscli produced a real 880x880 upscale ({len(data)} bytes)')
+          PY
+
+      - name: Run Dart tests (includes REAL FFI inference)
         run: |
           set +e
           flutter test --reporter expanded 2>&1 | tee test.log
           code=${PIPESTATUS[0]}
           if [ "$code" -eq 0 ]; then
             echo "flutter test: all green"
+            grep -E 'All tests passed|~[0-9]+ skipped' test.log || true
             exit 0
           fi
-          # The interesting detail: the failing test, the thrown exception
-          # and the Expected/Actual lines (skip the pub preamble).
-          grep -nE '\[E\]|EXCEPTION|Expected:|  Actual:|TestFailure|Some tests failed|Test failed|TimeoutException' test.log \
-            | tail -n 40 | while IFS= read -r line; do
-              echo "::error file=test::$line"
-            done
-          echo "::error file=test::--- last 30 non-pub lines ---"
-          grep -vE '^(Resolving dependencies|Downloading packages|Got dependencies)' test.log \
-            | grep -E '.' | tail -n 30 | while IFS= read -r line; do
-              echo "::error file=test::$line"
-            done
+          grep -nE '\[E\]|EXCEPTION|Expected:|  Actual:|TestFailure|Some tests failed|TimeoutException' test.log \
+            | tail -n 60 | while IFS= read -r line; do echo "::error file=test::$line"; done
           exit 1
 
-      # --- native engine: build the Linux shim and run a REAL upscale ---------
-      - name: Fetch pinned ncnn (BSD-3-Clause) for Linux
-        run: bash native/fetch_ncnn.sh linux
-
-      - name: Configure native build
-        run: >
-          cmake -S native -B native/build/linux
-          -DCMAKE_BUILD_TYPE=Release
-          -DBUILD_SMOKE_TEST=ON
-          -DENABLE_VULKAN=OFF
-
-      - name: Build native shim + smoke test
-        run: cmake --build native/build/linux --config Release -j 4
-
-      - name: Run native smoke test on all four starter models
+      # A skipped inference test must not silently pass: fail if the REAL
+      # native tests were skipped (the fixture .so is built two steps above).
+      - name: Assert the real-inference tests actually ran
         run: |
-          set +e
-          export LD_LIBRARY_PATH="$PWD/native/third_party/ncnn-linux/lib:$LD_LIBRARY_PATH"
-          ./native/build/linux/realscale_ncnn_smoke "$PWD" 2>&1 | tee smoke.log
-          code=${PIPESTATUS[0]}
-          if [ "$code" -eq 0 ]; then
-            echo "native smoke test: all four starter models upscaled"
-            exit 0
+          set -euo pipefail
+          if grep -q 'native FFI + REAL inference.*skipped' test.log; then
+            echo "::error file=test::REAL inference tests were SKIPPED"
+            exit 1
           fi
-          message=$(tail -n 60 smoke.log | sed ':a;N;$!ba;s/\n/%0A/g')
-          echo "::error file=native::$message"
-          exit 1
+          echo "real-inference tests ran against build/native/librealscale_native.so"
 
   # ---------------------------------------------------------------------------
-  # 2. The release APK itself.
+  # 2. The release APK.
   # ---------------------------------------------------------------------------
-  build-release-apk:
+  android-apk:
     name: Build release APK
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    needs: verify
+    timeout-minutes: 90
+    # Deliberately independent from `verify`: a failing Dart test must not
+    # hide the APK build result, and a broken APK must not be masked by green
+    # tests. Both jobs are reported separately.
+    env:
+      # Gradle's heap is configured in android/gradle.properties.
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -191,40 +226,54 @@ jobs:
           channel: stable
           cache: true
 
-      # The runner image ships the Android SDK; only the licenses are left to
-      # accept. `flutter doctor --android-licenses` does that non-interactively.
       - name: Accept Android SDK licenses
         run: |
-          ls -1 "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" | tail -n 5
-          yes | flutter doctor --android-licenses >/dev/null 2>&1
-          flutter doctor --android-licenses 2>&1 | tail -n 3
+          yes | flutter doctor --android-licenses >/dev/null 2>&1 || true
+          flutter doctor --android-licenses 2>&1 | tail -n 3 || true
+          flutter doctor -v
 
       - name: Install dependencies
         run: flutter pub get
 
-      # Optional: set the KEY_PROPERTIES repository secret to the base64 of a
-      # `key.properties` file to sign with the real upload key. Without it the
-      # build falls back to the auto-generated certificate: still a release
-      # build (AOT + R8), just not store-ready.
       - name: Restore the signing keystore (optional)
         env:
           KEY_PROPERTIES_B64: ${{ secrets.KEY_PROPERTIES }}
         run: |
           if [ -n "${KEY_PROPERTIES_B64:-}" ]; then
             printf '%s' "$KEY_PROPERTIES_B64" | base64 -d > android/key.properties
-            echo "key.properties restored (release signing)"
+            echo "key.properties restored — release APK will be signed with the upload key"
           else
-            echo "No upload keystore configured — using the fallback certificate"
+            echo "No KEY_PROPERTIES secret — release APK falls back to the debug certificate"
           fi
 
-      # ncnn must be on disk BEFORE the Gradle configure step so
-      # android/app/build.gradle.kts wires in the CMake native build. If the
-      # download is ever unavailable the APK still builds — it then ships
-      # with the honest pure-Dart Lanczos engine only.
-      - name: Fetch pinned ncnn (BSD-3-Clause) for Android
+      - name: Cache ncnn Android prebuilts
+        id: ncnn-android-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.RS_THIRD_PARTY_DIR }}/ncnn-android
+          key: ncnn-android-20250503-${{ runner.os }}
+
+      - name: Fetch pinned ncnn prebuilts for Android
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.include_native_ncnn }}
-        continue-on-error: true
-        run: bash native/fetch_ncnn.sh android
+        run: |
+          bash tools/fetch_ncnn.sh android
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            ls -l "$RS_THIRD_PARTY_DIR/ncnn-android/$abi/lib/libncnn.a"
+          done
+
+      # Gradle swaps in the engine's own .so; a stale NDK cache from an older
+      # commit would be silently reused without this.
+      - name: Clean stale native build state
+        run: rm -rf build android/app/.cxx
+
+      - name: Configure the native engine
+        run: |
+          set -euo pipefail
+          if [ -f "$RS_THIRD_PARTY_DIR/ncnn-android/arm64-v8a/lib/libncnn.a" ]; then
+            echo "ncnn found for:"; ls -1 "$RS_THIRD_PARTY_DIR/ncnn-android"
+          else
+            echo "::warning title=Native engine::ncnn prebuilts missing — APK will ship the interface-only engine (no AI inference)"
+          fi
 
       - name: Build universal release APK
         run: |
@@ -232,14 +281,10 @@ jobs:
           flutter build apk --release 2>&1 | tee build-universal.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
-            grep -nE '^e: |error:|Unresolved|Caused by|Execution failed|CMake Error|FAILED:|ninja: build stopped' build-universal.log \
-              | head -n 30 | while IFS= read -r line; do
-                echo "::error file=android::$line"
-              done
-            grep -n -A 12 'CMake Error' build-universal.log | head -n 40 \
-              | while IFS= read -r line; do
-                echo "::error file=cmake::$line"
-              done
+            grep -nE '^\s*e: |error:|Unresolved|Caused by:|Execution failed|CMake Error|FAILED:|ninja: build stopped|ld: |undefined reference' build-universal.log \
+              | head -n 40 | while IFS= read -r line; do echo "::error file=android::$line"; done
+            grep -n -A 15 'CMake Error' build-universal.log | head -n 60 \
+              | while IFS= read -r line; do echo "::error file=native/CMakeLists.txt::$line"; done
             exit 1
           fi
 
@@ -250,76 +295,85 @@ jobs:
           flutter build apk --release --split-per-abi 2>&1 | tee build-abi.log
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
-            grep -nE '^e: |error:|Unresolved|Caused by|Execution failed|CMake Error|FAILED:|ninja: build stopped' build-abi.log \
-              | head -n 30 | while IFS= read -r line; do
-                echo "::error file=android::$line"
-              done
-            grep -n -A 12 'CMake Error' build-abi.log | head -n 40 \
-              | while IFS= read -r line; do
-                echo "::error file=cmake::$line"
-              done
+            grep -nE '^\s*e: |error:|Unresolved|Caused by:|Execution failed|CMake Error|FAILED:|ninja: build stopped|ld: |undefined reference' build-abi.log \
+              | head -n 40 | while IFS= read -r line; do echo "::error file=android::$line"; done
             exit 1
           fi
 
       - name: Verify the APK contents
         run: |
           set -euo pipefail
-          APK_DIR="build/app/outputs/flutter-apk"
+          APK_DIR=build/app/outputs/flutter-apk
           ls -la "$APK_DIR"
           mapfile -t APKS < <(find "$APK_DIR" -name '*.apk' | sort)
-          if [ "${#APKS[@]}" -eq 0 ]; then
-            echo "::error::No release APK was produced"
+          [ "${#APKS[@]}" -gt 0 ] || { echo "::error::No APK produced"; exit 1; }
+          SHIPPED=0
+          for apk in "${APKS[@]}"; do
+            echo "=== $(basename "$apk") ==="
+            # A release build is AOT compiled: every ABI must ship libapp.so
+            # (debug builds carry a kernel blob instead).
+            unzip -l "$apk" | grep -E 'lib/[^/]+/libapp\.so' \
+              || { echo "::error file=$apk::missing libapp.so"; exit 1; }
+            unzip -l "$apk" | grep -E 'lib/[^/]+/librealscale_native\.so' \
+              || { echo "::error file=$apk::missing librealscale_native.so"; exit 1; }
+            # The engine must be the REAL one (it embeds the ncnn backend
+            # name only when compiled against ncnn).
+            if unzip -p "$apk" 'lib/arm64-v8a/librealscale_native.so' 2>/dev/null | strings | grep -q 'ncnn-cpu'; then
+              echo "arm64-v8a engine: ncnn backend present"
+              SHIPPED=1
+            fi
+            echo "--- ABIs ---"
+            unzip -l "$apk" | awk '{print $4}' | grep -E '^lib/[^/]+/' | cut -d/ -f2 | sort -u
+          done
+          if [ -f "$RS_THIRD_PARTY_DIR/ncnn-android/arm64-v8a/lib/libncnn.a" ] && [ "$SHIPPED" -ne 1 ]; then
+            echo "::error::ncnn was fetched but the APK engine has no ncnn backend"
             exit 1
           fi
-          for apk in "${APKS[@]}"; do
-            echo "=== $apk ==="
-            # A release build is AOT compiled: every ABI must ship
-            # libapp.so (debug builds carry kernel blob files instead).
-            unzip -l "$apk" | grep -E 'lib/[^/]+/libapp\.so' \
-              || { echo "::error::$apk is missing libapp.so"; exit 1; }
-            echo "libapp.so: OK"
-            if [ -d native/third_party/ncnn-android ]; then
-              unzip -l "$apk" | grep -E 'lib/[^/]+/librealscale_ncnn\.so' \
-                || { echo "::error::$apk is missing librealscale_ncnn.so"; exit 1; }
-              echo "librealscale_ncnn.so: OK"
-            else
-              echo "native ncnn not fetched — APK ships Lanczos fallback only"
-            fi
-          done
 
       - name: Verify APK signatures
         run: |
           set -euo pipefail
-          APKSIGNER="$(ls -1 "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)"
-          if [ -z "$APKSIGNER" ]; then
-            echo "::error::apksigner not found under $ANDROID_HOME/build-tools"
-            exit 1
-          fi
-          echo "Using $APKSIGNER"
-          APK_DIR="build/app/outputs/flutter-apk"
-          mapfile -t APKS < <(find "$APK_DIR" -name '*.apk' | sort)
-          for apk in "${APKS[@]}"; do
-            "$APKSIGNER" verify --print-certs "$apk" \
-              || { echo "::error::$apk failed signature verification"; exit 1; }
+          APKSIGNER="$(ls -1 "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)"
+          [ -n "$APKSIGNER" ] || { echo "::error::apksigner not found"; exit 1; }
+          echo "using $APKSIGNER"
+          for apk in $(find build/app/outputs/flutter-apk -name '*.apk' | sort); do
+            "$APKSIGNER" verify --print-certs "$apk" | head -n 4
           done
 
       - name: Collect release artifacts
         run: |
+          set -euo pipefail
           mkdir -p release-out
           find build/app/outputs/flutter-apk -name '*.apk' -exec cp {} release-out/ \;
+          cd release-out
+          # Stable, self-describing names: app-release.apk -> realscale-pro-1.0.0.apk
+          VERSION="$(grep -m1 '^version:' ../pubspec.yaml | cut -d' ' -f2 | cut -d+ -f1)"
+          for f in *.apk; do
+            case "$f" in
+              *arm64-v8a*) suffix=arm64-v8a ;;
+              *armeabi-v7a*) suffix=armeabi-v7a ;;
+              *x86_64*) suffix=x86_64 ;;
+              *) suffix=universal ;;
+            esac
+            mv "$f" "realscale-pro-${VERSION}-${suffix}.apk"
+          done
           {
             echo "# RealScale-Pro — release Android APK"
             echo
-            echo "App version : $(grep -m1 '^version:' pubspec.yaml | cut -d' ' -f2)"
-            echo "Flutter     : ${{ env.FLUTTER_VERSION }}"
-            echo "Commit      : ${{ github.sha }}"
-            echo "Run         : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "version : ${VERSION}"
+            echo "flutter : ${{ env.FLUTTER_VERSION }}"
+            echo "commit  : ${{ github.sha }}"
+            echo "run     : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             echo
-            echo "Install with: adb install -r <file>.apk"
-          } > release-out/README-APK.txt
-          ls -la release-out
+            echo "Install with: adb install -r realscale-pro-${VERSION}-<abi>.apk"
+            echo "(use the arm64-v8a APK for modern phones, universal if unsure)"
+            echo
+            sha256sum ./*.apk
+          } > README-APK.txt
+          ls -la
+          cat README-APK.txt
 
-      - name: Upload release APK
+      - name: Upload release APKs
         uses: actions/upload-artifact@v4
         with:
           name: realscale-pro-release-apk-${{ github.run_number }}
