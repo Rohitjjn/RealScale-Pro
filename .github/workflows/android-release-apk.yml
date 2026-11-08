@@ -266,14 +266,26 @@ jobs:
       - name: Clean stale native build state
         run: rm -rf build android/app/.cxx
 
+      # Gradle reads the same RS_THIRD_PARTY_DIR, so both sides must see the
+      # prebuilts. Verifying it here turns a silent stub build into a loud one.
       - name: Configure the native engine
         run: |
           set -euo pipefail
-          if [ -f "$RS_THIRD_PARTY_DIR/ncnn-android/arm64-v8a/lib/libncnn.a" ]; then
-            echo "ncnn found for:"; ls -1 "$RS_THIRD_PARTY_DIR/ncnn-android"
-          else
-            echo "::warning title=Native engine::ncnn prebuilts missing — APK will ship the interface-only engine (no AI inference)"
+          echo "RS_THIRD_PARTY_DIR=$RS_THIRD_PARTY_DIR"
+          if [ "${{ github.event_name != 'workflow_dispatch' || inputs.include_native_ncnn }}" = "false" ]; then
+            echo "::warning title=Native engine::include_native_ncnn=false — interface-only engine will be shipped"
+            exit 0
           fi
+          missing=0
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            if [ -f "$RS_THIRD_PARTY_DIR/ncnn-android/$abi/lib/libncnn.a" ]; then
+              echo "ncnn $abi: $(du -h "$RS_THIRD_PARTY_DIR/ncnn-android/$abi/lib/libncnn.a" | cut -f1)"
+            else
+              echo "::error::ncnn prebuilt for $abi is missing at $RS_THIRD_PARTY_DIR/ncnn-android/$abi/lib/libncnn.a"
+              missing=1
+            fi
+          done
+          exit "$missing"
 
       - name: Build universal release APK
         run: |

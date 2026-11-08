@@ -49,8 +49,11 @@ set(RS_CORE_SOURCES
 )
 
 if(RS_BUILD_NCNN)
-  list(APPEND RS_CORE_SOURCES src/engine_ncnn.cpp)
-
+  # NOTE: src/engine_ncnn.cpp is added to the source list only AFTER ncnn has
+  # been located (bottom of this block). Compiling it unconditionally made the
+  # documented interface-only fallback impossible: the file includes <net.h>
+  # and <cpu.h>, so the build failed instead of dropping to the stub.
+  #
   # Locate ncnn, in priority order:
   #   1. RS_NCNN_LIB + RS_NCNN_INCLUDE — explicit prebuilt static lib
   #      (fast; used by the host verification build and by Android).
@@ -107,7 +110,29 @@ if(RS_BUILD_NCNN)
 
   if(RS_NCNN_LIB AND RS_NCNN_INCLUDE AND EXISTS "${RS_NCNN_LIB}")
     set(RS_NCNN_LIBRARIES "${RS_NCNN_LIB}")
-    set(RS_NCNN_INCLUDE_DIRS "${RS_NCNN_INCLUDE}")
+    # Headers may be given as the include root (which itself contains ncnn/)
+    # or directly as the directory holding net.h. Accept both: a wrong guess
+    # here is the difference between a two-minute build and a 13-minute one.
+    set(RS_NCNN_INCLUDE_DIRS "")
+    foreach(_inc IN LISTS RS_NCNN_INCLUDE)
+      # Keep every directory the caller listed (source trees put net.h in
+      # <root>/src while the generated platform.h lives in the *build* dir,
+      # so both entries matter), and add <root>/ncnn for install trees.
+      list(APPEND RS_NCNN_INCLUDE_DIRS "${_inc}")
+      if(EXISTS "${_inc}/ncnn/net.h")
+        list(APPEND RS_NCNN_INCLUDE_DIRS "${_inc}/ncnn")
+      endif()
+    endforeach()
+    set(_rs_has_net_h FALSE)
+    foreach(_inc IN LISTS RS_NCNN_INCLUDE_DIRS)
+      if(EXISTS "${_inc}/net.h")
+        set(_rs_has_net_h TRUE)
+      endif()
+    endforeach()
+    if(NOT _rs_has_net_h)
+      message(FATAL_ERROR
+        "RS_NCNN_INCLUDE (${RS_NCNN_INCLUDE}) does not contain net.h.")
+    endif()
     set(RS_HAS_NCNN ON)
     message(STATUS "realscale_native: using prebuilt ncnn: ${RS_NCNN_LIB}")
   else()
@@ -144,13 +169,21 @@ if(RS_BUILD_NCNN)
   endif()
 endif()
 
-if(NOT RS_HAS_NCNN AND RS_BUILD_NCNN)
-  if(RS_REQUIRE_NCNN)
-    message(FATAL_ERROR
-      "ncnn was requested (RS_REQUIRE_NCNN=ON) but could not be located. "
-      "Fetch the pinned prebuilts with `bash native/fetch_ncnn.sh android` "
-      "(or host ncnn with `bash native/fetch_ncnn.sh linux`) and re-run.")
-  endif()
+if(RS_BUILD_NCNN AND NOT RS_HAS_NCNN AND RS_REQUIRE_NCNN)
+  message(FATAL_ERROR
+    "ncnn was requested (RS_REQUIRE_NCNN=ON) but could not be located. "
+    "Fetch the pinned prebuilts with `bash native/fetch_ncnn.sh android` "
+    "(or host ncnn with `bash native/fetch_ncnn.sh linux`) and re-run.")
+endif()
+
+# Exactly one backend implementation must be compiled. The stub is required
+# whenever the real engine is absent — including RS_BUILD_NCNN=OFF, where
+# skipping it used to leave create_ncnn_engine() undefined, producing a
+# shared library that failed to dlopen() at runtime instead of reporting
+# "engine unavailable".
+if(RS_HAS_NCNN)
+  list(APPEND RS_CORE_SOURCES src/engine_ncnn.cpp)
+else()
   list(APPEND RS_CORE_SOURCES src/engine_stub.cpp)
 endif()
 
@@ -216,6 +249,10 @@ endif()
 # Host-only extras.
 # ------------------------------------------------------------------ #
 if(NOT ANDROID)
+  # A shared library with an unresolved symbol only fails when the app
+  # dlopen()s it on a phone — too late. Fail at link time instead.
+  target_link_options(realscale_native PRIVATE -Wl,--no-undefined)
+
   if(RS_BUILD_CLI)
     add_executable(rscli tools/rscli.cpp)
     target_link_libraries(rscli PRIVATE realscale_native)

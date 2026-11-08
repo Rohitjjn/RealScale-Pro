@@ -44,8 +44,17 @@ val hasReleaseSigning = hasUploadKeystore &&
 // (RS_BUILD_NCNN falls back to the interface-only stub in native/CMakeLists.txt)
 // instead of failing the whole APK.
 val rsAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
-val rsNcnnAndroidDir =
-    rootProject.projectDir.resolve("../third_party/ncnn-android").canonicalFile
+
+// The prebuilt tree can live outside the checkout (CI keeps it in a cached
+// directory and passes RS_THIRD_PARTY_DIR). Both locations are honoured so the
+// Gradle build and tools/fetch_ncnn.sh always agree on where ncnn is:
+//   1. $RS_THIRD_PARTY_DIR/ncnn-android   (CI cache, explicit override)
+//   2. <repo>/../third_party/ncnn-android (default of tools/fetch_ncnn.sh)
+val rsThirdPartyRoot: File = (System.getenv("RS_THIRD_PARTY_DIR")
+    ?.takeIf { it.isNotBlank() }
+    ?.let { File(it) }
+    ?: rootProject.projectDir.resolve("../third_party")).canonicalFile
+val rsNcnnAndroidDir = rsThirdPartyRoot.resolve("ncnn-android").canonicalFile
 val rsAbisWithNcnn = rsAbis.filter {
     rsNcnnAndroidDir.resolve("$it/lib/libncnn.a").isFile
 }
@@ -96,9 +105,15 @@ android {
                 // the engine's recovery paths (ncnn archives are linked as raw
                 // .a files precisely so their -fno-exceptions flags do not leak).
                 cppFlags += listOf("-std=c++17", "-fexceptions", "-frtti")
+                // ANDROID_STL=c++_static matches the official ncnn prebuilts
+                // (their release build uses the default static libc++). Mixing
+                // in c++_shared here makes the .so depend on libc++
+                // _shared.so, which two Flutter plugins can bring at
+                // incompatible versions, and ncnn's c++_shared-specific
+                // compat shims no longer line up.
                 arguments += listOf(
                     "-DRS_NCNN_ANDROID_DIR=$rsNcnnAndroidDir",
-                    "-DANDROID_STL=c++_shared",
+                    "-DANDROID_STL=c++_static",
                     "-DRS_REQUIRE_NCNN=${if (rsRequireNcnn) "ON" else "OFF"}",
                 )
                 if (rsAbisWithNcnn.isEmpty()) {
@@ -113,6 +128,15 @@ android {
                         "RealScale-Pro: ncnn prebuilt found for " +
                             rsAbisWithNcnn.joinToString(", ")
                     )
+                    val missing = rsAbis - rsAbisWithNcnn.toSet()
+                    if (missing.isNotEmpty()) {
+                        logger.lifecycle(
+                            "RealScale-Pro: no ncnn prebuilt for " +
+                                missing.joinToString(", ") +
+                                " — those ABIs build interface-only " +
+                                "(engine reports itself unavailable)"
+                        )
+                    }
                 }
             }
         }
