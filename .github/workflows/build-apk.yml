@@ -19,10 +19,33 @@ env:
 jobs:
   build-baseline:
     name: Build Upstream Baseline & Inspect Assets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Ensure Android SDK
+        run: |
+          if [ -z "${ANDROID_HOME:-}" ] || [ ! -d "${ANDROID_HOME:-}" ]; then
+            export ANDROID_HOME="$HOME/android-sdk"
+            mkdir -p "$ANDROID_HOME/cmdline-tools"
+            curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdtools.zip
+            unzip -q /tmp/cmdtools.zip -d "$ANDROID_HOME/cmdline-tools"
+            mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          fi
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDKMGR=$(find "$ANDROID_HOME" -name sdkmanager | head -n 1)
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Fetch and compare upstream 1.13.0 assets.zip vs 1.13.2 release APK assets
         run: |
@@ -33,14 +56,40 @@ jobs:
           unzip -q /tmp/upstream-assets/assets-1.13.0.zip -d /tmp/upstream-assets/zip1130
           unzip -q /tmp/upstream-assets/apk-1.13.2.apk 'assets/realsr/*' -d /tmp/upstream-assets/apk1132
 
-          echo "=== Top-level files in 1.13.0 assets.zip ==="
-          (cd /tmp/upstream-assets/zip1130/realsr && ls -la && sha256sum * 2>/dev/null || true)
+          python3 - << 'PY'
+          import hashlib, json, os
 
-          echo "=== Top-level files in 1.13.2 APK assets/realsr ==="
-          (cd /tmp/upstream-assets/apk1132/assets/realsr && ls -la && sha256sum * 2>/dev/null || true)
+          def scan_top(root):
+              res = {}
+              for entry in sorted(os.listdir(root)):
+                  p = os.path.join(root, entry)
+                  if os.path.isfile(p):
+                      h = hashlib.sha256(open(p, "rb").read()).hexdigest()[:16]
+                      res[entry] = {"size": os.path.getsize(p), "sha16": h}
+                  else:
+                      total = sum(
+                          os.path.getsize(os.path.join(dp, f))
+                          for dp, _, fs in os.walk(p) for f in fs
+                      )
+                      files = sorted(
+                          os.path.relpath(os.path.join(dp, f), p)
+                          for dp, _, fs in os.walk(p) for f in fs
+                      )
+                      res[entry + "/"] = {"totalBytes": total, "files": files}
+              return res
 
-          echo "=== Model directories in 1.13.2 APK assets/realsr ==="
-          (cd /tmp/upstream-assets/apk1132/assets/realsr && find models* -type f -exec ls -lh {} + 2>/dev/null || true)
+          z = scan_top("/tmp/upstream-assets/zip1130/realsr")
+          a = scan_top("/tmp/upstream-assets/apk1132/assets/realsr")
+          diff_bins = {
+              k: {"zip1130": z.get(k), "apk1132": a.get(k)}
+              for k in sorted(set(z) | set(a))
+              if not k.endswith("/") and z.get(k) != a.get(k)
+          }
+          report = json.dumps({"apk1132_entries": a, "binary_diffs_vs_1130": diff_bins}, indent=2)
+          print(report)
+          enc = report.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::notice title=AssetsComparison::{enc[:3800]}")
+          PY
 
           mkdir -p RealSR-NCNN-Android-GUI/app/src/main/assets
           cp -r /tmp/upstream-assets/apk1132/assets/realsr RealSR-NCNN-Android-GUI/app/src/main/assets/
@@ -83,6 +132,10 @@ jobs:
               "models-ESRGAN-UltraMix_Balanced": [
                   "models-ESRGAN-UltraMix_Balanced/x4.bin",
                   "models-ESRGAN-UltraMix_Balanced/x4.param",
+              ],
+              "models-ESRGAN-UltraSharp-fp16": [
+                  "models-ESRGAN-UltraSharp-fp16/x4.bin",
+                  "models-ESRGAN-UltraSharp-fp16/x4.param",
               ],
               "models-upconv_7_anime_style_art_rgb": [
                   "models-upconv_7_anime_style_art_rgb/noise0_scale2.0x_model.bin",
@@ -134,10 +187,6 @@ jobs:
                   "models-srmd/srmdnf_x4.bin",
                   "models-srmd/srmdnf_x4.param",
               ],
-              "models-ESRGAN-UltraSharp-fp16": [
-                  "models-ESRGAN-UltraSharp-fp16/x4.bin",
-                  "models-ESRGAN-UltraSharp-fp16/x4.param",
-              ],
               "models-MNN-RealESRGAN_x4plus_anime_6B": [
                   "models-MNNSR/RealESRGAN_x4plus_anime_6B-x4.mnn",
               ],
@@ -149,56 +198,51 @@ jobs:
               total_bytes = 0
               for rel in rel_files:
                   url = f"{HF_BASE}/{rel}"
-                  try:
-                      req = urllib.request.Request(url, headers={"User-Agent": "RealScale-Pro-CI/1.0"})
-                      h = hashlib.sha256()
-                      size = 0
-                      with urllib.request.urlopen(req, timeout=60) as resp:
-                          while True:
-                              chunk = resp.read(65536)
-                              if not chunk:
-                                  break
-                              h.update(chunk)
-                              size += len(chunk)
-                      total_bytes += size
-                      entries.append({"path": rel, "url": url, "size": size, "sha256": h.hexdigest()})
-                  except Exception as e:
-                      entries.append({"path": rel, "url": url, "error": str(e)})
+                  req = urllib.request.Request(url, headers={"User-Agent": "RealScale-Pro-CI/1.0"})
+                  h = hashlib.sha256()
+                  size = 0
+                  with urllib.request.urlopen(req, timeout=60) as resp:
+                      while True:
+                          chunk = resp.read(65536)
+                          if not chunk:
+                              break
+                          h.update(chunk)
+                          size += len(chunk)
+                  total_bytes += size
+                  entries.append({"path": rel, "size": size, "sha256": h.hexdigest()})
               out[model_id] = {"totalBytes": total_bytes, "files": entries}
 
+          raw = json.dumps(out, separators=(",", ":"))
           with open("/tmp/model-hashes.json", "w") as f:
               json.dump(out, f, indent=2)
-          print("=== VERIFIED MODEL HASHES ===")
-          print(json.dumps(out, indent=2))
+          for idx in range(0, len(raw), 3500):
+              part = raw[idx:idx+3500].replace("%", "%25")
+              print(f"::notice title=ModelHashes_{idx//3500}::{part}")
           PY
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Gradle cache
-        uses: gradle/actions/setup-gradle@v4
 
       - name: Verify unmodified upstream GUI diff is empty
         run: |
+          git fetch https://github.com/tumuyan/RealSR-NCNN-Android.git refs/tags/1.13.2:refs/tags/1.13.2 --depth=1
           git diff --exit-code 1.13.2 -- RealSR-NCNN-Android-GUI/ RealSR-NCNN-Android-CLI/
 
       - name: Build & test unmodified upstream GUI
         working-directory: RealSR-NCNN-Android-GUI
         run: |
+          set -o pipefail
           chmod +x gradlew
-          ./gradlew testDebugUnitTest assembleDebug --stacktrace
+          if ! ./gradlew testDebugUnitTest assembleDebug --stacktrace > /tmp/gradle.log 2>&1; then
+            MSG=$(tail -n 90 /tmp/gradle.log | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=GradleBuildError::${MSG:0:3800}"
+            cat /tmp/gradle.log
+            exit 1
+          fi
+          cat /tmp/gradle.log
+          APK_INFO=$(ls -lh app/build/outputs/apk/debug/*.apk | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+          echo "::notice title=BaselineBuildSuccess::$APK_INFO"
 
-      - name: Upload model hashes & baseline APK
-        uses: actions/upload-artifact@v4
+      - name: Upload baseline APK
+        uses: actions/upload-artifact@v7
         with:
-          name: baseline-artifacts
-          path: |
-            /tmp/model-hashes.json
-            RealSR-NCNN-Android-GUI/app/build/outputs/apk/**/*.apk
+          name: baseline-apk
+          path: RealSR-NCNN-Android-GUI/app/build/outputs/apk/**/*.apk
           retention-days: 14
