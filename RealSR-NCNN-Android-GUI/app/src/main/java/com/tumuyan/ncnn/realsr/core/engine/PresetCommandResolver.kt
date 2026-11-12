@@ -11,6 +11,13 @@ import java.io.File
  */
 object PresetCommandResolver {
 
+    private fun safeShellArg(path: String): String {
+        val isSimpleSafe = path.isNotEmpty() && path.all { ch ->
+            ch.isLetterOrDigit() || ch == '/' || ch == '.' || ch == '_' || ch == '-' || ch == ':'
+        }
+        return if (isSimpleSafe) path else ShellUtils.escapeShellArgument(path)
+    }
+
     fun buildUpscaleCommand(
         preset: UpscalePreset,
         scale: Int,
@@ -20,8 +27,8 @@ object PresetCommandResolver {
         modelOverride: ModelExecutionSpec? = null,
         modelsRootDir: File? = null
     ): String {
-        val escapedInput = ShellUtils.escapePath(inputPath)
-        val escapedOutput = ShellUtils.escapePath(outputPath)
+        val escapedInput = safeShellArg(inputPath)
+        val escapedOutput = safeShellArg(outputPath)
 
         if (preset.id == PresetId.INSTANT && modelOverride == null) {
             return CommandBuilder()
@@ -40,7 +47,7 @@ object PresetCommandResolver {
             requireNotNull(modelsRootDir) { "modelsRootDir required when modelOverride is null" }
             File(modelsRootDir, preset.defaultModelId).absolutePath
         }
-        val escapedModelPath = ShellUtils.escapePath(modelPath)
+        val escapedModelPath = safeShellArg(modelPath)
 
         return when (tool) {
             "resize-ncnn" -> {

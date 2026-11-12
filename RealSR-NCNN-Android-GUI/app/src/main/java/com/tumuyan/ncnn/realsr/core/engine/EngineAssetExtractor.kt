@@ -62,14 +62,14 @@ object EngineAssetExtractor {
                     file.setExecutable(true, false)
                 }
             }
-            ShellUtils.execCommand(
-                arrayOf(
-                    "cd ${ShellUtils.escapePath(realsrDir.absolutePath)}",
-                    CMD_CP_LIB_OPENCL,
-                    "chmod +x *"
-                ),
-                false
-            )
+            runCatching {
+                val escapedDir = ShellUtils.escapeShellArgument(realsrDir.absolutePath)
+                ProcessBuilder(
+                    "sh",
+                    "-c",
+                    "cd $escapedDir; $CMD_CP_LIB_OPENCL; chmod +x *"
+                ).redirectErrorStream(true).start().waitFor()
+            }
 
             stampFile.writeText(BuildConfig.VERSION_NAME)
         }
