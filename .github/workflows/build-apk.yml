@@ -192,13 +192,14 @@ jobs:
         with:
           api-level: 34
           arch: x86_64
-          target: google_apis
+          target: aosp_atd
+          profile: Galaxy Nexus
           cores: 2
-          ram-size: 3072M
-          heap-size: 512M
+          ram-size: 2048M
+          sdcard-path-or-size: 100M
           disable-animations: true
           disable-spellchecker: true
-          emulator-options: -no-window -gpu swiftshader_indirect -nosnapshot -no-audio -no-boot-anim
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
             set -euo pipefail
             APP_APK=$(find apks -path "*/debug/*.apk" ! -path "*/androidTest/*" | head -n 1)
