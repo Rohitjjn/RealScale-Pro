@@ -1,0 +1,204 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'arena/**'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  UPSTREAM_ASSETS_ZIP_URL: https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.13.0/assets.zip
+  UPSTREAM_APK_1_13_2_URL: https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.13.2/RealSR-NCNN-Android-GUI-armv8a-1.13.2.apk
+
+jobs:
+  build-baseline:
+    name: Build Upstream Baseline & Inspect Assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch and compare upstream 1.13.0 assets.zip vs 1.13.2 release APK assets
+        run: |
+          mkdir -p /tmp/upstream-assets/zip1130 /tmp/upstream-assets/apk1132
+          curl -fL "$UPSTREAM_ASSETS_ZIP_URL" -o /tmp/upstream-assets/assets-1.13.0.zip
+          curl -fL "$UPSTREAM_APK_1_13_2_URL" -o /tmp/upstream-assets/apk-1.13.2.apk
+
+          unzip -q /tmp/upstream-assets/assets-1.13.0.zip -d /tmp/upstream-assets/zip1130
+          unzip -q /tmp/upstream-assets/apk-1.13.2.apk 'assets/realsr/*' -d /tmp/upstream-assets/apk1132
+
+          echo "=== Top-level files in 1.13.0 assets.zip ==="
+          (cd /tmp/upstream-assets/zip1130/realsr && ls -la && sha256sum * 2>/dev/null || true)
+
+          echo "=== Top-level files in 1.13.2 APK assets/realsr ==="
+          (cd /tmp/upstream-assets/apk1132/assets/realsr && ls -la && sha256sum * 2>/dev/null || true)
+
+          echo "=== Model directories in 1.13.2 APK assets/realsr ==="
+          (cd /tmp/upstream-assets/apk1132/assets/realsr && find models* -type f -exec ls -lh {} + 2>/dev/null || true)
+
+          mkdir -p RealSR-NCNN-Android-GUI/app/src/main/assets
+          cp -r /tmp/upstream-assets/apk1132/assets/realsr RealSR-NCNN-Android-GUI/app/src/main/assets/
+
+      - name: Compute SHA-256 and byte sizes for real HuggingFace/GitHub models
+        run: |
+          python3 - << 'PY'
+          import hashlib, json, urllib.request
+
+          HF_BASE = "https://huggingface.co/tumuyan2/realsr-models/resolve/main"
+          MODELS = {
+              "models-RealeSR-general-v3": [
+                  "models-RealeSR-general-v3/x4.bin",
+                  "models-RealeSR-general-v3/x4.param",
+              ],
+              "models-DF2K": [
+                  "models-DF2K/x4.bin",
+                  "models-DF2K/x4.param",
+              ],
+              "models-DF2K_JPEG": [
+                  "models-DF2K_JPEG/x4.bin",
+                  "models-DF2K_JPEG/x4.param",
+              ],
+              "models-ESRGAN-Nomos8kSC": [
+                  "models-ESRGAN-Nomos8kSC/x4.bin",
+                  "models-ESRGAN-Nomos8kSC/x4.param",
+              ],
+              "models-ESRGAN-AnimeSharp": [
+                  "models-ESRGAN-AnimeSharp/x4.bin",
+                  "models-ESRGAN-AnimeSharp/x4.param",
+              ],
+              "models-ESRGAN-AnimeSharpLite": [
+                  "models-ESRGAN-AnimeSharpLite/x4.bin",
+                  "models-ESRGAN-AnimeSharpLite/x4.param",
+              ],
+              "models-ESRGAN-Remacri": [
+                  "models-ESRGAN-Remacri/x4.bin",
+                  "models-ESRGAN-Remacri/x4.param",
+              ],
+              "models-ESRGAN-UltraMix_Balanced": [
+                  "models-ESRGAN-UltraMix_Balanced/x4.bin",
+                  "models-ESRGAN-UltraMix_Balanced/x4.param",
+              ],
+              "models-upconv_7_anime_style_art_rgb": [
+                  "models-upconv_7_anime_style_art_rgb/noise0_scale2.0x_model.bin",
+                  "models-upconv_7_anime_style_art_rgb/noise0_scale2.0x_model.param",
+                  "models-upconv_7_anime_style_art_rgb/noise1_scale2.0x_model.bin",
+                  "models-upconv_7_anime_style_art_rgb/noise1_scale2.0x_model.param",
+                  "models-upconv_7_anime_style_art_rgb/noise2_scale2.0x_model.bin",
+                  "models-upconv_7_anime_style_art_rgb/noise2_scale2.0x_model.param",
+                  "models-upconv_7_anime_style_art_rgb/noise3_scale2.0x_model.bin",
+                  "models-upconv_7_anime_style_art_rgb/noise3_scale2.0x_model.param",
+                  "models-upconv_7_anime_style_art_rgb/scale2.0x_model.bin",
+                  "models-upconv_7_anime_style_art_rgb/scale2.0x_model.param",
+              ],
+              "models-upconv_7_photo": [
+                  "models-upconv_7_photo/noise0_scale2.0x_model.bin",
+                  "models-upconv_7_photo/noise0_scale2.0x_model.param",
+                  "models-upconv_7_photo/noise1_scale2.0x_model.bin",
+                  "models-upconv_7_photo/noise1_scale2.0x_model.param",
+                  "models-upconv_7_photo/noise2_scale2.0x_model.bin",
+                  "models-upconv_7_photo/noise2_scale2.0x_model.param",
+                  "models-upconv_7_photo/noise3_scale2.0x_model.bin",
+                  "models-upconv_7_photo/noise3_scale2.0x_model.param",
+                  "models-upconv_7_photo/scale2.0x_model.bin",
+                  "models-upconv_7_photo/scale2.0x_model.param",
+              ],
+              "models-cunet": [
+                  "models-cunet/noise0_scale2.0x_model.bin",
+                  "models-cunet/noise0_scale2.0x_model.param",
+                  "models-cunet/noise1_scale2.0x_model.bin",
+                  "models-cunet/noise1_scale2.0x_model.param",
+                  "models-cunet/noise2_scale2.0x_model.bin",
+                  "models-cunet/noise2_scale2.0x_model.param",
+                  "models-cunet/noise3_scale2.0x_model.bin",
+                  "models-cunet/noise3_scale2.0x_model.param",
+                  "models-cunet/scale2.0x_model.bin",
+                  "models-cunet/scale2.0x_model.param",
+              ],
+              "models-srmd": [
+                  "models-srmd/srmd_x2.bin",
+                  "models-srmd/srmd_x2.param",
+                  "models-srmd/srmd_x3.bin",
+                  "models-srmd/srmd_x3.param",
+                  "models-srmd/srmd_x4.bin",
+                  "models-srmd/srmd_x4.param",
+                  "models-srmd/srmdnf_x2.bin",
+                  "models-srmd/srmdnf_x2.param",
+                  "models-srmd/srmdnf_x3.bin",
+                  "models-srmd/srmdnf_x3.param",
+                  "models-srmd/srmdnf_x4.bin",
+                  "models-srmd/srmdnf_x4.param",
+              ],
+              "models-ESRGAN-UltraSharp-fp16": [
+                  "models-ESRGAN-UltraSharp-fp16/x4.bin",
+                  "models-ESRGAN-UltraSharp-fp16/x4.param",
+              ],
+              "models-MNN-RealESRGAN_x4plus_anime_6B": [
+                  "models-MNNSR/RealESRGAN_x4plus_anime_6B-x4.mnn",
+              ],
+          }
+
+          out = {}
+          for model_id, rel_files in MODELS.items():
+              entries = []
+              total_bytes = 0
+              for rel in rel_files:
+                  url = f"{HF_BASE}/{rel}"
+                  try:
+                      req = urllib.request.Request(url, headers={"User-Agent": "RealScale-Pro-CI/1.0"})
+                      h = hashlib.sha256()
+                      size = 0
+                      with urllib.request.urlopen(req, timeout=60) as resp:
+                          while True:
+                              chunk = resp.read(65536)
+                              if not chunk:
+                                  break
+                              h.update(chunk)
+                              size += len(chunk)
+                      total_bytes += size
+                      entries.append({"path": rel, "url": url, "size": size, "sha256": h.hexdigest()})
+                  except Exception as e:
+                      entries.append({"path": rel, "url": url, "error": str(e)})
+              out[model_id] = {"totalBytes": total_bytes, "files": entries}
+
+          with open("/tmp/model-hashes.json", "w") as f:
+              json.dump(out, f, indent=2)
+          print("=== VERIFIED MODEL HASHES ===")
+          print(json.dumps(out, indent=2))
+          PY
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify unmodified upstream GUI diff is empty
+        run: |
+          git diff --exit-code 1.13.2 -- RealSR-NCNN-Android-GUI/ RealSR-NCNN-Android-CLI/
+
+      - name: Build & test unmodified upstream GUI
+        working-directory: RealSR-NCNN-Android-GUI
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest assembleDebug --stacktrace
+
+      - name: Upload model hashes & baseline APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-artifacts
+          path: |
+            /tmp/model-hashes.json
+            RealSR-NCNN-Android-GUI/app/build/outputs/apk/**/*.apk
+          retention-days: 14
