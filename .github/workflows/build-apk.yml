@@ -6,19 +6,25 @@ on:
       - main
       - master
       - 'arena/**'
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
       - master
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 env:
   UPSTREAM_APK_1_13_2_URL: https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.13.2/RealSR-NCNN-Android-GUI-armv8a-1.13.2.apk
 
 jobs:
   build:
-    name: Build & Test
+    name: Build, Unit Test & Verify Slim APK
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -57,11 +63,10 @@ jobs:
           mkdir -p "$ASSET_REALSR"
           cp -r /tmp/upstream-assets/apk1132/assets/realsr/* "$ASSET_REALSR/"
 
-          # Step 4.1: Delete every models-* folder from assets
+          # Strip every bundled AI model folder from assets
           rm -rf "$ASSET_REALSR"/models*
 
           # Pack unmodified ELF executables and .so libraries into solid binaries.tar.xz
-          # so all 8 CLI tools + all NCNN/MNN/OpenMP libs ship <25 MB with 100% identical SHA-256s
           python3 - << 'PY'
           import os, shutil, subprocess
           asset_dir = "RealSR-NCNN-Android-GUI/app/src/main/assets/realsr"
@@ -84,29 +89,32 @@ jobs:
           print(f"::notice title=SlimEngineAssets::Packed {len(packed)} unmodified binaries into binaries.tar.xz ({xz_mb:.2f} MiB)")
           PY
 
-      - name: Run unit tests, assembleDebug & assembleRelease
+      - name: Run unit tests, assembleDebug, assembleRelease & assembleDebugAndroidTest
         working-directory: RealSR-NCNN-Android-GUI
         run: |
           set -o pipefail
           chmod +x gradlew
-          if ! ./gradlew testDebugUnitTest assembleDebug assembleRelease > /tmp/gradle.log 2>&1; then
+          if ! ./gradlew testDebugUnitTest assembleDebug assembleRelease assembleDebugAndroidTest > /tmp/gradle.log 2>&1; then
             ERR=$(grep -B 2 -A 35 -E "e: file:|FAILURE:|What went wrong:|FAILED" /tmp/gradle.log | head -n 90 || tail -n 80 /tmp/gradle.log)
             MSG=$(printf "%s" "$ERR" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
             echo "::error title=GradleBuildError::${MSG:0:3800}"
             cat /tmp/gradle.log
             exit 1
           fi
-          cat /tmp/gradle.log
+          cat /tmp/gradle.log | tail -n 40
 
       - name: Verify APK size (<= 30 MB) and zero bundled AI models
         run: |
-          echo "### APK Size Summary (arm64-v8a)" >> "$GITHUB_STEP_SUMMARY"
+          echo "### RealScale Pro APK Size & Asset Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Variant | File | Size (MiB) | Size (Bytes) | Bundled AI Models |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- | --- | --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+
           for VARIANT in release debug; do
             APK_PATH=$(find "RealSR-NCNN-Android-GUI/app/build/outputs/apk/$VARIANT" -name "*.apk" | head -n 1)
             test -f "$APK_PATH"
             BYTES=$(stat -c%s "$APK_PATH")
             MB=$(python3 -c "print(f'{$BYTES / 1048576:.2f}')")
-            echo "- **$VARIANT**: \`$MB MiB\` ($BYTES bytes) — \`$(basename "$APK_PATH")\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "| \`$VARIANT\` | \`$(basename "$APK_PATH")\` | **$MB MiB** | \`$BYTES\` | \`0\` |" >> "$GITHUB_STEP_SUMMARY"
             echo "::notice title=ApkSize_${VARIANT}::${VARIANT} APK = $MB MiB ($BYTES bytes) [target <25 MB, gate <=30 MB]"
 
             if unzip -l "$APK_PATH" | awk '{print $4}' | grep -E "^assets/.*(models-|\.(bin|param|mnn)$)"; then
@@ -122,9 +130,92 @@ jobs:
           done
           echo "::notice title=ZeroModelsVerified::unzip -l verified zero models-*, .bin, .param, or .mnn files in both debug & release APKs."
 
-      - name: Upload APK
+      - name: Upload Distributable APKs
         uses: actions/upload-artifact@v7
         with:
           name: realscale-pro-apk
-          path: RealSR-NCNN-Android-GUI/app/build/outputs/apk/**/*.apk
+          path: |
+            RealSR-NCNN-Android-GUI/app/build/outputs/apk/release/*.apk
+            RealSR-NCNN-Android-GUI/app/build/outputs/apk/debug/*.apk
           retention-days: 14
+
+      - name: Upload Instrumentation APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: instrumentation-apks
+          path: |
+            RealSR-NCNN-Android-GUI/app/build/outputs/apk/debug/*.apk
+            RealSR-NCNN-Android-GUI/app/build/outputs/apk/androidTest/debug/*.apk
+          retention-days: 3
+
+      - name: Publish GitHub Release on v* tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_APK=$(find RealSR-NCNN-Android-GUI/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          OUT_APK="RealScale-Pro-${TAG_NAME}-arm64.apk"
+          cp "$RELEASE_APK" "$OUT_APK"
+          sha256sum "$OUT_APK" > "${OUT_APK}.sha256"
+          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" \
+            --title "RealScale Pro ${TAG_NAME}" \
+            --generate-notes
+          gh release upload "$TAG_NAME" "$OUT_APK" "${OUT_APK}.sha256" --clobber
+
+  emulator-smoke-test:
+    name: Emulator Instrumentation Smoke Test
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Download built APKs
+        uses: actions/download-artifact@v8
+        with:
+          name: instrumentation-apks
+          path: apks
+
+      - name: Enable KVM hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run RealScaleSmokeInstrumentedTest on Android 14 Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          cores: 2
+          ram-size: 3072M
+          heap-size: 512M
+          disable-animations: true
+          disable-spellchecker: true
+          emulator-options: -no-window -gpu swiftshader_indirect -nosnapshot -no-audio -no-boot-anim
+          script: |
+            set -euo pipefail
+            APP_APK=$(find apks -path "*/debug/*.apk" ! -path "*/androidTest/*" | head -n 1)
+            TEST_APK=$(find apks -path "*/androidTest/debug/*.apk" | head -n 1)
+            echo "Installing $APP_APK and $TEST_APK..."
+            adb install -r -g "$APP_APK"
+            adb install -r -g "$TEST_APK"
+            ABIS=$(adb shell getprop ro.product.cpu.abilist | tr -d '\r')
+            echo "::notice title=EmulatorAbis::Android 14 emulator supported ABIs: ${ABIS}"
+            adb shell am instrument -w -r \
+              -e class com.tumuyan.ncnn.realsr.RealScaleSmokeInstrumentedTest \
+              com.tumuyan.ncnn.realsr.debug.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/instrument.log
+            if ! grep -q "OK (" /tmp/instrument.log; then
+              ERR=$(tail -n 65 /tmp/instrument.log)
+              MSG=$(printf "%s" "$ERR" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+              echo "::error title=InstrumentationFailure::${MSG:0:3800}"
+              exit 1
+            fi
+            SUMMARY=$(grep "OK (" /tmp/instrument.log | tr -d '\r')
+            echo "::notice title=InstrumentationPassed::Emulator smoke tests passed: ${SUMMARY}"
