@@ -50,28 +50,24 @@ jobs:
         run: |
           mkdir -p /tmp/upstream-assets/apk1132
           curl -fL "$UPSTREAM_APK_1_13_2_URL" -o /tmp/upstream-assets/apk-1.13.2.apk
-          curl -fL "https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.13.0/assets.zip" -o /tmp/upstream-assets/assets-1.13.0.zip
           unzip -q /tmp/upstream-assets/apk-1.13.2.apk 'assets/realsr/*' -d /tmp/upstream-assets/apk1132
           mkdir -p RealSR-NCNN-Android-GUI/app/src/main/assets
           cp -r /tmp/upstream-assets/apk1132/assets/realsr RealSR-NCNN-Android-GUI/app/src/main/assets/
 
+          # Measure solid tar.xz compression of non-model ELF binaries
           python3 - << 'PY'
-          import zipfile, zlib
-          for label, path, pfx in [
-              ("1130_zip", "/tmp/upstream-assets/assets-1.13.0.zip", "realsr/"),
-              ("1132_apk", "/tmp/upstream-assets/apk-1.13.2.apk", "assets/realsr/"),
-          ]:
-              zf = zipfile.ZipFile(path)
-              bins = [i for i in zf.infolist() if i.filename.startswith(pfx) and not i.is_dir() and "/models" not in i.filename]
-              raw = sum(i.file_size for i in bins)
-              deflated = sum(len(zlib.compress(zf.read(i.filename), 9)) for i in bins)
-              top = sorted(
-                  [(i.filename[len(pfx):], i.file_size/1048576, len(zlib.compress(zf.read(i.filename), 9))/1048576) for i in bins],
-                  key=lambda x: -x[2]
-              )[:12]
-              msg = f"{label}: raw={raw/1048576:.2f}MB all_deflated9={deflated/1048576:.2f}MB | " + ", ".join(f"{n}:{c:.2f}M" for n, _, c in top)
-              print(msg)
-              print(f"::notice title=Size_{label}::{msg}")
+          import os, shutil, subprocess
+          src = "RealSR-NCNN-Android-GUI/app/src/main/assets/realsr"
+          tmp = "/tmp/solid-test"
+          os.makedirs(tmp, exist_ok=True)
+          for f in os.listdir(src):
+              p = os.path.join(src, f)
+              if os.path.isfile(p) and not f.endswith(".xml"):
+                  shutil.copy2(p, os.path.join(tmp, f))
+          subprocess.run(["tar", "-cf", "/tmp/binaries.tar", "-C", tmp, "."], check=True)
+          subprocess.run(["xz", "-f", "--arm64", "--lzma2=dict=16MiB,preset=9e", "/tmp/binaries.tar"], check=True)
+          sz = os.path.getsize("/tmp/binaries.tar.xz") / 1048576
+          print(f"::notice title=SolidTarXzSize::binaries.tar.xz = {sz:.2f} MiB (all 8 CLI tools + all .so libs)")
           PY
 
       - name: Run unit tests & assembleDebug

@@ -117,4 +117,10 @@ All commands execute inside `workingDir` (`<cacheDir>/realsr`) with `input.png` 
     - AGP `9.4.1` (built-in Kotlin), Kotlin `2.4.21`, KSP `2.3.12` (skipping `2.3.13` due to upstream issue #3286), `compileSdk = 37`, `minSdk = 24`, `targetSdk = 28` (preserved).
     - Compose BOM `2026.09.00` (Compose UI `1.12.1`, Material 3 `1.4.0` stable), Navigation Compose `2.10.2`, Room `2.8.5`, WorkManager `2.12.0`, Coil `3.6.3`, Kotlin Coroutines `1.11.0`, Kotlinx Serialization JSON `1.11.0`.
   - Removed `android.nonFinalResIds=false` (incompatible with AGP 9.x; verified upstream Java uses `if/else` rather than `switch` on `R.id.*`).
+  - Step 2 verified green in GitHub Actions (`https://github.com/Rohitjjn/RealScale-Pro/actions/runs/43222437622`).
+- **Step 3 Decoupled Engine & Room Persistence**:
+  - Added `core/database/` (`RealScaleDatabase`, `RecentCreationEntity`, `RecentCreationDao`, `DownloadedModelEntity`, `DownloadedModelDao`) with KSP + Room `2.8.5`.
+  - Added `core/engine/` (`UpscaleEngine`, `ProcessingServiceEngine`, `PresetCommandResolver`, `EngineAssetExtractor`, `UpscalePreset`, `EngineModels`) wrapping upstream `CommandBuilder`, `CommandListManager`, `ImageProcessor`, `ProcessingService`, `ProgressLogHelper`, and `AssetsCopyer` behind pure Kotlin `StateFlow`s (zero UI callbacks, zero EventBus).
+  - Measured upstream `1.13.2` non-model ELF binaries: `105.70 MB` raw / `36.96 MB` individually deflated (because OpenCV is statically linked into all 7 CLI binaries). Packing unmodified ELF binaries into `assets/realsr/binaries.tar.xz` (`--arm64 --lzma2=dict=16MiB`, unpacked transparently on first launch by `EngineAssetExtractor` after `AssetsCopyer.releaseAssets`) deduplicates OpenCV across binaries with 100% byte-identical SHA-256s after extraction.
+
 

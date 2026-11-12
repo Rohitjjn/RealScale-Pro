@@ -16,6 +16,7 @@ appcompat = "1.7.1"
 material = "1.13.0"
 documentfile = "1.1.0"
 subsamplingScaleImageView = "3.10.0"
+tukaaniXz = "1.12"
 junit = "4.13.2"
 androidxTestCore = "1.7.0"
 androidxTestMonitor = "1.8.0"
@@ -59,6 +60,7 @@ kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+tukaani-xz = { group = "org.tukaani", name = "xz", version.ref = "tukaaniXz" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-core = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }

@@ -96,6 +96,7 @@ dependencies {
     implementation(libs.google.material)
     implementation(libs.androidx.documentfile)
     implementation(libs.subsampling.scale.image.view)
+    implementation(libs.tukaani.xz)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
