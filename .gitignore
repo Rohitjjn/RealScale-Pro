@@ -1,0 +1,10 @@
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+# Core NCNN binaries are fetched in CI from upstream assets.zip — never commit models
+app/src/main/assets/realsr/
+models-*/
+*.bin
+*.param
