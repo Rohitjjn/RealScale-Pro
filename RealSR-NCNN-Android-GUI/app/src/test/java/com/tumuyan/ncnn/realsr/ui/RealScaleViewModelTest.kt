@@ -10,7 +10,11 @@ import androidx.work.Configuration
 import androidx.work.testing.SynchronousExecutor
 import androidx.work.testing.WorkManagerTestInitHelper
 import com.tumuyan.ncnn.realsr.core.database.RealScaleDatabase
+import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
+import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
+import com.tumuyan.ncnn.realsr.core.engine.ModelExecutionSpec
+import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleEngine
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest
@@ -21,6 +25,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -28,6 +33,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -84,67 +90,76 @@ class RealScaleViewModelTest {
     }
 
     @Test
-    fun missingModelPresetPromptsDownloadWhileInstantPresetStartsEngineImmediately() = runBlocking {
+    fun missingModelPresetRequiresDownloadWhileInstantPresetStartsEngineImmediately() = runBlocking {
         val sampleFile = createSamplePng("sample_input.png")
         val viewModel = RealScaleViewModel(app, container)
 
         val initial = withTimeout(5_000) {
-            viewModel.uiState.first { it.models.size == 14 }
+            viewModel.uiState.first { it.catalogModels.size == 14 }
         }
-        assertEquals(UpscalePreset.PHOTO, initial.selectedPreset)
-        assertEquals(4, initial.selectedScale)
+        assertEquals(UpscalePreset.INSTANT, initial.selection.selectedPreset)
+        assertTrue(initial.isPresetReadyOffline(UpscalePreset.INSTANT))
+        assertFalse(initial.isPresetReadyOffline(UpscalePreset.PHOTO))
+        assertEquals(
+            "models-RealeSR-general-v3",
+            initial.defaultCatalogStateFor(UpscalePreset.PHOTO)?.catalog?.id
+        )
 
         viewModel.onPhotosSelected(listOf(Uri.fromFile(sampleFile)))
         withTimeout(5_000) {
-            viewModel.uiState.first { it.selectedPhotos.size == 1 }
+            viewModel.uiState.first { it.selection.selectedUris.size == 1 }
         }
 
-        // Photo preset requires models-RealeSR-general-v3 which is not yet installed -> prompt sheet
-        viewModel.onStartUpscaleClicked()
-        val prompted = withTimeout(5_000) {
-            viewModel.uiState.first { it.promptModelDownload != null }
+        // Photo preset requires models-RealeSR-general-v3 which is not yet installed -> returns false
+        viewModel.selectPreset(UpscalePreset.PHOTO)
+        withTimeout(5_000) {
+            viewModel.uiState.first { it.selection.selectedPreset == UpscalePreset.PHOTO }
         }
-        assertEquals("models-RealeSR-general-v3", prompted.promptModelDownload?.id)
+        assertFalse(viewModel.startPrimaryUpscale())
         assertNull(fakeEngine.lastRequest)
 
-        viewModel.dismissModelPrompt()
-
         // Switching to Instant preset (zero AI model required) starts the engine immediately
-        viewModel.onPresetSelected(UpscalePreset.INSTANT)
+        viewModel.selectPreset(UpscalePreset.INSTANT)
+        viewModel.selectScale(4)
         withTimeout(5_000) {
-            viewModel.uiState.first { it.selectedPreset == UpscalePreset.INSTANT }
-        }
-        viewModel.onStartUpscaleClicked()
-
-        withTimeout(5_000) {
-            while (fakeEngine.lastRequest == null) {
-                kotlinx.coroutines.delay(20)
+            viewModel.uiState.first {
+                it.selection.selectedPreset == UpscalePreset.INSTANT && it.selection.selectedScale == 4
             }
         }
+        assertTrue(viewModel.startPrimaryUpscale())
+
         val req = fakeEngine.lastRequest
         assertNotNull(req)
         assertEquals(UpscalePreset.INSTANT, req!!.preset)
-        assertTrue(req.commandOverride?.startsWith("./resize-ncnn") == true)
+        assertEquals(4, req.scale)
+        assertNull(req.modelSpec)
     }
 
     @Test
-    fun settingsChangesUpdateStateAndPersist() = runBlocking {
+    fun settingsChangesUpdateUiStateAndPersistTheme() = runBlocking {
         val viewModel = RealScaleViewModel(app, container)
         viewModel.setThemeMode(ThemeMode.DARK)
-        viewModel.setUseCpu(true)
+        viewModel.setExecutionBackend(ExecutionBackend.CPU)
         viewModel.setTileSize(128)
-        viewModel.setOutputFormatIndex(1)
+        viewModel.setOutputFormat(OutputFormat.WEBP)
 
         val updated = withTimeout(5_000) {
             viewModel.uiState.first {
-                it.themeMode == ThemeMode.DARK &&
-                    it.settings.useCpu &&
-                    it.settings.tileSize == 128 &&
-                    it.settings.outputFormatIndex == 1
+                it.selection.themeMode == ThemeMode.DARK &&
+                    it.enginePreferences.backend == ExecutionBackend.CPU &&
+                    it.enginePreferences.tileSize == 128 &&
+                    it.enginePreferences.outputFormat == OutputFormat.WEBP
             }
         }
-        assertEquals(ThemeMode.DARK, updated.themeMode)
-        assertEquals(128, updated.settings.tileSize)
+        assertEquals(ThemeMode.DARK, updated.selection.themeMode)
+        assertEquals(128, updated.enginePreferences.tileSize)
+
+        // Recreated ViewModel restores persisted theme mode
+        val recreated = RealScaleViewModel(app, container)
+        val restored = withTimeout(5_000) {
+            recreated.uiState.first { it.selection.themeMode == ThemeMode.DARK }
+        }
+        assertEquals(ThemeMode.DARK, restored.selection.themeMode)
     }
 
     private fun createSamplePng(name: String): File {
@@ -159,27 +174,51 @@ class RealScaleViewModelTest {
     private class FakeUpscaleEngine : UpscaleEngine {
         private val _state = MutableStateFlow<EngineState>(EngineState.Idle)
         override val state: StateFlow<EngineState> = _state
+
+        private val _consoleLog = MutableStateFlow("")
+        override val consoleLog: StateFlow<String> = _consoleLog
+
+        private val _preferences = MutableStateFlow(EnginePreferences())
+        override val preferences: StateFlow<EnginePreferences> = _preferences
+
         var lastRequest: UpscaleRequest? = null
 
-        override suspend fun ensureEngineReady(): File = File("/tmp/realsr")
+        override suspend fun ensureInitialized(forceReset: Boolean): Result<File> =
+            Result.success(File("/tmp/realsr"))
+
+        override fun updatePreferences(transform: (EnginePreferences) -> EnginePreferences) {
+            _preferences.update(transform)
+        }
 
         override fun startUpscale(request: UpscaleRequest) {
             lastRequest = request
             _state.value = EngineState.Running(
-                progressPercent = 42f,
-                etaText = "00:02",
+                jobId = "job-1",
+                presetTitle = request.preset.title,
+                progressFraction = 0.42f,
                 currentFileIndex = 1,
                 totalFiles = request.inputUris.size,
-                presetLabel = request.presetLabel,
-                logTail = "[fake] 42.00%"
+                currentFileName = "sample_input.png",
+                etaMillis = 2_000L,
+                previewUri = request.inputUris.firstOrNull()?.toString(),
+                latestStatusLine = "42.00%"
             )
         }
 
+        override fun startDirectoryUpscale(
+            directoryUri: Uri,
+            preset: UpscalePreset,
+            scale: Int,
+            modelSpec: ModelExecutionSpec?
+        ) = Unit
+
+        override fun runAdvancedCommand(rawCommand: String) = Unit
+
         override fun cancel() {
-            _state.value = EngineState.Cancelled("Cancelled")
+            _state.value = EngineState.Cancelled
         }
 
-        override fun resetToIdle() {
+        override fun acknowledgeTerminalState() {
             _state.value = EngineState.Idle
         }
     }
