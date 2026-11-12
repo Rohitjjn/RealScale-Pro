@@ -11,7 +11,7 @@ class NcnnCommandBuilderTest {
             NcnnCommandBuilder.upscale("realsr-ncnn", "input.png", "output.png", "/data/models/models-DF2K", 4))
     }
     @Test fun classicalUsesLanczos() {
-        assertEquals("lanczos", NcnnCommandBuilder.classicalResize("input.png", "output.png", 2)[5])
+        assertEquals("lanczos", NcnnCommandBuilder.classicalResize("input.png", "output.png", 2)[6])
     }
     @Test fun parsesPercentProgress() {
         assertEquals(0.42f, NcnnCommandBuilder.parseProgress("42.00%")!!, 0.001f)
