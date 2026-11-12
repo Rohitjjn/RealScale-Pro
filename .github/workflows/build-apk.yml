@@ -53,17 +53,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Unit tests
+      - name: Unit tests (pure JVM)
+        continue-on-error: true
+        id: puretests
+        run: ./gradlew testDebugUnitTest --tests "dev.realscale.pro.NcnnCommandBuilderTest" --tests "dev.realscale.pro.LanczosResamplerTest" --tests "dev.realscale.pro.ModelCatalogTest"
+
+      - name: Unit tests (Room / Robolectric)
+        continue-on-error: true
+        id: dbtests
+        run: ./gradlew testDebugUnitTest --tests "dev.realscale.pro.DatabaseTest"
+
+      - name: Unit test gate
+        if: steps.puretests.outcome == 'failure' || steps.dbtests.outcome == 'failure'
         run: |
-          set +e
-          ./gradlew testDebugUnitTest --stacktrace > /tmp/test.log 2>&1
-          code=$?
-          tail -100 /tmp/test.log
-          if [ $code -ne 0 ]; then
-            { grep -E "^e: " /tmp/test.log | head -30; sed -n "/FAILURE:/,/BUILD FAILED/p" /tmp/test.log | grep -v "> Task" | head -20; } | head -40 | while IFS= read -r l; do echo "::error::${l:0:240}"; done
-            python3 -c "import glob,xml.etree.ElementTree as ET; [print('::error::'+tc.get('classname','?')+'.'+tc.get('name','?')+': '+((fail.get('message') or '')[:200].replace('%','%25').replace(chr(10),' '))) for f in glob.glob('app/build/test-results/**/*.xml',recursive=True) for tc in ET.parse(f).getroot().iter('testcase') for fail in tc if fail.tag in ('failure','error')]" || true
-          fi
-          exit $code
+          echo "::error::pure=${{ steps.puretests.outcome }} db=${{ steps.dbtests.outcome }}"
+          exit 1
 
       - name: Android Lint
         run: ./gradlew lintDebug
