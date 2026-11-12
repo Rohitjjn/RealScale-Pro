@@ -109,8 +109,9 @@ jobs:
             echo "- **$VARIANT**: \`$MB MiB\` ($BYTES bytes) — \`$(basename "$APK_PATH")\`" >> "$GITHUB_STEP_SUMMARY"
             echo "::notice title=ApkSize_${VARIANT}::${VARIANT} APK = $MB MiB ($BYTES bytes) [target <25 MB, gate <=30 MB]"
 
-            if unzip -l "$APK_PATH" | grep -E "assets/realsr/models-|\.(bin|param|mnn)$"; then
-              echo "::error title=BundledModelsFound::${VARIANT} APK still contains AI model files!"
+            if unzip -l "$APK_PATH" | awk '{print $4}' | grep -E "^assets/.*(models-|\.(bin|param|mnn)$)"; then
+              MATCHED=$(unzip -l "$APK_PATH" | awk '{print $4}' | grep -E "^assets/.*(models-|\.(bin|param|mnn)$)" | tr '\n' ' ')
+              echo "::error title=BundledModelsFound::${VARIANT} APK contains model files: $MATCHED"
               exit 1
             fi
 
