@@ -102,4 +102,19 @@ All commands execute inside `workingDir` (`<cacheDir>/realsr`) with `input.png` 
    - Custom extra commands (`extraCommand` multiline list) and custom external model directory (`extraPath`).
    - Custom command label editor (`customLabels` JSON / TSV copy-paste).
    - Hiding specific programs (`hiddenPrograms` set for `realsr`, `srmd`, `waifu2x`, `realcugan`, `mnnsr`, `resize`, `magick`, `anime4k` on incompatible GPUs).
-   - Cache reset (`CMD_RESET_CACHE` + re-extract assets) and Benchmark mode.
+      - Cache reset (`CMD_RESET_CACHE` + re-extract assets) and Benchmark mode.
+
+---
+
+## 7. Step 1 & Step 2 Decisions & Verified Evidence
+
+- **Step 1 Baseline CI**:
+  - Unmodified upstream `1.13.2` built green in GitHub Actions (`https://github.com/Rohitjjn/RealScale-Pro/actions/runs/43220076302`).
+  - Golden command parity fixtures (`golden_commands.txt` + `GoldenEngineCommandTest.java`) covering all 8 tools (`realsr-ncnn`, `realcugan-ncnn`, `waifu2x-ncnn`, `srmd-ncnn`, `mnnsr-ncnn`, `resize-ncnn`, `Anime4k`, `magick`), external model folders, runtime parameter flags, and `ShellUtils` escaping built & passed green (`https://github.com/Rohitjjn/RealScale-Pro/actions/runs/43221221177`).
+  - Verified SHA-256 checksums and exact byte sizes computed by downloading 14 real model packs from `huggingface.co/tumuyan2/realsr-models` in CI (note: `github.com/tumuyan/realsr-models` stores `.bin` weights via Git LFS, so `raw.githubusercontent.com` returns 133-byte LFS pointers; `huggingface.co/tumuyan2/realsr-models/resolve/main/...` serves real binary weights with HTTP `Range` support).
+- **Step 2 Modern Foundation**:
+  - Migrated to Gradle `9.8.1` + Kotlin DSL + `gradle/libs.versions.toml` with verified current stable releases (zero alpha/beta/RC):
+    - AGP `9.4.1` (built-in Kotlin), Kotlin `2.4.21`, KSP `2.3.12` (skipping `2.3.13` due to upstream issue #3286), `compileSdk = 37`, `minSdk = 24`, `targetSdk = 28` (preserved).
+    - Compose BOM `2026.09.00` (Compose UI `1.12.1`, Material 3 `1.4.0` stable), Navigation Compose `2.10.2`, Room `2.8.5`, WorkManager `2.12.0`, Coil `3.6.3`, Kotlin Coroutines `1.11.0`, Kotlinx Serialization JSON `1.11.0`.
+  - Removed `android.nonFinalResIds=false` (incompatible with AGP 9.x; verified upstream Java uses `if/else` rather than `switch` on `R.id.*`).
+
