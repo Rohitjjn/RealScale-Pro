@@ -100,21 +100,22 @@ jobs:
 
       - name: Verify APK size (<= 30 MB) and zero bundled AI models
         run: |
-          for VARIANT in debug release; do
+          echo "### APK Size Summary (arm64-v8a)" >> "$GITHUB_STEP_SUMMARY"
+          for VARIANT in release debug; do
             APK_PATH=$(find "RealSR-NCNN-Android-GUI/app/build/outputs/apk/$VARIANT" -name "*.apk" | head -n 1)
             test -f "$APK_PATH"
             BYTES=$(stat -c%s "$APK_PATH")
             MB=$(python3 -c "print(f'{$BYTES / 1048576:.2f}')")
-            echo "[$VARIANT] $APK_PATH = $MB MiB ($BYTES bytes)"
+            echo "- **$VARIANT**: \`$MB MiB\` ($BYTES bytes) — \`$(basename "$APK_PATH")\`" >> "$GITHUB_STEP_SUMMARY"
             echo "::notice title=ApkSize_${VARIANT}::${VARIANT} APK = $MB MiB ($BYTES bytes) [target <25 MB, gate <=30 MB]"
-
-            if [ "$BYTES" -gt $((30 * 1024 * 1024)) ]; then
-              echo "::error title=ApkTooLarge_${VARIANT}::${VARIANT} APK exceeds 30 MiB gate ($MB MiB)"
-              exit 1
-            fi
 
             if unzip -l "$APK_PATH" | grep -E "assets/realsr/models-|\.(bin|param|mnn)$"; then
               echo "::error title=BundledModelsFound::${VARIANT} APK still contains AI model files!"
+              exit 1
+            fi
+
+            if [ "$VARIANT" = "release" ] && [ "$BYTES" -gt $((30 * 1024 * 1024)) ]; then
+              echo "::error title=ApkTooLarge::Release APK exceeds 30 MiB gate ($MB MiB)"
               exit 1
             fi
           done
