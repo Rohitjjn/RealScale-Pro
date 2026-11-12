@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">RealSR BigImage</string>
+    <string name="app_name">RealScale Pro</string>
     <string name="default_log">\n
         This is a simple Android application that uses Realsr-NCNN, SRMD-NCNN, Real-CUGAN-NCNN, Real-ESRGAN, Waifu2x-NCNN, Anime4kCPP and ImageMagick.
 

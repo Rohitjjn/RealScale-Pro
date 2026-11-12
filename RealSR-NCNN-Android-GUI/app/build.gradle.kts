@@ -16,8 +16,8 @@ android {
         minSdk = 24
         // Keep targetSdk = 28 so extracted native CLI binaries in cache/realsr remain executable on Android 10+
         targetSdk = 28
-        versionCode = 52
-        versionName = "1.13.2"
+        versionCode = 53
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,7 +30,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            resValue("string", "app_name", "RealSR Debug")
+            resValue("string", "app_name", "RealScale Pro Debug")
         }
 
         release {
@@ -100,10 +100,7 @@ ksp {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.google.material)
     implementation(libs.androidx.documentfile)
-    implementation(libs.subsampling.scale.image.view)
     implementation(libs.tukaani.xz)
 
     implementation(libs.androidx.activity.compose)
