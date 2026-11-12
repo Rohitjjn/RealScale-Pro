@@ -24,8 +24,8 @@ class MainActivity : ComponentActivity() {
                 var tab by remember { mutableIntStateOf(0) }
                 Scaffold(bottomBar = {
                     NavigationBar(containerColor = MaterialTheme.colorScheme.background) {
-                        NavigationBarItem(tab == 0, { tab = 0 }, { Text("Studio") }, icon = { Text("✦") })
-                        NavigationBarItem(tab == 1, { tab = 1 }, { Text("Model Hub") }, icon = { Text("▦") })
+                        NavigationBarItem(tab == 0, { tab = 0 }, icon = { Text("✦") }, label = { Text("Studio") })
+                        NavigationBarItem(tab == 1, { tab = 1 }, icon = { Text("▦") }, label = { Text("Model Hub") })
                     }
                 }) { pad ->
                     Surface(Modifier.padding(pad), color = MaterialTheme.colorScheme.background) {

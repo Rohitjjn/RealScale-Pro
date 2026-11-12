@@ -37,7 +37,9 @@ class NcnnEngine(private val context: Context) {
         pb.environment()["LD_LIBRARY_PATH"] = workDir.absolutePath
         val p = pb.start(); process = p
         try {
-            p.inputStream.bufferedReader().forEachLine { line ->
+            val reader = p.inputStream.bufferedReader()
+            while (true) {
+                val line = reader.readLine() ?: break
                 emit(EngineProgress(NcnnCommandBuilder.parseProgress(line) ?: 0f, line))
             }
             if (p.waitFor() != 0) throw IllegalStateException("Engine exited with code ${p.exitValue()}")

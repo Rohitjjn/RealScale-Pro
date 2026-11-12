@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.*
 import dev.realscale.pro.ui.theme.Warm
 
 @Composable fun WarmPrimaryButton(text: String, enabled: Boolean = true, onClick: () -> Unit) =
-    Button(onClick, enabled, Modifier.height(40.dp), MaterialTheme.shapes.medium,
+    Button(onClick, Modifier.height(40.dp), enabled, MaterialTheme.shapes.medium,
         ButtonDefaults.buttonColors(Warm.Primary, Warm.OnPrimary, Warm.PrimaryDisabled, Warm.Muted)) {
         Text(text, style = MaterialTheme.typography.labelLarge)
     }
