@@ -111,18 +111,34 @@ object PresetCommandResolver {
         }
     }
 
+    data class DiscoveredCommand(
+        val label: String,
+        val command: String
+    )
+
     /**
      * Exposes upstream [CommandListManager] discovery for the Advanced settings console.
      */
     fun discoverAdvancedCommands(
-        presetCommands: Array<String>,
-        modelsRootDir: File
-    ): List<CommandListManager.CommandItem> {
-        val defaultExtra = CommandListManager.DEFAULT_EXTRA_COMMANDS.trim()
-            .lines()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-        return CommandListManager.buildPresetCommands(presetCommands, defaultExtra) +
-            CommandListManager.buildExtraCommands(modelsRootDir.absolutePath)
+        modelsRootDir: File,
+        extraCommandsText: String = "",
+        presetLabels: Array<String> = emptyArray(),
+        classicalFilters: Array<String> = emptyArray(),
+        magickFilters: Array<String> = emptyArray()
+    ): List<DiscoveredCommand> {
+        val manager = CommandListManager(
+            presetLabels,
+            modelsRootDir.absolutePath,
+            extraCommandsText,
+            classicalFilters,
+            magickFilters
+        )
+        val labels = manager.getDisplayLabels(false)
+        return (0 until manager.commandCount).map { idx ->
+            DiscoveredCommand(
+                label = labels.getOrElse(idx) { "Command ${idx + 1}" },
+                command = manager.getCommandAt(idx)
+            )
+        }
     }
 }
