@@ -55,25 +55,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Unit tests (pure JVM)
-        continue-on-error: true
-        id: puretests
         run: |
-          for c in NcnnCommandBuilderTest LanczosResamplerTest ModelCatalogTest; do
-            if ./gradlew testDebugUnitTest --tests "dev.realscale.pro.$c" > "/tmp/$c.log" 2>&1; then echo "::notice::$c PASS"; else echo "::error::$c FAIL: $(grep -m1 -E 'FAILURE:|error:|Exception|Could not|failed' "/tmp/$c.log" | cut -c1-220) || $(tail -3 "/tmp/$c.log" | tr '\n' ' ' | cut -c1-220)"; fi
-          done
+          set +e
+          ./gradlew testDebugUnitTest --tests "dev.realscale.pro.NcnnCommandBuilderTest" --tests "dev.realscale.pro.LanczosResamplerTest" --tests "dev.realscale.pro.ModelCatalogTest" > /tmp/pure.log 2>&1
+          code=$?
           python3 -c "import glob,xml.etree.ElementTree as ET; [print('::error::'+tc.get('classname','?')+'.'+tc.get('name','?')+': '+((fail.get('message') or '')[:200].replace('%','%25').replace(chr(10),' '))) for f in glob.glob('app/build/test-results/**/*.xml',recursive=True) for tc in ET.parse(f).getroot().iter('testcase') for fail in tc if fail.tag in ('failure','error')]" || true
+          exit $code
 
       - name: Unit tests (Room / Robolectric)
-        continue-on-error: true
-        id: dbtests
         run: |
           ./gradlew testDebugUnitTest --tests "dev.realscale.pro.DatabaseTest" > /tmp/db.log 2>&1 || { echo "::error::DB FAIL: $(grep -m1 -E 'FAILURE:|error:|Exception|Could not|failed' /tmp/db.log | cut -c1-220) || $(tail -3 /tmp/db.log | tr '\n' ' ' | cut -c1-220)"; exit 1; }
-
-      - name: Unit test gate
-        if: steps.puretests.outcome == 'failure' || steps.dbtests.outcome == 'failure'
-        run: |
-          echo "::error::pure=${{ steps.puretests.outcome }} db=${{ steps.dbtests.outcome }}"
-          exit 1
 
       - name: Android Lint
         run: ./gradlew lintDebug
