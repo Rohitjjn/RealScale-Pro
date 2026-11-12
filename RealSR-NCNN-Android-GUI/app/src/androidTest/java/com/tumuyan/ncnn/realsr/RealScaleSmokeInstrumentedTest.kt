@@ -171,6 +171,9 @@ class RealScaleSmokeInstrumentedTest {
                 composeRule.onAllNodesWithText("Smoke 4×").fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("Smoke 4×").performScrollTo().performClick()
+            composeRule.waitUntil(timeoutMillis = 5_000L) {
+                composeRule.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.onNodeWithText("Result").assertIsDisplayed()
             composeRule.onNode(hasText("24 × 18 → 96 × 72", substring = true)).assertIsDisplayed()
             composeRule.onNodeWithText("Save").assertIsDisplayed()
