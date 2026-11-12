@@ -28,7 +28,7 @@ object LanczosResampler {
                 for (c in 0..3) acc[c] += w * tmp[(sy * dw + x) * 4 + c]
             }
             var argb = 0
-            for (c in 0..3) argb = argb or ((acc[c] / wsum).toInt().coerceIn(0, 255) shl (24 - c * 8))
+            for (c in 0..3) argb = argb or (Math.round(acc[c] / wsum).toInt().coerceIn(0, 255) shl (24 - c * 8))
             dst[y * dw + x] = argb
         }
         return dst to intArrayOf(dw, dh)
