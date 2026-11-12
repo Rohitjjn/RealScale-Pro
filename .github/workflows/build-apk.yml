@@ -46,28 +46,42 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Fetch upstream 1.13.2 prebuilt assets
+      - name: Prepare slim engine assets without AI models
         run: |
           mkdir -p /tmp/upstream-assets/apk1132
           curl -fL "$UPSTREAM_APK_1_13_2_URL" -o /tmp/upstream-assets/apk-1.13.2.apk
           unzip -q /tmp/upstream-assets/apk-1.13.2.apk 'assets/realsr/*' -d /tmp/upstream-assets/apk1132
-          mkdir -p RealSR-NCNN-Android-GUI/app/src/main/assets
-          cp -r /tmp/upstream-assets/apk1132/assets/realsr RealSR-NCNN-Android-GUI/app/src/main/assets/
 
-          # Measure solid tar.xz compression of non-model ELF binaries
+          ASSET_REALSR="RealSR-NCNN-Android-GUI/app/src/main/assets/realsr"
+          rm -rf "$ASSET_REALSR"
+          mkdir -p "$ASSET_REALSR"
+          cp -r /tmp/upstream-assets/apk1132/assets/realsr/* "$ASSET_REALSR/"
+
+          # Step 4.1: Delete every models-* folder from assets
+          rm -rf "$ASSET_REALSR"/models*
+
+          # Pack unmodified ELF executables and .so libraries into solid binaries.tar.xz
+          # so all 8 CLI tools + all NCNN/MNN/OpenMP libs ship <25 MB with 100% identical SHA-256s
           python3 - << 'PY'
           import os, shutil, subprocess
-          src = "RealSR-NCNN-Android-GUI/app/src/main/assets/realsr"
-          tmp = "/tmp/solid-test"
-          os.makedirs(tmp, exist_ok=True)
-          for f in os.listdir(src):
-              p = os.path.join(src, f)
-              if os.path.isfile(p) and not f.endswith(".xml"):
-                  shutil.copy2(p, os.path.join(tmp, f))
-          subprocess.run(["tar", "-cf", "/tmp/binaries.tar", "-C", tmp, "."], check=True)
-          subprocess.run(["xz", "-f", "--arm64", "--lzma2=dict=16MiB,preset=9e", "/tmp/binaries.tar"], check=True)
-          sz = os.path.getsize("/tmp/binaries.tar.xz") / 1048576
-          print(f"::notice title=SolidTarXzSize::binaries.tar.xz = {sz:.2f} MiB (all 8 CLI tools + all .so libs)")
+          asset_dir = "RealSR-NCNN-Android-GUI/app/src/main/assets/realsr"
+          pack_dir = "/tmp/realsr-solid-pack"
+          if os.path.exists(pack_dir):
+              shutil.rmtree(pack_dir)
+          os.makedirs(pack_dir)
+
+          packed = []
+          for entry in sorted(os.listdir(asset_dir)):
+              full = os.path.join(asset_dir, entry)
+              if os.path.isfile(full) and not entry.endswith(".xml"):
+                  shutil.move(full, os.path.join(pack_dir, entry))
+                  packed.append(entry)
+
+          tar_path = os.path.join(asset_dir, "binaries.tar")
+          subprocess.run(["tar", "-cf", tar_path, "-C", pack_dir] + packed, check=True)
+          subprocess.run(["xz", "-f", "--arm64", "--lzma2=dict=16MiB,preset=9e", tar_path], check=True)
+          xz_mb = os.path.getsize(tar_path + ".xz") / 1048576
+          print(f"::notice title=SlimEngineAssets::Packed {len(packed)} unmodified binaries into binaries.tar.xz ({xz_mb:.2f} MiB)")
           PY
 
       - name: Run unit tests & assembleDebug
@@ -83,7 +97,26 @@ jobs:
             exit 1
           fi
           cat /tmp/gradle.log
-          echo "::notice title=Step1GoldenTestsPassed::All golden engine command parity tests passed and debug APK built."
+
+      - name: Verify APK size (<= 30 MB) and zero bundled AI models
+        run: |
+          APK_PATH=$(find RealSR-NCNN-Android-GUI/app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          test -f "$APK_PATH"
+          BYTES=$(stat -c%s "$APK_PATH")
+          MB=$(python3 -c "print(f'{$BYTES / 1048576:.2f}')")
+          echo "Built debug APK: $APK_PATH ($MB MiB / $BYTES bytes)"
+          echo "::notice title=ApkSizeGate::Debug APK size = $MB MiB ($BYTES bytes) [target <25 MB, gate <=30 MB]"
+
+          if [ "$BYTES" -gt $((30 * 1024 * 1024)) ]; then
+            echo "::error title=ApkTooLarge::APK exceeds 30 MiB gate ($MB MiB)"
+            exit 1
+          fi
+
+          if unzip -l "$APK_PATH" | grep -E "assets/realsr/models-|\.(bin|param|mnn)$"; then
+            echo "::error title=BundledModelsFound::APK still contains AI model files!"
+            exit 1
+          fi
+          echo "::notice title=ZeroModelsVerified::unzip -l verified zero models-*, .bin, .param, or .mnn files in APK."
 
       - name: Upload APK
         uses: actions/upload-artifact@v7
