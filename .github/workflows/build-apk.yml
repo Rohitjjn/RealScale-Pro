@@ -54,13 +54,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: |
+          set +e
+          ./gradlew testDebugUnitTest --stacktrace > /tmp/test.log 2>&1
+          code=$?
+          tail -100 /tmp/test.log
+          if [ $code -ne 0 ]; then
+            grep -E "^e: |error:|FAILED|BUILD FAILED|What went wrong|> " /tmp/test.log | head -40 | while IFS= read -r l; do echo "::error::${l:0:240}"; done
+            find app/build/reports/tests app/build/test-results -name "*.txt" -exec cat {} + 2>/dev/null | head -60 | while IFS= read -r l; do echo "::error::${l:0:240}"; done
+          fi
+          exit $code
 
       - name: Android Lint
         run: ./gradlew lintDebug
 
       - name: Build debug and release APKs
-        run: ./gradlew assembleDebug assembleRelease
+        run: |
+          set +e
+          ./gradlew assembleDebug assembleRelease > /tmp/build.log 2>&1
+          code=$?
+          tail -100 /tmp/build.log
+          if [ $code -ne 0 ]; then
+            grep -E "^e: |error:|FAILED|BUILD FAILED|What went wrong|> " /tmp/build.log | head -40 | while IFS= read -r l; do echo "::error::${l:0:240}"; done
+          fi
+          exit $code
 
       - name: Verify APK is lightweight (no bundled models)
         run: |
