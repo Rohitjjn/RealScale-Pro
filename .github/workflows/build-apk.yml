@@ -216,10 +216,11 @@ jobs:
           IMG="system-images;android-30;aosp_atd;x86_64"
           (yes || true) | "$CLT/sdkmanager" --install "platform-tools" "emulator" "platforms;android-30" "$IMG" >/dev/null
           echo no | "$CLT/avdmanager" create avd --force -n smoke_avd --package "$IMG" --device "pixel_4"
+          printf 'disk.dataPartition.size=2048M\nhw.ramSize=2048\nhw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/smoke_avd.avd/config.ini"
 
           "$SDK/emulator/emulator" -avd smoke_avd \
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot \
-            -memory 2048 -cores 2 $ACCEL_ARGS > /tmp/emulator.log 2>&1 &
+            -partition-size 2048 -memory 2048 -cores 2 $ACCEL_ARGS > /tmp/emulator.log 2>&1 &
           EMU_PID=$!
 
           BOOTED=0
