@@ -56,7 +56,10 @@ jobs:
       - name: Unit tests (pure JVM)
         continue-on-error: true
         id: puretests
-        run: ./gradlew testDebugUnitTest --tests "dev.realscale.pro.NcnnCommandBuilderTest" --tests "dev.realscale.pro.LanczosResamplerTest" --tests "dev.realscale.pro.ModelCatalogTest"
+        run: |
+          for c in NcnnCommandBuilderTest LanczosResamplerTest ModelCatalogTest; do
+            ./gradlew testDebugUnitTest --tests "dev.realscale.pro.$c" > "/tmp/$c.log" 2>&1 && echo "::notice::$c PASS" || echo "::error::$c FAIL"
+          done
 
       - name: Unit tests (Room / Robolectric)
         continue-on-error: true
