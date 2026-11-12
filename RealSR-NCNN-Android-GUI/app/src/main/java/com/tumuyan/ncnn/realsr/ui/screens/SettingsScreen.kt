@@ -1,0 +1,561 @@
+package com.tumuyan.ncnn.realsr.ui.screens
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.tumuyan.ncnn.realsr.BuildConfig
+import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
+import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
+import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
+import com.tumuyan.ncnn.realsr.core.engine.PresetCommandResolver
+import com.tumuyan.ncnn.realsr.ui.components.EditorialCard
+import com.tumuyan.ncnn.realsr.ui.components.EditorialTopBar
+import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
+import com.tumuyan.ncnn.realsr.ui.components.TerracottaPrimaryButton
+import com.tumuyan.ncnn.realsr.ui.theme.ConsoleMonoFamily
+import com.tumuyan.ncnn.realsr.ui.theme.RealScaleIcons
+import com.tumuyan.ncnn.realsr.ui.theme.RealScaleThemeTokens
+import com.tumuyan.ncnn.realsr.ui.theme.Spacing
+import com.tumuyan.ncnn.realsr.ui.theme.ThemeMode
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SettingsScreen(
+    themeMode: ThemeMode,
+    preferences: EnginePreferences,
+    consoleLog: String,
+    discoveredCommandsProvider: () -> List<PresetCommandResolver.DiscoveredCommand>,
+    onThemeModeChanged: (ThemeMode) -> Unit,
+    onBackendChanged: (ExecutionBackend) -> Unit,
+    onTileSizeChanged: (Int) -> Unit,
+    onOutputFormatChanged: (OutputFormat) -> Unit,
+    onCustomOutputFolderChanged: (Uri?) -> Unit,
+    onThreadCountChanged: (String) -> Unit,
+    onHideProgramOutputChanged: (Boolean) -> Unit,
+    onRunFolderBatch: (Uri) -> Unit,
+    onRunRawCommand: (String) -> Unit,
+    onResetEngineCache: () -> Unit,
+    onBack: () -> Unit
+) {
+    val colors = RealScaleThemeTokens.colors
+    val context = LocalContext.current
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
+    var rawCommandText by rememberSaveable { mutableStateOf("./realsr-ncnn -h") }
+    var threadInput by rememberSaveable(preferences.threadCount) { mutableStateOf(preferences.threadCount) }
+
+    val outputFolderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            }
+            onCustomOutputFolderChanged(uri)
+        }
+    }
+
+    val batchFolderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+            onRunFolderBatch(uri)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.canvas)
+    ) {
+        EditorialTopBar(
+            title = "Settings",
+            onBack = onBack
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
+        ) {
+            // Appearance
+            EditorialCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Appearance",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.ink
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    listOf(
+                        ThemeMode.SYSTEM to "System",
+                        ThemeMode.LIGHT to "Warm Light",
+                        ThemeMode.DARK to "Warm Dark"
+                    ).forEach { (mode, label) ->
+                        ChoiceChipItem(
+                            label = label,
+                            selected = themeMode == mode,
+                            onClick = { onThemeModeChanged(mode) }
+                        )
+                    }
+                }
+            }
+
+            // Output Settings
+            EditorialCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Saving & format",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.ink
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                Text(
+                    text = "Image format",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.body
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    listOf(
+                        OutputFormat.PNG to "PNG · Lossless",
+                        OutputFormat.WEBP to "WebP · Compact",
+                        OutputFormat.JPG to "JPG · Universal"
+                    ).forEach { (fmt, label) ->
+                        ChoiceChipItem(
+                            label = label,
+                            selected = preferences.outputFormat == fmt,
+                            onClick = { onOutputFormatChanged(fmt) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(Spacing.md))
+                HorizontalDivider(thickness = 1.dp, color = colors.hairline)
+                Spacer(modifier = Modifier.height(Spacing.md))
+
+                Text(
+                    text = "Output folder",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.body
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = preferences.outputTreeUri ?: "Default · Gallery (Pictures/RealScale-Pro)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    QuietOutlineButton(
+                        text = "Choose folder",
+                        onClick = { outputFolderLauncher.launch(null) }
+                    )
+                    if (preferences.outputTreeUri != null) {
+                        QuietOutlineButton(
+                            text = "Use default",
+                            tint = colors.muted,
+                            onClick = { onCustomOutputFolderChanged(null) }
+                        )
+                    }
+                }
+            }
+
+            // Performance Settings
+            EditorialCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Performance",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.ink
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                Text(
+                    text = "Processing device",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.body
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "GPU uses Vulkan/OpenCL for speed; switch to CPU if an older device shows graphics artifacts.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    ChoiceChipItem(
+                        label = "Automatic (GPU)",
+                        selected = preferences.backend == ExecutionBackend.AUTO_GPU,
+                        onClick = { onBackendChanged(ExecutionBackend.AUTO_GPU) }
+                    )
+                    ChoiceChipItem(
+                        label = "CPU Compatibility",
+                        selected = preferences.backend == ExecutionBackend.CPU,
+                        onClick = { onBackendChanged(ExecutionBackend.CPU) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(Spacing.md))
+                HorizontalDivider(thickness = 1.dp, color = colors.hairline)
+                Spacer(modifier = Modifier.height(Spacing.md))
+
+                Text(
+                    text = "Memory tile size",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.body
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Smaller tiles reduce peak memory on high-megapixel photos.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    listOf(
+                        0 to "Auto",
+                        256 to "256 px",
+                        128 to "128 px",
+                        64 to "64 px"
+                    ).forEach { (tile, label) ->
+                        ChoiceChipItem(
+                            label = label,
+                            selected = preferences.tileSize == tile,
+                            onClick = { onTileSizeChanged(tile) }
+                        )
+                    }
+                }
+            }
+
+            // Collapsible Advanced Section (retains every upstream power-user feature cleanly)
+            EditorialCard(
+                modifier = Modifier.fillMaxWidth(),
+                containerColor = colors.surfaceSoft
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = Spacing.minTouchTarget)
+                        .clickable(role = Role.Button) { showAdvanced = !showAdvanced },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Advanced",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = colors.ink
+                        )
+                        Text(
+                            text = "Batch folder processing, thread tuning, custom CLI & raw console",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.muted
+                        )
+                    }
+                    Icon(
+                        imageVector = if (showAdvanced) RealScaleIcons.ChevronUp else RealScaleIcons.ChevronDown,
+                        contentDescription = if (showAdvanced) "Collapse Advanced" else "Expand Advanced",
+                        tint = colors.ink
+                    )
+                }
+
+                if (showAdvanced) {
+                    val discovered = remember(showAdvanced) { discoveredCommandsProvider() }
+                    Spacer(modifier = Modifier.height(Spacing.md))
+                    HorizontalDivider(thickness = 1.dp, color = colors.hairline)
+                    Spacer(modifier = Modifier.height(Spacing.md))
+
+                    // Folder batch processing
+                    Text(
+                        text = "Folder batch upscale",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.ink
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Upscale every image inside a folder using your active Studio preset.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.muted
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    QuietOutlineButton(
+                        text = "Select folder to upscale",
+                        onClick = { batchFolderLauncher.launch(null) }
+                    )
+
+                    Spacer(modifier = Modifier.height(Spacing.md))
+
+                    // Thread count (-j)
+                    Text(
+                        text = "Custom NCNN thread profile (-j)",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.ink
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    OutlinedTextField(
+                        value = threadInput,
+                        onValueChange = {
+                            threadInput = it
+                            onThreadCountChanged(it)
+                        },
+                        placeholder = { Text("Leave blank for automatic (e.g. 1:2:2)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(Spacing.md))
+
+                    // Hide program output toggle
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = Spacing.minTouchTarget),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Hide program output",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = colors.ink
+                            )
+                            Text(
+                                text = "Suppress verbose engine stdout lines in the console log",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.muted
+                            )
+                        }
+                        Switch(
+                            checked = preferences.hideProgramOutput,
+                            onCheckedChange = onHideProgramOutputChanged,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = colors.onTerracotta,
+                                checkedTrackColor = colors.terracotta
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(Spacing.md))
+
+                    // Custom command & diagnostics
+                    Text(
+                        text = "Engine command & diagnostics (${discovered.size} presets indexed)",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.ink
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                    ) {
+                        listOf(
+                            "./resize-ncnn -h",
+                            "./realsr-ncnn -h",
+                            "./GetMNNInfo",
+                            "./magick -version"
+                        ).forEach { quickCmd ->
+                            ChoiceChipItem(
+                                label = quickCmd.removePrefix("./"),
+                                selected = rawCommandText == quickCmd,
+                                onClick = { rawCommandText = quickCmd }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    OutlinedTextField(
+                        value = rawCommandText,
+                        onValueChange = { rawCommandText = it },
+                        textStyle = TextStyle(fontFamily = ConsoleMonoFamily, fontSize = 13.sp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.xs))
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                        TerracottaPrimaryButton(
+                            text = "Run",
+                            onClick = { onRunRawCommand(rawCommandText) }
+                        )
+                        QuietOutlineButton(
+                            text = "Reset engine cache",
+                            onClick = onResetEngineCache
+                        )
+                    }
+
+                    if (consoleLog.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(Spacing.md))
+                        Surface(
+                            shape = MaterialTheme.shapes.medium,
+                            color = colors.canvas,
+                            border = BorderStroke(1.dp, colors.hairline),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(Spacing.md)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Console output",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = colors.muted
+                                    )
+                                    Text(
+                                        text = "Copy",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = colors.terracotta,
+                                        modifier = Modifier
+                                            .clickable {
+                                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                cm.setPrimaryClip(ClipData.newPlainText("RealScale Console", consoleLog))
+                                            }
+                                            .padding(Spacing.xs)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(Spacing.xs))
+                                Text(
+                                    text = consoleLog,
+                                    style = TextStyle(
+                                        fontFamily = ConsoleMonoFamily,
+                                        fontSize = 12.sp,
+                                        lineHeight = 18.sp,
+                                        color = colors.body
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // About & Upstream Open-Source Credits
+            EditorialCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "About RealScale Pro",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.ink
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                Text(
+                    text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · 100% On-Device & Offline-First",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.body
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                Text(
+                    text = "Zero analytics, zero accounts, zero ads, and zero cloud uploads. Network access is used exclusively when you download models from Model Hub.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted
+                )
+                Spacer(modifier = Modifier.height(Spacing.md))
+                HorizontalDivider(thickness = 1.dp, color = colors.hairline)
+                Spacer(modifier = Modifier.height(Spacing.md))
+                Text(
+                    text = "Upstream Credits & License (BSD 3-Clause)",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.ink
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Built upon RealSR-NCNN-Android by tumuyan (BSD 3-Clause), Tencent NCNN & realsr/waifu2x/realcugan/srmd-ncnn-vulkan by nihui (MIT / BSD), Alibaba MNN (Apache-2.0), Anime4KCPP by TianZerL, and ImageMagick.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted
+                )
+            }
+
+            Spacer(modifier = Modifier.height(Spacing.xl))
+        }
+    }
+}
+
+@Composable
+private fun ChoiceChipItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val colors = RealScaleThemeTokens.colors
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = if (selected) colors.terracotta else colors.surfaceSoft,
+        border = BorderStroke(1.dp, if (selected) colors.terracotta else colors.hairline),
+        modifier = Modifier
+            .defaultMinSize(minWidth = Spacing.minTouchTarget, minHeight = 42.dp)
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(role = Role.RadioButton, onClick = onClick)
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (selected) colors.onTerracotta else colors.ink
+            )
+        }
+    }
+}
