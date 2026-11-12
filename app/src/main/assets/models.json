@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "source": "https://huggingface.co/tumuyan2/realsr-models",
+  "models": [
+    {"id": "realesrgan-anime", "name": "Real-ESRGAN AnimeSharp", "engine": "Real-ESRGAN", "binary": "realsr-ncnn", "scale": 4, "dir": "models-ESRGAN-AnimeSharp", "files": ["x4.bin", "x4.param"]},
+    {"id": "realesrgan-remacri", "name": "Real-ESRGAN Remacri", "engine": "Real-ESRGAN", "binary": "realsr-ncnn", "scale": 4, "dir": "models-ESRGAN-Remacri", "files": ["x4.bin", "x4.param"]},
+    {"id": "realesrgan-df2k", "name": "Real-ESRGAN DF2K", "engine": "Real-ESRGAN", "binary": "realsr-ncnn", "scale": 4, "dir": "models-DF2K", "files": ["x4.bin", "x4.param"]},
+    {"id": "waifu2x-cunet", "name": "Waifu2x cunet", "engine": "Waifu2x", "binary": "waifu2x-ncnn", "scale": 2, "dir": "models-cunet", "files": ["noise0_scale2.0x_model.bin", "noise0_scale2.0x_model.param", "scale2.0x_model.bin", "scale2.0x_model.param"]},
+    {"id": "waifu2x-photo", "name": "Waifu2x Photo", "engine": "Waifu2x", "binary": "waifu2x-ncnn", "scale": 2, "dir": "models-upconv_7_photo", "files": ["scale2.0x_model.bin", "scale2.0x_model.param"]}
+  ]
+}

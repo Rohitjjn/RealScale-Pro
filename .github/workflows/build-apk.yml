@@ -1,0 +1,103 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  MAX_APK_MB: "75"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK (preinstalled on runner)
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" || true
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+
+      # Core NCNN binaries only — models-* are deliberately excluded so the base APK stays light.
+      - name: Fetch core NCNN binaries from upstream assets.zip
+        run: |
+          mkdir -p /tmp/assets app/src/main/assets/realsr
+          gh release download 1.13.0 --repo tumuyan/RealSR-NCNN-Android --pattern assets.zip --dir /tmp
+          unzip -o -q /tmp/assets.zip -d /tmp/assets
+          find /tmp/assets -type d -name 'models-*' -prune -o -type f -print0 | while IFS= read -r -d '' f; do
+            case "$(basename "$f")" in
+              realsr-ncnn|realcugan-ncnn|waifu2x-ncnn|srmd-ncnn|resize-ncnn|Anime4k|magick|libncnn.so|libomp.so|libc++_shared.so|colors.xml|delegates.xml)
+                cp "$f" app/src/main/assets/realsr/ ;;
+            esac
+          done
+          ls -lh app/src/main/assets/realsr/
+          du -sh app/src/main/assets/realsr/ | sed 's/^/::notice::binaries total: /' || echo "No binaries found — classical Lanczos fallback still works offline."
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Unit tests (pure JVM)
+        run: |
+          set +e
+          ./gradlew testDebugUnitTest --tests "dev.realscale.pro.NcnnCommandBuilderTest" --tests "dev.realscale.pro.LanczosResamplerTest" --tests "dev.realscale.pro.ModelCatalogTest" > /tmp/pure.log 2>&1
+          code=$?
+          python3 -c "import glob,xml.etree.ElementTree as ET; [print('::error::'+tc.get('classname','?')+'.'+tc.get('name','?')+': '+((fail.get('message') or '')[:200].replace('%','%25').replace(chr(10),' '))) for f in glob.glob('app/build/test-results/**/*.xml',recursive=True) for tc in ET.parse(f).getroot().iter('testcase') for fail in tc if fail.tag in ('failure','error')]" || true
+          exit $code
+
+      - name: Unit tests (Room / Robolectric)
+        run: |
+          ./gradlew testDebugUnitTest --tests "dev.realscale.pro.DatabaseTest" > /tmp/db.log 2>&1 || { echo "::error::DB FAIL: $(grep -m1 -E 'FAILURE:|error:|Exception|Could not|failed' /tmp/db.log | cut -c1-220) || $(tail -3 /tmp/db.log | tr '\n' ' ' | cut -c1-220)"; exit 1; }
+
+      - name: Android Lint
+        run: ./gradlew lintDebug
+
+      - name: Build debug and release APKs
+        run: |
+          set +e
+          ./gradlew assembleDebug assembleRelease > /tmp/build.log 2>&1
+          code=$?
+          tail -100 /tmp/build.log
+          if [ $code -ne 0 ]; then
+            grep -E "^e: |error:|FAILED|BUILD FAILED|What went wrong|> " /tmp/build.log | head -40 | while IFS= read -r l; do echo "::error::${l:0:240}"; done
+          fi
+          exit $code
+
+      - name: Verify APK is lightweight (no bundled models)
+        run: |
+          for apk in app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release/*.apk; do
+            size_mb=$(( $(stat -c%s "$apk") / 1024 / 1024 ))
+            echo "::notice::$apk: ${size_mb} MB"
+            if unzip -l "$apk" | grep -E 'models-[^ ]*\.(bin|param)'; then
+              echo "::error::Bundled AI model found in $apk"; exit 1
+            fi
+            if [ "$size_mb" -gt "$MAX_APK_MB" ]; then
+              echo "::error::$apk is ${size_mb} MB, over ${MAX_APK_MB} MB lightweight threshold"; exit 1
+            fi
+          done
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RealScale-Pro-APKs
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
