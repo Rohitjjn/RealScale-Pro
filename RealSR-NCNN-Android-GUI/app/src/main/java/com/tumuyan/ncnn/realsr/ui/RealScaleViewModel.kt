@@ -413,7 +413,7 @@ class RealScaleViewModel(
 
     private fun loadThemeMode(): ThemeMode =
         runCatching {
-            ThemeMode.valueOf(uiPrefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM)!!)
+            ThemeMode.valueOf(uiPrefs.getString(KEY_THEME_MODE, ThemeMode.SYSTEM.name)!!)
         }.getOrDefault(ThemeMode.SYSTEM)
 
     class Factory(

@@ -6,25 +6,25 @@ import com.tumuyan.ncnn.realsr.core.engine.ProcessingServiceEngine
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleEngine
 import com.tumuyan.ncnn.realsr.core.model.ModelRepository
 
-class RealScaleAppContainer(context: Context) {
-    private val appContext = context.applicationContext
-    val database: RealScaleDatabase = RealScaleDatabase.getInstance(appContext)
+class RealScaleAppContainer(
+    context: Context,
+    val database: RealScaleDatabase = RealScaleDatabase.getInstance(context.applicationContext),
     val engine: UpscaleEngine = ProcessingServiceEngine(
-        context = appContext,
+        context = context.applicationContext,
         recentCreationDao = database.recentCreationDao()
-    )
+    ),
     val modelRepository: ModelRepository = ModelRepository(
-        context = appContext,
+        context = context.applicationContext,
         downloadedModelDao = database.downloadedModelDao()
     )
-
+) {
     companion object {
         @Volatile
         private var INSTANCE: RealScaleAppContainer? = null
 
         fun getInstance(context: Context): RealScaleAppContainer {
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: RealScaleAppContainer(context).also { INSTANCE = it }
+                INSTANCE ?: RealScaleAppContainer(context.applicationContext).also { INSTANCE = it }
             }
         }
     }
