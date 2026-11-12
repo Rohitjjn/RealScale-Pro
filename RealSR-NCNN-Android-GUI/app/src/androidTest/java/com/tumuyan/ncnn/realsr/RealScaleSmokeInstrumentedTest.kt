@@ -68,7 +68,7 @@ class RealScaleSmokeInstrumentedTest {
             "mnnsr-ncnn",
             "resize-ncnn",
             "magick",
-            "ac_cli"
+            "Anime4k"
         )
         for (tool in expectedCliTools) {
             val f = File(engineDir, tool)
@@ -76,8 +76,11 @@ class RealScaleSmokeInstrumentedTest {
             assertTrue("Expected executable bit on $tool", f.canExecute())
         }
 
-        val mnnLib = File(engineDir, "libMNN.so")
-        assertTrue("Expected extracted libMNN.so", mnnLib.isFile && mnnLib.length() > 100_000L)
+        val sharedLibs = engineDir.listFiles()?.filter { it.isFile && it.name.endsWith(".so") }.orEmpty()
+        assertTrue(
+            "Expected at least 3 extracted native .so libraries, found ${sharedLibs.size}",
+            sharedLibs.size >= 3 && sharedLibs.all { it.length() > 10_000L }
+        )
     }
 
     @Test

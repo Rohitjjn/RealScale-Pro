@@ -47,7 +47,7 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
           SDKMGR=$(find "$ANDROID_HOME" -name sdkmanager | head -n 1)
-          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          (yes || true) | "$SDKMGR" --licenses >/dev/null 2>&1 || true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -167,7 +167,7 @@ jobs:
     name: Emulator Instrumentation Smoke Test
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - name: Set up JDK 21
         uses: actions/setup-java@v6
@@ -181,42 +181,98 @@ jobs:
           name: instrumentation-apks
           path: apks
 
-      - name: Enable KVM hardware acceleration
+      - name: Boot Android 11 ATD Emulator & Run RealScaleSmokeInstrumentedTest
         run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
+          set -eu
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            sudo chmod 666 /dev/kvm
+            KVM_INFO=$(ls -la /dev/kvm)
+            ACCEL_ARGS="-accel on"
+          else
+            KVM_INFO="NO_KVM"
+            ACCEL_ARGS="-accel off"
+          fi
+          echo "::notice title=KvmStatus::KVM device: ${KVM_INFO}"
 
-      - name: Run RealScaleSmokeInstrumentedTest on Android 14 Emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          target: aosp_atd
-          profile: Galaxy Nexus
-          cores: 2
-          ram-size: 2048M
-          sdcard-path-or-size: 100M
-          disable-animations: true
-          disable-spellchecker: true
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: |
-            set -euo pipefail
-            APP_APK=$(find apks -path "*/debug/*.apk" ! -path "*/androidTest/*" | head -n 1)
-            TEST_APK=$(find apks -path "*/androidTest/debug/*.apk" | head -n 1)
-            echo "Installing $APP_APK and $TEST_APK..."
-            adb install -r -g "$APP_APK"
-            adb install -r -g "$TEST_APK"
-            ABIS=$(adb shell getprop ro.product.cpu.abilist | tr -d '\r')
-            echo "::notice title=EmulatorAbis::Android 14 emulator supported ABIs: ${ABIS}"
-            adb shell am instrument -w -r \
-              -e class com.tumuyan.ncnn.realsr.RealScaleSmokeInstrumentedTest \
-              com.tumuyan.ncnn.realsr.debug.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/instrument.log
-            if ! grep -q "OK (" /tmp/instrument.log; then
-              ERR=$(tail -n 65 /tmp/instrument.log)
-              MSG=$(printf "%s" "$ERR" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
-              echo "::error title=InstrumentationFailure::${MSG:0:3800}"
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ANDROID_HOME="$SDK"
+          export ANDROID_SDK_ROOT="$SDK"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+
+          # Upgrade cmdline-tools to >=22.0 to avoid broken target=android-0 AVD metadata (#14484)
+          (yes || true) | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          (yes || true) | "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "cmdline-tools;latest" >/dev/null
+          if [ -d "$SDK/cmdline-tools/latest-2" ]; then
+            sudo rm -rf "$SDK/cmdline-tools/latest"
+            sudo mv "$SDK/cmdline-tools/latest-2" "$SDK/cmdline-tools/latest"
+          fi
+          CLT="$SDK/cmdline-tools/latest/bin"
+          export PATH="$CLT:$SDK/platform-tools:$SDK/emulator:$PATH"
+
+          IMG="system-images;android-30;aosp_atd;x86_64"
+          (yes || true) | "$CLT/sdkmanager" --install "platform-tools" "emulator" "platforms;android-30" "$IMG" >/dev/null
+          echo no | "$CLT/avdmanager" create avd --force -n smoke_avd --package "$IMG" --device "pixel_4"
+
+          "$SDK/emulator/emulator" -avd smoke_avd \
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot \
+            -memory 2048 -cores 2 $ACCEL_ARGS > /tmp/emulator.log 2>&1 &
+          EMU_PID=$!
+
+          BOOTED=0
+          START_TS=$(date +%s)
+          for i in $(seq 1 120); do
+            if ! kill -0 "$EMU_PID" 2>/dev/null; then
+              DIAG=$(tail -n 60 /tmp/emulator.log | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+              echo "::error title=EmulatorExitedEarly::Emulator process exited:${DIAG:0:3500}"
               exit 1
             fi
-            SUMMARY=$(grep "OK (" /tmp/instrument.log | tr -d '\r')
-            echo "::notice title=InstrumentationPassed::Emulator smoke tests passed: ${SUMMARY}"
+            BOOT_PROP=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
+            PM_READY=$(adb shell pm path android 2>/dev/null | tr -d '\r' || true)
+            if [ "$BOOT_PROP" = "1" ] && [ -n "$PM_READY" ]; then
+              BOOTED=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$BOOTED" -ne 1 ]; then
+            DIAG=$(tail -n 60 /tmp/emulator.log | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=EmulatorBootTimeout::Timed out after 240s. Log:${DIAG:0:3500}"
+            kill "$EMU_PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          BOOT_SECS=$(( $(date +%s) - START_TS ))
+          ABIS=$(adb shell getprop ro.product.cpu.abilist | tr -d '\r')
+          echo "::notice title=EmulatorBooted::Android 11 ATD booted in ${BOOT_SECS}s (ABIs: ${ABIS})"
+
+          adb shell settings put global window_animation_scale 0.0 || true
+          adb shell settings put global transition_animation_scale 0.0 || true
+          adb shell settings put global animator_duration_scale 0.0 || true
+          adb shell input keyevent 82 || true
+
+          APP_APK=$(find apks -path "*/debug/*.apk" ! -path "*/androidTest/*" | head -n 1)
+          TEST_APK=$(find apks -path "*/androidTest/debug/*.apk" | head -n 1)
+          adb install -r -g "$APP_APK"
+          adb install -r -g "$TEST_APK"
+
+          adb shell am instrument -w -r \
+            -e class com.tumuyan.ncnn.realsr.RealScaleSmokeInstrumentedTest \
+            com.tumuyan.ncnn.realsr.debug.test/androidx.test.runner.AndroidJUnitRunner > /tmp/instrument.log 2>&1 || true
+          cat /tmp/instrument.log
+
+          LOGCAT_CRASH=$(adb logcat -d -b crash 2>/dev/null | tail -n 35 || true)
+          adb emu kill || kill "$EMU_PID" 2>/dev/null || true
+
+          if ! grep -q "OK (" /tmp/instrument.log; then
+            ERR=$(cat /tmp/instrument.log; printf "\n--- CRASH ---\n%s" "$LOGCAT_CRASH")
+            MSG=$(printf "%s" "$ERR" | tail -n 80 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=InstrumentationFailure::${MSG:0:3800}"
+            exit 1
+          fi
+          SUMMARY=$(grep "OK (" /tmp/instrument.log | tr -d '\r')
+          echo "::notice title=InstrumentationPassed::Emulator smoke tests passed: ${SUMMARY}"

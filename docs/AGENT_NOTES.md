@@ -118,6 +118,27 @@ All commands execute inside `workingDir` (`<cacheDir>/realsr`) with `input.png` 
     - Compose BOM `2026.09.00` (Compose UI `1.12.1`, Material 3 `1.4.0` stable), Navigation Compose `2.10.2`, Room `2.8.5`, WorkManager `2.12.0`, Coil `3.6.3`, Kotlin Coroutines `1.11.0`, Kotlinx Serialization JSON `1.11.0`.
   - Removed `android.nonFinalResIds=false` (incompatible with AGP 9.x; verified upstream Java uses `if/else` rather than `switch` on `R.id.*`).
   - Step 2 verified green in GitHub Actions (`https://github.com/Rohitjjn/RealScale-Pro/actions/runs/43222437622`).
+
+---
+
+## 8. Steps 3–7 Architecture & Verified Measurements
+
+- **Step 3 — Clean Kotlin Engine Facade & Room Persistence (`c1a1bb3`, green run `43226789180`)**:
+  - Added `UpscaleEngine` / `ProcessingServiceEngine` exposing reactive `StateFlow<EngineState>`, `StateFlow<String>` console log, and `StateFlow<EnginePreferences>` while delegating shell execution and foreground notifications to unmodified `ProcessingService` + `ImageProcessor`.
+  - Added `PresetCommandResolver` mapping friendly presets (`Instant`, `Photo`, `Anime & Art`, `Maximum`) and custom model specs to exact CLI invocations (`srmd-ncnn` never receives `-g -1`; `mnnsr-ncnn` uses `-b 0` for CPU / `-b 3` for OpenCL).
+  - Added Room 2.8 `RealScaleDatabase` (`RecentCreationDao`, `DownloadedModelDao`) verified under Robolectric.
+- **Step 4 — Slim APK (`binaries.tar.xz`) & On-Demand Resumable Model Hub (`a8f8c83`, green run `43236059282`)**:
+  - Removed 100% of bundled `models-*` directories from `assets/realsr/`.
+  - Solid-compressed all 19 unmodified arm64 CLI binaries and `.so` libraries into `assets/realsr/binaries.tar.xz` (`16.63 MiB`, unpacked once on first launch via `org.tukaani:xz:1.12` in `EngineAssetExtractor`).
+  - Bundled `assets/model_manifest.json` with 14 real models (61 files) from `huggingface.co/tumuyan2/realsr-models` with verified byte counts and 64-char SHA-256 digests, paired with `ResumableModelInstaller` (HTTP `Range` `206` resume + `200` fallback + `.part` staging + SHA-256 check) and `ModelDownloadWorker` (`WorkManager`).
+- **Step 5 — Claude Warm Editorial Compose UI & Legacy XML Removal (`d9afa76` run `43241730199` & `1635ff8` run `43244140294`)**:
+  - Built 5 Compose screens (`StudioScreen`, `ProcessingScreen`, `ResultScreen` with synchronized zoom/pan `BeforeAfterSplitView`, `ModelHubScreen`, `SettingsScreen`) in Step 5A without touching engine classes.
+  - Removed obsolete XML activities (`SettingActivity`, `DirectoryProcessActivity`, `LabelEditorActivity`), XML layouts, and `appcompat`/`material`/`subsampling-scale-image-view` dependencies in Step 5B (`1635ff8`), bringing final APK sizes to:
+    - **`release` APK**: **`18.54 MiB` (`19,436,217 bytes`)**
+    - **`debug` APK**: **`29.87 MiB` (`31,325,047 bytes`)**
+    - **Bundled AI model files**: **`0`** (`unzip -l` verified in CI).
+- **Step 6 & 7 — Emulator Smoke Suite, Release Automation & Docs**:
+  - Added `RealScaleSmokeInstrumentedTest` (`app/src/androidTest/`) verifying `binaries.tar.xz` extraction of all 8 CLI tools (`realsr-ncnn`, `srmd-ncnn`, `realcugan-ncnn`, `waifu2x-ncnn`, `mnnsr-ncnn`, `resize-ncnn`, `magick`, `Anime4k`), Studio -> Model Hub -> Settings -> Dark/Light theme navigation, `singleTop` `ACTION_SEND` photo intake, on-demand model prompt, and Instant upscale / Result Before-After rendering on Android 11 ATD emulator in GitHub Actions (upgrading `cmdline-tools;latest` to `>=22.0` to avoid `actions/runner-images#14484` `target=android-0` bug).
 - **Step 3 Decoupled Engine & Room Persistence**:
   - Added `core/database/` (`RealScaleDatabase`, `RecentCreationEntity`, `RecentCreationDao`, `DownloadedModelEntity`, `DownloadedModelDao`) with KSP + Room `2.8.5`.
   - Added `core/engine/` (`UpscaleEngine`, `ProcessingServiceEngine`, `PresetCommandResolver`, `EngineAssetExtractor`, `UpscalePreset`, `EngineModels`) wrapping upstream `CommandBuilder`, `CommandListManager`, `ImageProcessor`, `ProcessingService`, `ProgressLogHelper`, and `AssetsCopyer` behind pure Kotlin `StateFlow`s (zero UI callbacks, zero EventBus).
