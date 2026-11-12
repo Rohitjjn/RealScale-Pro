@@ -13,12 +13,11 @@ on:
   workflow_dispatch:
 
 env:
-  UPSTREAM_ASSETS_ZIP_URL: https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.13.0/assets.zip
   UPSTREAM_APK_1_13_2_URL: https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.13.2/RealSR-NCNN-Android-GUI-armv8a-1.13.2.apk
 
 jobs:
-  build-baseline:
-    name: Build Upstream Baseline & Inspect Assets
+  build:
+    name: Build & Test
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
@@ -47,185 +46,30 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Fetch and compare upstream 1.13.0 assets.zip vs 1.13.2 release APK assets
+      - name: Fetch upstream 1.13.2 prebuilt assets
         run: |
-          mkdir -p /tmp/upstream-assets/zip1130 /tmp/upstream-assets/apk1132
-          curl -fL "$UPSTREAM_ASSETS_ZIP_URL" -o /tmp/upstream-assets/assets-1.13.0.zip
+          mkdir -p /tmp/upstream-assets/apk1132
           curl -fL "$UPSTREAM_APK_1_13_2_URL" -o /tmp/upstream-assets/apk-1.13.2.apk
-
-          unzip -q /tmp/upstream-assets/assets-1.13.0.zip -d /tmp/upstream-assets/zip1130
           unzip -q /tmp/upstream-assets/apk-1.13.2.apk 'assets/realsr/*' -d /tmp/upstream-assets/apk1132
-
-          python3 - << 'PY'
-          import hashlib, json, os
-
-          def scan_top(root):
-              res = {}
-              for entry in sorted(os.listdir(root)):
-                  p = os.path.join(root, entry)
-                  if os.path.isfile(p):
-                      h = hashlib.sha256(open(p, "rb").read()).hexdigest()[:16]
-                      res[entry] = {"size": os.path.getsize(p), "sha16": h}
-                  else:
-                      total = sum(
-                          os.path.getsize(os.path.join(dp, f))
-                          for dp, _, fs in os.walk(p) for f in fs
-                      )
-                      files = sorted(
-                          os.path.relpath(os.path.join(dp, f), p)
-                          for dp, _, fs in os.walk(p) for f in fs
-                      )
-                      res[entry + "/"] = {"totalBytes": total, "files": files}
-              return res
-
-          z = scan_top("/tmp/upstream-assets/zip1130/realsr")
-          a = scan_top("/tmp/upstream-assets/apk1132/assets/realsr")
-          diff_bins = {
-              k: {"zip1130": z.get(k), "apk1132": a.get(k)}
-              for k in sorted(set(z) | set(a))
-              if not k.endswith("/") and z.get(k) != a.get(k)
-          }
-          report = json.dumps({"apk1132_entries": a, "binary_diffs_vs_1130": diff_bins}, indent=2)
-          print(report)
-          enc = report.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-          print(f"::notice title=AssetsComparison::{enc[:3800]}")
-          PY
-
           mkdir -p RealSR-NCNN-Android-GUI/app/src/main/assets
           cp -r /tmp/upstream-assets/apk1132/assets/realsr RealSR-NCNN-Android-GUI/app/src/main/assets/
 
-      - name: Compute SHA-256 and byte sizes for real HuggingFace/GitHub models
-        run: |
+          # Measure compressed size of non-model assets inside upstream APK
           python3 - << 'PY'
-          import hashlib, json, urllib.request
-
-          HF_BASE = "https://huggingface.co/tumuyan2/realsr-models/resolve/main"
-          MODELS = {
-              "models-RealeSR-general-v3": [
-                  "models-RealeSR-general-v3/x4.bin",
-                  "models-RealeSR-general-v3/x4.param",
-              ],
-              "models-DF2K": [
-                  "models-DF2K/x4.bin",
-                  "models-DF2K/x4.param",
-              ],
-              "models-DF2K_JPEG": [
-                  "models-DF2K_JPEG/x4.bin",
-                  "models-DF2K_JPEG/x4.param",
-              ],
-              "models-ESRGAN-Nomos8kSC": [
-                  "models-ESRGAN-Nomos8kSC/x4.bin",
-                  "models-ESRGAN-Nomos8kSC/x4.param",
-              ],
-              "models-ESRGAN-AnimeSharp": [
-                  "models-ESRGAN-AnimeSharp/x4.bin",
-                  "models-ESRGAN-AnimeSharp/x4.param",
-              ],
-              "models-ESRGAN-AnimeSharpLite": [
-                  "models-ESRGAN-AnimeSharpLite/x4.bin",
-                  "models-ESRGAN-AnimeSharpLite/x4.param",
-              ],
-              "models-ESRGAN-Remacri": [
-                  "models-ESRGAN-Remacri/x4.bin",
-                  "models-ESRGAN-Remacri/x4.param",
-              ],
-              "models-ESRGAN-UltraMix_Balanced": [
-                  "models-ESRGAN-UltraMix_Balanced/x4.bin",
-                  "models-ESRGAN-UltraMix_Balanced/x4.param",
-              ],
-              "models-ESRGAN-UltraSharp-fp16": [
-                  "models-ESRGAN-UltraSharp-fp16/x4.bin",
-                  "models-ESRGAN-UltraSharp-fp16/x4.param",
-              ],
-              "models-upconv_7_anime_style_art_rgb": [
-                  "models-upconv_7_anime_style_art_rgb/noise0_scale2.0x_model.bin",
-                  "models-upconv_7_anime_style_art_rgb/noise0_scale2.0x_model.param",
-                  "models-upconv_7_anime_style_art_rgb/noise1_scale2.0x_model.bin",
-                  "models-upconv_7_anime_style_art_rgb/noise1_scale2.0x_model.param",
-                  "models-upconv_7_anime_style_art_rgb/noise2_scale2.0x_model.bin",
-                  "models-upconv_7_anime_style_art_rgb/noise2_scale2.0x_model.param",
-                  "models-upconv_7_anime_style_art_rgb/noise3_scale2.0x_model.bin",
-                  "models-upconv_7_anime_style_art_rgb/noise3_scale2.0x_model.param",
-                  "models-upconv_7_anime_style_art_rgb/scale2.0x_model.bin",
-                  "models-upconv_7_anime_style_art_rgb/scale2.0x_model.param",
-              ],
-              "models-upconv_7_photo": [
-                  "models-upconv_7_photo/noise0_scale2.0x_model.bin",
-                  "models-upconv_7_photo/noise0_scale2.0x_model.param",
-                  "models-upconv_7_photo/noise1_scale2.0x_model.bin",
-                  "models-upconv_7_photo/noise1_scale2.0x_model.param",
-                  "models-upconv_7_photo/noise2_scale2.0x_model.bin",
-                  "models-upconv_7_photo/noise2_scale2.0x_model.param",
-                  "models-upconv_7_photo/noise3_scale2.0x_model.bin",
-                  "models-upconv_7_photo/noise3_scale2.0x_model.param",
-                  "models-upconv_7_photo/scale2.0x_model.bin",
-                  "models-upconv_7_photo/scale2.0x_model.param",
-              ],
-              "models-cunet": [
-                  "models-cunet/noise0_scale2.0x_model.bin",
-                  "models-cunet/noise0_scale2.0x_model.param",
-                  "models-cunet/noise1_scale2.0x_model.bin",
-                  "models-cunet/noise1_scale2.0x_model.param",
-                  "models-cunet/noise2_scale2.0x_model.bin",
-                  "models-cunet/noise2_scale2.0x_model.param",
-                  "models-cunet/noise3_scale2.0x_model.bin",
-                  "models-cunet/noise3_scale2.0x_model.param",
-                  "models-cunet/scale2.0x_model.bin",
-                  "models-cunet/scale2.0x_model.param",
-              ],
-              "models-srmd": [
-                  "models-srmd/srmd_x2.bin",
-                  "models-srmd/srmd_x2.param",
-                  "models-srmd/srmd_x3.bin",
-                  "models-srmd/srmd_x3.param",
-                  "models-srmd/srmd_x4.bin",
-                  "models-srmd/srmd_x4.param",
-                  "models-srmd/srmdnf_x2.bin",
-                  "models-srmd/srmdnf_x2.param",
-                  "models-srmd/srmdnf_x3.bin",
-                  "models-srmd/srmdnf_x3.param",
-                  "models-srmd/srmdnf_x4.bin",
-                  "models-srmd/srmdnf_x4.param",
-              ],
-              "models-MNN-RealESRGAN_x4plus_anime_6B": [
-                  "models-MNNSR/RealESRGAN_x4plus_anime_6B-x4.mnn",
-              ],
-          }
-
-          out = {}
-          for model_id, rel_files in MODELS.items():
-              entries = []
-              total_bytes = 0
-              for rel in rel_files:
-                  url = f"{HF_BASE}/{rel}"
-                  req = urllib.request.Request(url, headers={"User-Agent": "RealScale-Pro-CI/1.0"})
-                  h = hashlib.sha256()
-                  size = 0
-                  with urllib.request.urlopen(req, timeout=60) as resp:
-                      while True:
-                          chunk = resp.read(65536)
-                          if not chunk:
-                              break
-                          h.update(chunk)
-                          size += len(chunk)
-                  total_bytes += size
-                  entries.append({"path": rel, "size": size, "sha256": h.hexdigest()})
-              out[model_id] = {"totalBytes": total_bytes, "files": entries}
-
-          raw = json.dumps(out, separators=(",", ":"))
-          with open("/tmp/model-hashes.json", "w") as f:
-              json.dump(out, f, indent=2)
-          for idx in range(0, len(raw), 3500):
-              part = raw[idx:idx+3500].replace("%", "%25")
-              print(f"::notice title=ModelHashes_{idx//3500}::{part}")
+          import zipfile
+          zf = zipfile.ZipFile("/tmp/upstream-assets/apk-1.13.2.apk")
+          bins = [i for i in zf.infolist() if i.filename.startswith("assets/realsr/") and "/models" not in i.filename]
+          raw = sum(i.file_size for i in bins)
+          comp = sum(i.compress_size for i in bins)
+          lines = [f"Non-model assets: count={len(bins)}, raw={raw/1048576:.2f}MB, compressed_in_apk={comp/1048576:.2f}MB"]
+          for i in sorted(bins, key=lambda x: -x.compress_size)[:15]:
+              lines.append(f"  {i.filename}: raw={i.file_size/1048576:.2f}MB comp={i.compress_size/1048576:.2f}MB type={i.compress_type}")
+          msg = "%0A".join(lines).replace("%25", "%")
+          print("\n".join(lines))
+          print(f"::notice title=NonModelAssetSizes::" + "%0A".join(lines))
           PY
 
-      - name: Verify unmodified upstream GUI diff is empty
-        run: |
-          git fetch https://github.com/tumuyan/RealSR-NCNN-Android.git refs/tags/1.13.2:refs/tags/1.13.2 --depth=1
-          git diff --exit-code 1.13.2 -- RealSR-NCNN-Android-GUI/ RealSR-NCNN-Android-CLI/
-
-      - name: Build & test unmodified upstream GUI
+      - name: Run unit tests & assembleDebug
         working-directory: RealSR-NCNN-Android-GUI
         run: |
           set -o pipefail
@@ -237,12 +81,11 @@ jobs:
             exit 1
           fi
           cat /tmp/gradle.log
-          APK_INFO=$(ls -lh app/build/outputs/apk/debug/*.apk | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
-          echo "::notice title=BaselineBuildSuccess::$APK_INFO"
+          echo "::notice title=Step1GoldenTestsPassed::All golden engine command parity tests passed and debug APK built."
 
-      - name: Upload baseline APK
+      - name: Upload APK
         uses: actions/upload-artifact@v7
         with:
-          name: baseline-apk
+          name: realscale-pro-apk
           path: RealSR-NCNN-Android-GUI/app/build/outputs/apk/**/*.apk
           retention-days: 14
