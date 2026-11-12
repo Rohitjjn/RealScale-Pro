@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
@@ -170,7 +172,7 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.waitUntil(timeoutMillis = 5_000L) {
                 composeRule.onAllNodesWithText("Smoke 4×").fetchSemanticsNodes().isNotEmpty()
             }
-            composeRule.onNodeWithText("Smoke 4×").performScrollTo().performClick()
+            composeRule.onNodeWithText("Smoke 4×").performSemanticsAction(SemanticsActions.OnClick)
             composeRule.waitUntil(timeoutMillis = 5_000L) {
                 composeRule.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty()
             }
