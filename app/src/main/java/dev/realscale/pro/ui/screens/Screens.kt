@@ -19,6 +19,7 @@ import dev.realscale.pro.ui.MainViewModel
 import dev.realscale.pro.ui.components.*
 import dev.realscale.pro.ui.theme.Warm
 import java.io.File
+import kotlinx.coroutines.launch
 
 @Composable fun HomeScreen(vm: MainViewModel) {
     val s by vm.studio.collectAsState()

@@ -23,7 +23,7 @@ import dev.realscale.pro.ui.theme.Warm
     }
 
 @Composable fun WarmSecondaryButton(text: String, onClick: () -> Unit) =
-    OutlinedButton(onClick, Modifier.height(40.dp), MaterialTheme.shapes.medium, border = BorderStroke(1.dp, Warm.Hairline)) {
+    OutlinedButton(onClick, Modifier.height(40.dp), true, MaterialTheme.shapes.medium, border = BorderStroke(1.dp, Warm.Hairline)) {
         Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 
@@ -75,8 +75,8 @@ import dev.realscale.pro.ui.theme.Warm
             .clip(object : Shape { override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density) =
                 Outline.Rectangle(Rect(0f, 0f, size.width * split, size.height)) }),
             contentScale = androidx.compose.ui.layout.ContentScale.Fit)
-        Box(Modifier.fillMaxHeight().width(2.dp).offset { IntOffset((widthPx * split).toInt(), 0) }.background(Warm.Primary))
-        Box(Modifier.offset { IntOffset((widthPx * split - 18.dp).toInt(), 0) }.align(Alignment.CenterStart)
+        Box(Modifier.fillMaxHeight().width(2.dp).graphicsLayer { translationX = widthPx * split }.background(Warm.Primary))
+        Box(Modifier.align(Alignment.CenterStart).graphicsLayer { translationX = widthPx * split - 18.dp.toPx() }
             .size(36.dp).background(Warm.Canvas, CircleShape).border(1.dp, Warm.Hairline, CircleShape),
             Alignment.Center) { Text("↔", color = Warm.Ink, style = MaterialTheme.typography.titleSmall) }
         Row(Modifier.align(Alignment.TopStart).padding(12.dp)) { BadgePill("Before") }
