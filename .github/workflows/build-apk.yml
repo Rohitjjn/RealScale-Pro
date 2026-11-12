@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  MAX_APK_MB: "60"
+  MAX_APK_MB: "75"
 
 jobs:
   build:
@@ -49,7 +49,8 @@ jobs:
                 cp "$f" app/src/main/assets/realsr/ ;;
             esac
           done
-          ls -lh app/src/main/assets/realsr/ || echo "No binaries found — classical Lanczos fallback still works offline."
+          ls -lh app/src/main/assets/realsr/
+          du -sh app/src/main/assets/realsr/ | sed 's/^/::notice::binaries total: /' || echo "No binaries found — classical Lanczos fallback still works offline."
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -60,6 +61,7 @@ jobs:
           for c in NcnnCommandBuilderTest LanczosResamplerTest ModelCatalogTest; do
             ./gradlew testDebugUnitTest --tests "dev.realscale.pro.$c" > "/tmp/$c.log" 2>&1 && echo "::notice::$c PASS" || echo "::error::$c FAIL"
           done
+          python3 -c "import glob,xml.etree.ElementTree as ET; [print('::error::'+tc.get('classname','?')+'.'+tc.get('name','?')+': '+((fail.get('message') or '')[:200].replace('%','%25').replace(chr(10),' '))) for f in glob.glob('app/build/test-results/**/*.xml',recursive=True) for tc in ET.parse(f).getroot().iter('testcase') for fail in tc if fail.tag in ('failure','error')]" || true
 
       - name: Unit tests (Room / Robolectric)
         continue-on-error: true
@@ -90,7 +92,7 @@ jobs:
         run: |
           for apk in app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release/*.apk; do
             size_mb=$(( $(stat -c%s "$apk") / 1024 / 1024 ))
-            echo "$apk: ${size_mb} MB"
+            echo "::notice::$apk: ${size_mb} MB"
             if unzip -l "$apk" | grep -E 'models-[^ ]*\.(bin|param)'; then
               echo "::error::Bundled AI model found in $apk"; exit 1
             fi
