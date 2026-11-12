@@ -103,14 +103,16 @@ class RealScaleSmokeInstrumentedTest {
         composeRule.onNodeWithText("Warm Light").performClick()
         composeRule.onNodeWithContentDescription("Navigate back").performClick()
 
-        // 4. Deliver real 24x18 PNG via ACTION_SEND share intent
+        // 4. Deliver real 24x18 PNG via singleTop ACTION_SEND share intent
         val sampleInput = createSolidPng(File(context.cacheDir, "smoke_input.png"), 24, 18, Color.rgb(204, 120, 92))
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/png"
-            putExtra(Intent.EXTRA_STREAM, Uri.fromFile(sampleInput))
-        }
         composeRule.activityRule.scenario.onActivity { activity ->
-            activity.onNewIntent(shareIntent)
+            val shareIntent = Intent(activity, MainActivity::class.java).apply {
+                action = Intent.ACTION_SEND
+                type = "image/png"
+                putExtra(Intent.EXTRA_STREAM, Uri.fromFile(sampleInput))
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            activity.startActivity(shareIntent)
         }
 
         composeRule.waitUntil(timeoutMillis = 5_000L) {
