@@ -10,23 +10,19 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.tumuyan.ncnn.realsr.ui.RealScaleApp
-import com.tumuyan.ncnn.realsr.ui.RealScaleViewModel
+import com.tumuyan.ncnn.realsr.ui.state.AppViewModel
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: RealScaleViewModel by viewModels {
-        RealScaleViewModel.Factory(application)
-    }
+    private val viewModel: AppViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
         if (savedInstanceState == null) {
             consumeIncomingIntent(intent)
         }
-
         setContent {
             RealScaleApp(viewModel = viewModel)
         }
@@ -40,38 +36,18 @@ class MainActivity : ComponentActivity() {
 
     private fun consumeIncomingIntent(incoming: Intent?) {
         if (incoming == null) return
-
-        if (incoming.getBooleanExtra(EXTRA_OPEN_PHOTO_PICKER, false)) {
-            incoming.removeExtra(EXTRA_OPEN_PHOTO_PICKER)
-            viewModel.requestOpenPhotoPicker()
-            return
-        }
-
-        val creationId = incoming.getLongExtra(ProcessingService.EXTRA_OPEN_CREATION_ID, -1L)
-        if (creationId > 0L) {
-            incoming.removeExtra(ProcessingService.EXTRA_OPEN_CREATION_ID)
-            viewModel.openCreationById(creationId)
-            return
-        }
-
         when (incoming.action) {
-            Intent.ACTION_VIEW -> {
-                val dataUri = incoming.data
-                if (dataUri != null && dataUri.scheme != "realscale") {
-                    viewModel.onExternalPhotosReceived(listOf(dataUri))
-                }
-            }
             Intent.ACTION_SEND -> {
                 val single = extractParcelableUri(incoming) ?: incoming.data
-                if (single != null) {
-                    viewModel.onExternalPhotosReceived(listOf(single))
-                }
+                if (single != null) viewModel.acceptShareIntent(listOf(single))
             }
             Intent.ACTION_SEND_MULTIPLE -> {
-                val list = extractParcelableUriList(incoming)
-                if (list.isNotEmpty()) {
-                    viewModel.onExternalPhotosReceived(list)
-                }
+                val list = extractParcelableUriList(incoming).ifEmpty { listOfNotNull(incoming.data) }
+                if (list.isNotEmpty()) viewModel.acceptShareIntent(list)
+            }
+            Intent.ACTION_VIEW -> {
+                val dataUri = incoming.data
+                if (dataUri != null) viewModel.acceptShareIntent(listOf(dataUri))
             }
         }
     }
@@ -92,9 +68,5 @@ class MainActivity : ComponentActivity() {
             @Suppress("DEPRECATION")
             intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM).orEmpty()
         }
-    }
-
-    companion object {
-        const val EXTRA_OPEN_PHOTO_PICKER = "com.tumuyan.ncnn.realsr.EXTRA_OPEN_PHOTO_PICKER"
     }
 }

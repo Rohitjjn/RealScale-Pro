@@ -18,7 +18,8 @@ class EngineJobQueue {
         val scale: Int,
         val modelSpec: ModelExecutionSpec?,
         val autoSaveToGallery: Boolean,
-        val notifyOnCompletion: Boolean
+        val notifyOnCompletion: Boolean,
+        val maxInputMP: Double? = null
     )
 
     data class ActiveLease(
@@ -59,7 +60,8 @@ class EngineJobQueue {
                 scale = request.scale,
                 modelSpec = request.modelSpec,
                 autoSaveToGallery = request.autoSaveToGallery,
-                notifyOnCompletion = request.notifyOnCompletion
+                notifyOnCompletion = request.notifyOnCompletion,
+                maxInputMP = request.maxInputMP
             )
             pending.addLast(entry)
             ids += entry.id

@@ -1,14 +1,11 @@
 package com.tumuyan.ncnn.realsr.ui.screens
 
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.foundation.BorderStroke
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,220 +13,153 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import androidx.navigation.NavHostController
+import com.tumuyan.ncnn.realsr.R
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
-import com.tumuyan.ncnn.realsr.ui.components.AccessibleIconButton
-import com.tumuyan.ncnn.realsr.ui.components.BeforeAfterSplitView
-import com.tumuyan.ncnn.realsr.ui.components.BrandLogoMedallion
-import com.tumuyan.ncnn.realsr.ui.components.EditorialTopBar
-import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
-import com.tumuyan.ncnn.realsr.ui.components.TerracottaPrimaryButton
-import com.tumuyan.ncnn.realsr.ui.components.formatBytesHuman
-import com.tumuyan.ncnn.realsr.ui.components.formatDurationHuman
-import com.tumuyan.ncnn.realsr.ui.components.rememberReduceMotion
-import com.tumuyan.ncnn.realsr.ui.theme.RealScaleIcons
-import com.tumuyan.ncnn.realsr.ui.theme.RealScaleThemeTokens
-import com.tumuyan.ncnn.realsr.ui.theme.Spacing
+import com.tumuyan.ncnn.realsr.ui.MediaExportHelper
+import com.tumuyan.ncnn.realsr.ui.Routes
+import com.tumuyan.ncnn.realsr.ui.components.ButtonSize
+import com.tumuyan.ncnn.realsr.ui.components.ButtonVariant
+import com.tumuyan.ncnn.realsr.ui.components.DetailList
+import com.tumuyan.ncnn.realsr.ui.components.IconButtonVariant
+import com.tumuyan.ncnn.realsr.ui.components.RealScaleBeforeAfter
+import com.tumuyan.ncnn.realsr.ui.components.RealScaleButton
+import com.tumuyan.ncnn.realsr.ui.components.RealScaleIconButton
+import com.tumuyan.ncnn.realsr.ui.state.AppViewModel
+import com.tumuyan.ncnn.realsr.ui.theme.LocalRealScaleColors
+import com.tumuyan.ncnn.realsr.ui.theme.RealScaleShape
+import com.tumuyan.ncnn.realsr.ui.theme.RealScaleType
+import kotlinx.coroutines.launch
 import java.io.File
 
-@OptIn(ExperimentalSharedTransitionApi::class)
+/** Result screen — before/after compare, details, share. Shows the last completed creation. */
 @Composable
-fun ResultScreen(
-    creations: List<RecentCreationEntity>,
-    selectedIndex: Int,
-    onSelectIndex: (Int) -> Unit,
-    onSave: (RecentCreationEntity) -> Unit,
-    onShare: (android.content.Context, RecentCreationEntity) -> Unit,
-    onTryAnotherPreset: (RecentCreationEntity) -> Unit,
-    onDelete: (RecentCreationEntity) -> Unit = {},
-    onBackToStudio: () -> Unit,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null
-) {
-    val colors = RealScaleThemeTokens.colors
+fun ResultScreen(viewModel: AppViewModel, navController: NavHostController) {
+    val c = LocalRealScaleColors.current
     val context = LocalContext.current
-    val reduceMotion = rememberReduceMotion()
-    val active = creations.getOrNull(selectedIndex) ?: creations.firstOrNull()
+    val scope = rememberCoroutineScope()
+    val result by viewModel.lastResult.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.canvas)
-    ) {
-        EditorialTopBar(
-            title = "Result",
-            onBack = onBackToStudio,
-            trailing = if (active != null) {
-                {
-                    AccessibleIconButton(
-                        icon = RealScaleIcons.Trash,
-                        contentDescription = "Delete result",
-                        onClick = { onDelete(active) }
+    val creation: RecentCreationEntity? = result?.creations?.firstOrNull()
+    val beforeUri: Uri? = creation?.sourceUri?.let { Uri.parse(it) }
+    val afterUri: Uri? = creation?.savedUri?.let { Uri.parse(it) }
+        ?: creation?.outputPath?.let { Uri.fromFile(File(it)) }
+
+    if (creation == null) {
+        Box(Modifier.fillMaxSize().background(c.canvas), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("No result yet", style = RealScaleType.Display24, color = c.ink)
+                Spacer(Modifier.height(16.dp))
+                RealScaleButton(onClick = { navController.popBackStack() }, variant = ButtonVariant.Primary, size = ButtonSize.Lg, text = "Back")
+            }
+        }
+        return
+    }
+
+    Column(Modifier.fillMaxSize().background(c.canvas).statusBarsPadding()) {
+        Column {
+            Box(Modifier.fillMaxWidth()) {
+                androidx.compose.foundation.layout.Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 12.dp)
+                        .height(56.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    RealScaleIconButton(
+                        onClick = { navController.popBackStack() },
+                        variant = IconButtonVariant.Dark,
+                        contentDescription = "Back",
+                        icon = painterResource(R.drawable.ic_lucide_chevron_left),
                     )
+                    Text("Result", style = RealScaleType.Display24, color = c.ink)
+                    Spacer(Modifier.weight(1f))
                 }
-            } else {
-                null
             }
-        )
-
-        if (active == null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(Spacing.lg),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                BrandLogoMedallion(size = 56.dp)
-                Spacer(modifier = Modifier.height(Spacing.md))
-                Text(
-                    text = "No result loaded",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = colors.ink
-                )
-                Spacer(modifier = Modifier.height(Spacing.md))
-                TerracottaPrimaryButton(
-                    text = "Back to Studio",
-                    onClick = onBackToStudio
-                )
-            }
-            return
-        }
-
-        val sharedViewerModifier = if (!reduceMotion && sharedTransitionScope != null && animatedVisibilityScope != null) {
-            with(sharedTransitionScope) {
-                Modifier.sharedBounds(
-                    sharedContentState = rememberSharedContentState(key = "creation-${active.id}"),
-                    animatedVisibilityScope = animatedVisibilityScope
-                )
-            }
-        } else {
-            Modifier
-        }
-
-        val outputSizeBytes = remember(active.outputPath) {
-            runCatching { File(active.outputPath).takeIf { it.isFile }?.length() ?: 0L }.getOrDefault(0L)
+            Box(Modifier.fillMaxWidth().height(1.dp).background(c.hairlineSoft))
         }
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = Spacing.md),
-            verticalArrangement = Arrangement.SpaceBetween
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
-            // Near edge-to-edge canvas fit for interactive Before/After split slider
-            BeforeAfterSplitView(
-                beforeFile = File(active.beforeImagePath),
-                afterFile = File(active.outputPath),
-                modifier = Modifier
-                    .then(sharedViewerModifier)
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = Spacing.sm)
+            // Before / after
+            RealScaleBeforeAfter(
+                beforeModel = beforeUri,
+                afterModel = afterUri,
+                altDescription = "Before and after upscale: ${creation.presetLabel}",
+                modifier = Modifier.fillMaxWidth().height(520.dp),
             )
+            Spacer(Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(Spacing.sm))
+            // Details
+            DetailList(
+                rows = listOf(
+                    "Preset" to creation.presetLabel,
+                    "Model" to creation.modelId,
+                    "Scale" to "${creation.scale}×",
+                    "Input" to "${creation.inputWidth} × ${creation.inputHeight}",
+                    "Output" to "${creation.outputWidth} × ${creation.outputHeight}",
+                    "Time" to fmtDuration(creation.durationMs),
+                    "Saved" to fmtDateTime(creation.createdAtEpochMs),
+                ),
+            )
+            Spacer(Modifier.height(24.dp))
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.lg)
+            // Actions
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Multi-photo batch / comparison switcher
-                if (creations.size > 1) {
-                    LazyRow(
-                        contentPadding = PaddingValues(vertical = Spacing.xxs),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-                    ) {
-                        itemsIndexed(creations, key = { _, item -> item.id }) { idx, item ->
-                            val isCurrent = idx == selectedIndex
-                            Surface(
-                                shape = MaterialTheme.shapes.small,
-                                border = BorderStroke(
-                                    width = if (isCurrent) 2.dp else 1.dp,
-                                    color = if (isCurrent) colors.terracotta else colors.hairline
-                                ),
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(MaterialTheme.shapes.small)
-                                    .clickable { onSelectIndex(idx) }
-                            ) {
-                                AsyncImage(
-                                    model = File(item.outputPath),
-                                    contentDescription = "Result ${idx + 1}",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
+                RealScaleButton(
+                    onClick = {
+                        afterUri?.path?.let { path ->
+                            scope.launch {
+                                MediaExportHelper.shareImage(context, java.io.File(path))
                             }
                         }
-                    }
-                    Spacer(modifier = Modifier.height(Spacing.xs))
-                }
-
-                // Details row: dimensions, preset, duration, file size, and gesture hint
-                val dimText = if (active.inputWidth > 0 && active.outputWidth > 0) {
-                    "${active.inputWidth} × ${active.inputHeight} → ${active.outputWidth} × ${active.outputHeight}"
-                } else {
-                    active.presetLabel
-                }
-                val sizePart = if (outputSizeBytes > 0L) " · ${formatBytesHuman(outputSizeBytes)}" else ""
-                Text(
-                    text = "$dimText · ${active.presetLabel} · ${formatDurationHuman(active.durationMs)}$sizePart",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.ink,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    },
+                    variant = ButtonVariant.Primary,
+                    size = ButtonSize.Lg,
+                    icon = painterResource(R.drawable.ic_lucide_share_2),
+                    text = "Share",
+                    modifier = Modifier.weight(1f),
+                    enabled = afterUri?.scheme == "file",
                 )
-                Text(
-                    text = "Hold image for original · Double-tap for 100% pixel view",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.muted
-                )
-
-                Spacer(modifier = Modifier.height(Spacing.sm))
-
-                // Primary & secondary actions (all >= 48dp touch targets)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
-                ) {
-                    TerracottaPrimaryButton(
-                        text = if (active.savedUri != null) "Saved · Save copy" else "Save",
-                        leadingIcon = if (active.savedUri != null) RealScaleIcons.Check else RealScaleIcons.Download,
-                        onClick = { onSave(active) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    QuietOutlineButton(
-                        text = "Share",
-                        leadingIcon = RealScaleIcons.Share,
-                        onClick = { onShare(context, active) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(Spacing.xs))
-
-                QuietOutlineButton(
-                    text = "Try another preset",
-                    leadingIcon = RealScaleIcons.Refresh,
-                    onClick = { onTryAnotherPreset(active) },
-                    modifier = Modifier.fillMaxWidth()
+                RealScaleButton(
+                    onClick = { viewModel.acknowledgeResult(); navController.popBackStack() },
+                    variant = ButtonVariant.Secondary,
+                    size = ButtonSize.Lg,
+                    text = "Done",
+                    modifier = Modifier.weight(1f),
                 )
             }
+            Spacer(Modifier.height(16.dp))
+            Text("Saved to Pictures/RealScale-Pro. Your original photo is unchanged.",
+                style = RealScaleType.Body13, color = c.muted,
+                modifier = Modifier.fillMaxWidth())
         }
     }
 }

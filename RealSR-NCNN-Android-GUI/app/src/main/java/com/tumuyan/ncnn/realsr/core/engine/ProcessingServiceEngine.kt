@@ -47,6 +47,7 @@ class ProcessingServiceEngine(
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private val prefsStore = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val jobQueue = EngineJobQueue()
+    private val etaTracker = EtaTracker(appContext)
 
     private val _state = MutableStateFlow<EngineState>(EngineState.Idle)
     override val state: StateFlow<EngineState> = _state.asStateFlow()
@@ -126,6 +127,7 @@ class ProcessingServiceEngine(
             .putBoolean(KEY_KEEP_SCREEN_ON, updated.keepScreenOnDuringEnhance)
             .putBoolean(KEY_HAPTICS_ENABLED, updated.hapticsEnabled)
             .putBoolean(KEY_WIFI_ONLY_DOWNLOADS, updated.wifiOnlyDownloads)
+            .putBoolean(KEY_KEEP_METADATA, updated.keepMetadata)
             .apply()
     }
 
@@ -426,7 +428,21 @@ class ProcessingServiceEngine(
                     continue
                 }
 
-                val (inW, inH) = decodeDimensions(beforeFile)
+                // Optional input cap (Upscale Mode): "Large photo optimized for your device".
+                var effectiveBeforeFile = beforeFile
+                val inputCap = entry.maxInputMP
+                if (inputCap != null && inputCap > 0.0) {
+                    val cappedFile = File(creationsDir, "capped_${itemStartMs}_${pos}.png")
+                    val capOutcome = runCatching {
+                        InputOptimizer.capIfNeeded(beforeFile, cappedFile, inputCap)
+                    }.getOrNull()
+                    if (capOutcome?.optimized == true) {
+                        effectiveBeforeFile = cappedFile
+                        runCatching { if (beforeFile != cappedFile) beforeFile.delete() }
+                    }
+                }
+
+                val (inW, inH) = decodeDimensions(effectiveBeforeFile)
                 val outExt = prefs.outputFormat.extension
                 val outputFile = File(
                     creationsDir,
@@ -436,7 +452,7 @@ class ProcessingServiceEngine(
                 val command = PresetCommandResolver.buildUpscaleCommand(
                     preset = entry.preset,
                     scale = entry.scale,
-                    inputPath = beforeFile.absolutePath,
+                    inputPath = effectiveBeforeFile.absolutePath,
                     outputPath = outputFile.absolutePath,
                     preferences = prefs,
                     modelOverride = entry.modelSpec,
@@ -595,6 +611,44 @@ class ProcessingServiceEngine(
                         prev
                     }
                 }
+                // Post-resize step: only when the requested scale differs from the natively-run
+                // scale (5x = 4x + 1.25x; 3x on a 2x-only model = 2x + 1.5x). Never touches the CLI.
+                val specScale = entry.modelSpec?.scale
+                if (specScale != null && specScale != entry.scale) {
+                    val targetW = inW * entry.scale
+                    val targetH = inH * entry.scale
+                    when (val post = PostResizeProcessor.resizeInPlace(outputFile, targetW, targetH, prefs.outputFormat)) {
+                        is PostResizeProcessor.Result.Oversized -> {
+                            lastFailureState = EngineState.Failed(
+                                userMessage = "That output would be too large to finish on this device. Try 4× instead.",
+                                technicalOutput = "Post-resize target ${targetW}x${targetH} exceeds memory budget",
+                                recoveryActions = emptyList(),
+                                failedRequest = null
+                            )
+                            jobQueue.markActiveFinished()
+                            refreshQueueSnapshot()
+                            continue
+                        }
+                        is PostResizeProcessor.Result.Failed -> {
+                            lastFailureState = EngineState.Failed(
+                                userMessage = "The final resize step failed. Try 4× instead.",
+                                technicalOutput = "Post-resize to ${targetW}x${targetH} failed",
+                                recoveryActions = emptyList(),
+                                failedRequest = null
+                            )
+                            jobQueue.markActiveFinished()
+                            refreshQueueSnapshot()
+                            continue
+                        }
+                        is PostResizeProcessor.Result.Ok -> Unit
+                    }
+                }
+
+                // Keep-metadata: best-effort EXIF copy from the source image.
+                if (_preferences.value.keepMetadata) {
+                    KeepMetadata.copyToOutput(appContext, entry.uri, outputFile)
+                }
+
                 service.updateStructuredProgress(notifTitle, "Saving to Gallery…", 99)
 
                 val galleryFileName = OutputNameFormatter.buildGalleryFileName(
@@ -632,6 +686,10 @@ class ProcessingServiceEngine(
                     durationMs = fileDuration,
                     createdAtEpochMs = System.currentTimeMillis()
                 )
+                runCatching {
+                    val outMP = (outW.toLong() * outH.toLong()) / 1e6
+                    etaTracker.record(modelIdUsed, outMP, fileDuration)
+                }
                 val insertedId = recentCreationDao.insert(creation)
                 val savedEntity = creation.copy(id = insertedId)
                 sessionCreations += savedEntity
@@ -850,7 +908,8 @@ class ProcessingServiceEngine(
             defaultPresetId = defaultPreset,
             keepScreenOnDuringEnhance = prefsStore.getBoolean(KEY_KEEP_SCREEN_ON, true),
             hapticsEnabled = prefsStore.getBoolean(KEY_HAPTICS_ENABLED, true),
-            wifiOnlyDownloads = prefsStore.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, false)
+            wifiOnlyDownloads = prefsStore.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, false),
+            keepMetadata = prefsStore.getBoolean(KEY_KEEP_METADATA, true)
         )
     }
 
@@ -869,6 +928,7 @@ class ProcessingServiceEngine(
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_HAPTICS_ENABLED = "haptics_enabled"
         private const val KEY_WIFI_ONLY_DOWNLOADS = "wifi_only_downloads"
+        private const val KEY_KEEP_METADATA = "keep_metadata"
         private const val NOTIFY_DETAILED_AUTO_DISMISS = 3
         private const val MAX_LOG_CHARS = 24_000
         private val PERCENT_REGEX = Regex("""(\d{1,3}(?:\.\d+)?)%""")

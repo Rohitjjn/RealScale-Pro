@@ -35,8 +35,8 @@ import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
 import com.tumuyan.ncnn.realsr.ui.MediaExportHelper
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
 import com.tumuyan.ncnn.realsr.ui.screens.QuickUpscaleSheet
+import com.tumuyan.ncnn.realsr.ui.theme.AppTheme
 import com.tumuyan.ncnn.realsr.ui.theme.RealScaleTheme
-import com.tumuyan.ncnn.realsr.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -145,6 +145,11 @@ class QuickUpscaleActivity : ComponentActivity() {
                     onDownloadModel = { modelId ->
                         lifecycleScope.launch {
                             container.modelRepository.startOrResumeDownload(modelId)
+                        }
+                    },
+                    onCancelModelDownload = { modelId ->
+                        lifecycleScope.launch {
+                            container.modelRepository.cancelDownload(modelId)
                         }
                     },
                     onEnhance = {
@@ -363,10 +368,10 @@ class QuickUpscaleActivity : ComponentActivity() {
         }
     }
 
-    private fun loadThemeMode(): ThemeMode =
+    private fun loadThemeMode(): AppTheme =
         runCatching {
-            ThemeMode.valueOf(uiPrefs.getString("theme_mode", ThemeMode.SYSTEM.name)!!)
-        }.getOrDefault(ThemeMode.SYSTEM)
+            AppTheme.valueOf(uiPrefs.getString("theme_mode", AppTheme.SYSTEM.name)!!)
+        }.getOrDefault(AppTheme.SYSTEM)
 
     companion object {
         const val EXTRA_FORCE_QUICK_SHEET = "com.tumuyan.ncnn.realsr.EXTRA_FORCE_QUICK_SHEET"

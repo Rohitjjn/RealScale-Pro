@@ -29,3 +29,6 @@ RealSR-NCNN-Android-CLI/*/src/main/jni/CMakeSettings.json
 /RealSR-NCNN-Android-CLI/assets/output
 /RealSR-NCNN-Android-CLI/assets/report
 RealSR-NCNN-Android-CLI/assets/Linux-x64/
+
+# Design reference prototype (unpacked locally, not part of the build or the repo)
+/docs/ui-reference/

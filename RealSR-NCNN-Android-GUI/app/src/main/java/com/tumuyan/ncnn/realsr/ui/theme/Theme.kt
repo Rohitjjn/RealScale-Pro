@@ -1,103 +1,74 @@
 package com.tumuyan.ncnn.realsr.ui.theme
 
-import android.app.Activity
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
+import androidx.compose.ui.platform.LocalContext
 
-enum class ThemeMode {
-    SYSTEM,
-    LIGHT,
-    DARK
+/** Theme preference exactly as persisted: system / light / dark. */
+enum class AppTheme { SYSTEM, LIGHT, DARK }
+
+private fun materialScheme(dark: Boolean) = if (dark) {
+    darkColorScheme(
+        primary = RealScaleColors.Dark.primary, onPrimary = RealScaleColors.Dark.onPrimary,
+        error = RealScaleColors.Dark.error, onError = RealScaleColors.Dark.onPrimary,
+        surface = RealScaleColors.Dark.canvas, onSurface = RealScaleColors.Dark.ink,
+        surfaceVariant = RealScaleColors.Dark.card, onSurfaceVariant = RealScaleColors.Dark.body,
+        outline = RealScaleColors.Dark.mutedSoft,
+    )
+} else {
+    lightColorScheme(
+        primary = RealScaleColors.Light.primary, onPrimary = RealScaleColors.Light.onPrimary,
+        error = RealScaleColors.Light.error, onError = RealScaleColors.Light.onPrimary,
+        surface = RealScaleColors.Light.canvas, onSurface = RealScaleColors.Light.ink,
+        surfaceVariant = RealScaleColors.Light.card, onSurfaceVariant = RealScaleColors.Light.body,
+        outline = RealScaleColors.Light.mutedSoft,
+    )
 }
 
-private val LightMaterialScheme = lightColorScheme(
-    primary = ClaudePalette.Terracotta,
-    onPrimary = ClaudePalette.OnTerracotta,
-    primaryContainer = ClaudePalette.TerracottaSoftTint,
-    onPrimaryContainer = ClaudePalette.InkPrimary,
-    secondary = ClaudePalette.InkStrong,
-    onSecondary = ClaudePalette.PampasCanvas,
-    secondaryContainer = ClaudePalette.WarmSand,
-    onSecondaryContainer = ClaudePalette.InkPrimary,
-    background = ClaudePalette.PampasCanvas,
-    onBackground = ClaudePalette.InkPrimary,
-    surface = ClaudePalette.PampasCanvas,
-    onSurface = ClaudePalette.InkPrimary,
-    surfaceVariant = ClaudePalette.EditorialCream,
-    onSurfaceVariant = ClaudePalette.StoneMuted,
-    outline = ClaudePalette.WarmHairline,
-    outlineVariant = ClaudePalette.SoftHairline,
-    error = ClaudePalette.CrimsonError
-)
-
-private val DarkMaterialScheme = darkColorScheme(
-    primary = ClaudePalette.TerracottaOnDark,
-    onPrimary = ClaudePalette.OnTerracotta,
-    primaryContainer = ClaudePalette.TerracottaDarkTint,
-    onPrimaryContainer = ClaudePalette.ParchmentOnDark,
-    secondary = ClaudePalette.ParchmentOnDark,
-    onSecondary = ClaudePalette.CharcoalNight,
-    secondaryContainer = ClaudePalette.ObsidianSoft,
-    onSecondaryContainer = ClaudePalette.ParchmentOnDark,
-    background = ClaudePalette.CharcoalNight,
-    onBackground = ClaudePalette.ParchmentOnDark,
-    surface = ClaudePalette.CharcoalNight,
-    onSurface = ClaudePalette.ParchmentOnDark,
-    surfaceVariant = ClaudePalette.WalnutElevated,
-    onSurfaceVariant = ClaudePalette.PebbleMutedOnDark,
-    outline = ClaudePalette.DarkHairline,
-    outlineVariant = ClaudePalette.DarkSoftHairline,
-    error = ClaudePalette.CrimsonErrorDark
-)
-
+/**
+ * Wraps the app in the RealScale design tokens. When [dynamicColor] is enabled on Android 12+,
+ * wallpaper-derived dynamic colours (Material You) replace the tonal surface family and the
+ * primary accent while text/hairline tokens stay fixed; otherwise the exact design palette is
+ * used in both themes.
+ */
 @Composable
 fun RealScaleTheme(
-    themeMode: ThemeMode = ThemeMode.SYSTEM,
-    content: @Composable () -> Unit
+    themeMode: AppTheme = AppTheme.SYSTEM,
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit,
 ) {
-    val useDark = when (themeMode) {
-        ThemeMode.SYSTEM -> isSystemInDarkTheme()
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
+    val dark = when (themeMode) {
+        AppTheme.LIGHT -> false
+        AppTheme.DARK -> true
+        AppTheme.SYSTEM -> isSystemInDarkTheme()
+    }
+    val base = if (dark) RealScaleColors.Dark else RealScaleColors.Light
+
+    val tokens = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val dynamic = if (dark) dynamicDarkColorScheme(LocalContext.current) else dynamicLightColorScheme(LocalContext.current)
+        base.copy(
+            primary = dynamic.primary,
+            primaryActive = dynamic.primaryContainer.let { dynamic.primary.copy(alpha = 0.82f) },
+            card = dynamic.surfaceVariant,
+            soft = dynamic.surfaceContainerLow,
+            strong = dynamic.surfaceContainerHighest,
+            hairline = dynamic.outlineVariant,
+            backdrop = dynamic.surfaceContainerHighest,
+        )
+    } else {
+        base
     }
 
-    val colorScheme = if (useDark) DarkMaterialScheme else LightMaterialScheme
-    val extendedColors = if (useDark) DarkExtendedColors else LightExtendedColors
-
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as? Activity)?.window ?: return@SideEffect
-            @Suppress("DEPRECATION")
-            window.statusBarColor = extendedColors.canvas.toArgb()
-            @Suppress("DEPRECATION")
-            window.navigationBarColor = extendedColors.canvas.toArgb()
-            val controller = WindowCompat.getInsetsController(window, view)
-            controller.isAppearanceLightStatusBars = !useDark
-            controller.isAppearanceLightNavigationBars = !useDark
+    MaterialTheme(colorScheme = materialScheme(dark)) {
+        CompositionLocalProvider(LocalRealScaleColors provides tokens) {
+            content()
         }
     }
-
-    CompositionLocalProvider(LocalRealScaleColors provides extendedColors) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = RealScaleTypography,
-            shapes = RealScaleShapes,
-            content = content
-        )
-    }
-}
-
-object RealScaleThemeTokens {
-    val colors: RealScaleExtendedColors
-        @Composable
-        get() = LocalRealScaleColors.current
 }

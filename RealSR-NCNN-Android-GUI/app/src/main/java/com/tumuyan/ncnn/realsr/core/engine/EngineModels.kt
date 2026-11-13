@@ -44,7 +44,8 @@ data class EnginePreferences(
     val defaultPresetId: PresetId? = null,
     val keepScreenOnDuringEnhance: Boolean = true,
     val hapticsEnabled: Boolean = true,
-    val wifiOnlyDownloads: Boolean = false
+    val wifiOnlyDownloads: Boolean = false,
+    val keepMetadata: Boolean = true
 )
 
 data class ModelExecutionSpec(
@@ -62,7 +63,12 @@ data class UpscaleRequest(
     val scale: Int = preset.defaultScale,
     val modelSpec: ModelExecutionSpec? = null,
     val autoSaveToGallery: Boolean = true,
-    val notifyOnCompletion: Boolean = false
+    val notifyOnCompletion: Boolean = false,
+    /**
+     * If set (e.g. 4 MP for Upscale Mode), the engine downscales the decoded input to at most
+     * this many megapixels before running the native pipeline. Super Resolution leaves it null.
+     */
+    val maxInputMP: Double? = null
 )
 
 data class QueuedJobItem(

@@ -42,7 +42,7 @@ import com.tumuyan.ncnn.realsr.ProcessingService
 import com.tumuyan.ncnn.realsr.R
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
-import com.tumuyan.ncnn.realsr.ui.components.OomSafeImageDecoders
+import com.tumuyan.ncnn.realsr.core.engine.OomSafeImageDecoders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
