@@ -1,19 +1,29 @@
 package com.tumuyan.ncnn.realsr.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import coil3.compose.AsyncImage
 import com.tumuyan.ncnn.realsr.ui.theme.LocalRealScaleColors
+import kotlinx.coroutines.delay
 
 /**
  * Before/after comparison — wipe reveal controlled by [pos] (0 = fully before, 1 = fully after).
@@ -43,9 +53,9 @@ fun RealScaleBeforeAfter(
             val startTime = System.currentTimeMillis()
             while (t < 1f) {
                 val elapsed = (System.currentTimeMillis() - startTime).coerceAtLeast(0L)
-                t = (elapsed / 900L).coerceIn(0f, 1f)
+                t = (elapsed.coerceAtMost(900L).toFloat() / 900f)
                 pos.value = start + (end - start) * t
-                if (t < 1f) kotlinx.coroutines.delay(16)
+                if (t < 1f) delay(16)
             }
         }
     }
@@ -55,6 +65,7 @@ fun RealScaleBeforeAfter(
 
     Box(
         modifier = modifier
+            .clip(RoundedCornerShape(cornerRadius))
             .background(c.card)
             .onGloballyPositioned { width.value = it.size.width.toFloat() }
             .pointerInput(Unit) {

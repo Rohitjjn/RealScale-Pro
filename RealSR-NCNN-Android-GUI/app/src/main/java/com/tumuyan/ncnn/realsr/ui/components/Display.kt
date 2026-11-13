@@ -159,7 +159,7 @@ fun RealScaleRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(if (pressed && onClick != null) c.soft else Color.Transparent)
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -244,7 +244,7 @@ fun RealScaleSwitchRow(
                 enabled = enabled,
                 role = Role.Switch,
             ) { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
