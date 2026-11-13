@@ -36,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -314,7 +313,7 @@ fun HomeScreen(viewModel: AppViewModel, navController: NavHostController) {
                 },
                 Triple(R.drawable.ic_lucide_ellipsis, "More" to "Clipboard, cloud, other apps") { sheet = "more" },
             )
-            androidx.compose.foundation.lazy.LazyVerticalGrid(
+            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
                 columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
                 modifier = Modifier.fillMaxWidth().height(232.dp).padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),

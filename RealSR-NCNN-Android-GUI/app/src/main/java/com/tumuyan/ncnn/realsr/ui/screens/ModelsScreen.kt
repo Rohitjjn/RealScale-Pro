@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -19,26 +20,30 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.tumuyan.ncnn.realsr.R
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
-import com.tumuyan.ncnn.realsr.core.model.ModelInstallStatus
+import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.ui.Routes
 import com.tumuyan.ncnn.realsr.ui.components.BadgeTone
 import com.tumuyan.ncnn.realsr.ui.components.ButtonSize
 import com.tumuyan.ncnn.realsr.ui.components.ButtonVariant
 import com.tumuyan.ncnn.realsr.ui.components.IconButtonVariant
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.tumuyan.ncnn.realsr.ui.components.ModelRow
 import com.tumuyan.ncnn.realsr.ui.components.ModelRowVariant
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleBadge
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleButton
+import com.tumuyan.ncnn.realsr.ui.components.RealScaleGroup
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleConfirmSheet
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleDivider
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleDot
@@ -177,7 +182,7 @@ fun ModelsScreen(viewModel: AppViewModel, navController: NavHostController) {
         title = "Delete model?",
         body = "Remove this model from the device. It can be re-downloaded from the catalog later.",
         confirmLabel = "Delete",
-        onConfirm = doDelete,
+        onConfirm = { doDelete() },
         cancelLabel = "Cancel",
         danger = true,
     )

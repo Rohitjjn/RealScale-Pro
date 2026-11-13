@@ -190,9 +190,7 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
                     inputDimensions = listOf(input.width to input.height),
                     scale = effectiveScale,
                     preset = preset,
-                    tileSize = when (tile) {
-                        TilePreset.CUSTOM -> tileCustom else tile.px
-                    },
+                    tileSize = if (tile == TilePreset.CUSTOM) tileCustom else tile.px,
                     outputFormat = when (formatPref) {
                         OutputFormatPref.PNG -> OutputFormat.PNG
                         OutputFormatPref.JPEG -> OutputFormat.JPG
@@ -208,32 +206,30 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
                     preflightVerdict = verdict
                     preflightOpen = true
                 }
-                PreflightVerdict.Safe -> doLaunch()
+                PreflightVerdict.Safe -> {
+                    viewModel.engine.startUpscale(
+                        com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest(
+                            inputUris = listOf(inputPhoto!!.uri),
+                            preset = preset,
+                            scale = effectiveScale,
+                            modelSpec = when {
+                                preset.id == com.tumuyan.ncnn.realsr.core.engine.PresetId.INSTANT && modelId == "auto" -> null
+                                else -> viewModel.modelRepository.resolveExecutionSpec(
+                                    preset = preset,
+                                    scale = effectiveScale,
+                                    catalogStates = catalog,
+                                    overrideModelId = if (modelId == "auto") null else modelId,
+                                )
+                            },
+                            autoSaveToGallery = true,
+                            notifyOnCompletion = true,
+                            maxInputMP = if (modeId == ModeId.UPSCALE) 4.0 else null,
+                        ),
+                    )
+                    navController.navigate(Routes.PROCESSING)
+                }
             }
         }
-    }
-
-    fun doLaunch() {
-        viewModel.engine.startUpscale(
-            com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest(
-                inputUris = listOf(inputPhoto!!.uri),
-                preset = preset,
-                scale = effectiveScale,
-                modelSpec = when {
-                    preset.id == com.tumuyan.ncnn.realsr.core.engine.PresetId.INSTANT && modelId == "auto" -> null
-                    else -> viewModel.modelRepository.resolveExecutionSpec(
-                        preset = preset,
-                        scale = effectiveScale,
-                        catalogStates = catalog,
-                        overrideModelId = if (modelId == "auto") null else modelId,
-                    )
-                },
-                autoSaveToGallery = true,
-                notifyOnCompletion = true,
-                maxInputMP = if (modeId == ModeId.UPSCALE) 4.0 else null,
-            ),
-        )
-        navController.navigate(Routes.PROCESSING)
     }
 
     fun changeInput() {
