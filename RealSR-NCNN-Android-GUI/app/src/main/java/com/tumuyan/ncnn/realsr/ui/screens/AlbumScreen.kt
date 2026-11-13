@@ -25,8 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,8 +62,8 @@ fun AlbumScreen(viewModel: AppViewModel, navController: NavHostController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val permissionTick = remember { mutableIntStateOf(0) }
-    val requestPhotoAccess = rememberPhotoPermissionRequest(onResult = { permissionTick.intValue++ })
-    val hasAccess = remember(permissionTick.intValue) { GalleryMediaStore.hasReadImages(context) }
+    val requestPhotoAccess = rememberPhotoPermissionRequest(onResult = { permissionTick.value++ })
+    val hasAccess = remember(permissionTick.value) { GalleryMediaStore.hasReadImages(context) }
     val imagesState = remember { mutableStateOf<List<GalleryImage>?>(null) }
     val images by imagesState
 
@@ -140,7 +142,7 @@ fun AlbumScreen(viewModel: AppViewModel, navController: NavHostController) {
                 } else {
                     Text("${filtered.size} photos", style = RealScaleType.Body15Medium, color = c.ink, modifier = Modifier.padding(bottom = 12.dp))
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(96.dp),
+                        columns = GridCells.Adaptive(96.dp),
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),

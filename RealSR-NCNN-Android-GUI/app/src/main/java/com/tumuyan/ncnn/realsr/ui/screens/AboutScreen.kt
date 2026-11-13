@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -52,7 +53,7 @@ import com.tumuyan.ncnn.realsr.ui.theme.RealScaleType
 fun AboutScreen(viewModel: AppViewModel, navController: NavHostController) {
     val c = LocalRealScaleColors.current
     val context = LocalContext.current
-    var shareOpen by remember { mutableStateOf(false) }
+    val shareOpen = remember { mutableStateOf(false) }
 
     fun openUrl(url: String) {
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
@@ -130,7 +131,7 @@ fun AboutScreen(viewModel: AppViewModel, navController: NavHostController) {
                     sub = "Help others find RealScale-Pro.",
                     icon = painterResource(R.drawable.ic_lucide_share_2),
                     chevron = true,
-                    onClick = { shareOpen = true },
+                    onClick = { shareOpen.value = true },
                 )
                 RealScaleDivider()
                 RealScaleRow(

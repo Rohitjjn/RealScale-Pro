@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +51,7 @@ import com.tumuyan.ncnn.realsr.core.engine.planner.OutputFormatPref
 import com.tumuyan.ncnn.realsr.core.engine.planner.TilePreset
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
 import com.tumuyan.ncnn.realsr.core.model.ModelCatalogItem
-import com.tumuyan.ncnn.realsr.core.model.ModelInstallStatus
+import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.ui.Routes
 import com.tumuyan.ncnn.realsr.ui.components.BadgeTone
 import com.tumuyan.ncnn.realsr.ui.components.ButtonSize
