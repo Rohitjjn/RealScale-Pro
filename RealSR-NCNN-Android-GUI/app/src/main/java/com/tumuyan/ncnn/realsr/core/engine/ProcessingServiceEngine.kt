@@ -122,6 +122,7 @@ class ProcessingServiceEngine(
             .putString(KEY_EXTERNAL_OPEN_MODE, updated.externalOpenMode.name)
             .putString(KEY_LAST_PRESET, updated.lastUsedPresetId.name)
             .putInt(KEY_LAST_SCALE, updated.lastUsedScale)
+            .putBoolean(KEY_HAPTICS_ENABLED, updated.hapticsEnabled)
             .apply()
     }
 
@@ -838,7 +839,8 @@ class ProcessingServiceEngine(
             hideProgramOutput = prefsStore.getBoolean(KEY_HIDE_OUTPUT, false),
             externalOpenMode = externalMode,
             lastUsedPresetId = lastPreset,
-            lastUsedScale = validScale
+            lastUsedScale = validScale,
+            hapticsEnabled = prefsStore.getBoolean(KEY_HAPTICS_ENABLED, true)
         )
     }
 
@@ -853,6 +855,7 @@ class ProcessingServiceEngine(
         private const val KEY_EXTERNAL_OPEN_MODE = "external_open_mode"
         private const val KEY_LAST_PRESET = "last_preset_id"
         private const val KEY_LAST_SCALE = "last_scale"
+        private const val KEY_HAPTICS_ENABLED = "haptics_enabled"
         private const val NOTIFY_DETAILED_AUTO_DISMISS = 3
         private const val MAX_LOG_CHARS = 24_000
         private val PERCENT_REGEX = Regex("""(\d{1,3}(?:\.\d+)?)%""")

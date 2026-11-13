@@ -1,6 +1,8 @@
 package com.tumuyan.ncnn.realsr.ui
 
 import android.app.Activity
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -33,6 +35,7 @@ private object Routes {
     const val SETTINGS = "settings"
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun RealScaleApp(
     viewModel: RealScaleViewModel
@@ -97,117 +100,126 @@ fun RealScaleApp(
             containerColor = colors.canvas,
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
         ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = Routes.STUDIO,
-                modifier = Modifier.padding(innerPadding)
-            ) {
-                composable(Routes.STUDIO) {
-                    StudioScreen(
-                        state = state,
-                        onPhotosPicked = viewModel::onPhotosSelected,
-                        onClearPhotos = viewModel::clearSelectedPhotos,
-                        onPresetSelected = viewModel::selectPreset,
-                        onScaleSelected = viewModel::selectScale,
-                        onModelOverrideSelected = viewModel::selectModelOverride,
-                        onStartUpscale = viewModel::requestPrimaryUpscale,
-                        onApplyPreflightMitigation = viewModel::applyPreflightMitigation,
-                        onConfirmPreflightProceedAnyway = viewModel::confirmPreflightProceedAnyway,
-                        onDismissPreflightAdvisory = viewModel::dismissPreflightAdvisory,
-                        onQuickDownloadModel = viewModel::downloadOrResumeModel,
-                        onOpenModelHub = {
-                            navController.navigate(Routes.MODEL_HUB) { launchSingleTop = true }
-                        },
-                        onOpenSettings = {
-                            navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
-                        },
-                        onOpenRecentCreation = { entity ->
-                            viewModel.openRecentCreation(entity)
-                            navController.navigate(Routes.RESULT) { launchSingleTop = true }
-                        },
-                        onLaunchFadePlayed = viewModel::markLaunchFadePlayed
-                    )
-                }
+            SharedTransitionLayout {
+                NavHost(
+                    navController = navController,
+                    startDestination = Routes.STUDIO,
+                    modifier = Modifier.padding(innerPadding)
+                ) {
+                    composable(Routes.STUDIO) {
+                        StudioScreen(
+                            state = state,
+                            onPhotosPicked = viewModel::onPhotosSelected,
+                            onClearPhotos = viewModel::clearSelectedPhotos,
+                            onPresetSelected = viewModel::selectPreset,
+                            onScaleSelected = viewModel::selectScale,
+                            onModelOverrideSelected = viewModel::selectModelOverride,
+                            onStartUpscale = viewModel::requestPrimaryUpscale,
+                            onApplyPreflightMitigation = viewModel::applyPreflightMitigation,
+                            onConfirmPreflightProceedAnyway = viewModel::confirmPreflightProceedAnyway,
+                            onDismissPreflightAdvisory = viewModel::dismissPreflightAdvisory,
+                            onQuickDownloadModel = viewModel::downloadOrResumeModel,
+                            onOpenModelHub = {
+                                navController.navigate(Routes.MODEL_HUB) { launchSingleTop = true }
+                            },
+                            onOpenSettings = {
+                                navController.navigate(Routes.SETTINGS) { launchSingleTop = true }
+                            },
+                            onOpenRecentCreation = { entity ->
+                                viewModel.openRecentCreation(entity)
+                                navController.navigate(Routes.RESULT) { launchSingleTop = true }
+                            },
+                            onShareRecentCreation = viewModel::shareResult,
+                            onRerunRecentCreation = viewModel::rerunRecentCreation,
+                            onDeleteRecentCreation = viewModel::deleteRecentCreation,
+                            onLaunchFadePlayed = viewModel::markLaunchFadePlayed,
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                            animatedVisibilityScope = this@composable
+                        )
+                    }
 
-                composable(Routes.PROCESSING) {
-                    ProcessingScreen(
-                        engineState = state.engineState,
-                        queue = state.queue,
-                        onCancel = viewModel::cancelProcessing,
-                        onCancelQueuedItem = viewModel::cancelQueuedItem,
-                        onApplyRecovery = { action ->
-                            viewModel.applyErrorRecovery(action)
-                        },
-                        onRunInBackground = {
-                            viewModel.enableBackgroundCompletionNotification()
-                            (context as? Activity)?.moveTaskToBack(true)
-                        },
-                        onBackToStudio = {
-                            viewModel.acknowledgeEngineState()
-                            navController.popBackStack(Routes.STUDIO, inclusive = false)
-                        },
-                        onOpenSettings = {
-                            viewModel.acknowledgeEngineState()
-                            navController.navigate(Routes.SETTINGS) {
-                                popUpTo(Routes.STUDIO) { inclusive = false }
-                                launchSingleTop = true
+                    composable(Routes.PROCESSING) {
+                        ProcessingScreen(
+                            engineState = state.engineState,
+                            queue = state.queue,
+                            onCancel = viewModel::cancelProcessing,
+                            onCancelQueuedItem = viewModel::cancelQueuedItem,
+                            onApplyRecovery = { action ->
+                                viewModel.applyErrorRecovery(action)
+                            },
+                            onRunInBackground = {
+                                viewModel.enableBackgroundCompletionNotification()
+                                (context as? Activity)?.moveTaskToBack(true)
+                            },
+                            onBackToStudio = {
+                                viewModel.acknowledgeEngineState()
+                                navController.popBackStack(Routes.STUDIO, inclusive = false)
+                            },
+                            onOpenSettings = {
+                                viewModel.acknowledgeEngineState()
+                                navController.navigate(Routes.SETTINGS) {
+                                    popUpTo(Routes.STUDIO) { inclusive = false }
+                                    launchSingleTop = true
+                                }
                             }
-                        }
-                    )
-                }
+                        )
+                    }
 
-                composable(Routes.RESULT) {
-                    ResultScreen(
-                        creations = state.selection.resultCreations,
-                        selectedIndex = state.selection.selectedResultIndex,
-                        onSelectIndex = viewModel::selectResultIndex,
-                        onSave = viewModel::saveResultToGallery,
-                        onShare = viewModel::shareResult,
-                        onTryAnotherPreset = { creation ->
-                            viewModel.tryAnotherPresetFromResult(creation)
-                            navController.popBackStack(Routes.STUDIO, inclusive = false)
-                        },
-                        onBackToStudio = {
-                            viewModel.acknowledgeEngineState()
-                            navController.popBackStack(Routes.STUDIO, inclusive = false)
-                        }
-                    )
-                }
+                    composable(Routes.RESULT) {
+                        ResultScreen(
+                            creations = state.selection.resultCreations,
+                            selectedIndex = state.selection.selectedResultIndex,
+                            onSelectIndex = viewModel::selectResultIndex,
+                            onSave = viewModel::saveResultToGallery,
+                            onShare = viewModel::shareResult,
+                            onTryAnotherPreset = { creation ->
+                                viewModel.tryAnotherPresetFromResult(creation)
+                                navController.popBackStack(Routes.STUDIO, inclusive = false)
+                            },
+                            onBackToStudio = {
+                                viewModel.acknowledgeEngineState()
+                                navController.popBackStack(Routes.STUDIO, inclusive = false)
+                            },
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                            animatedVisibilityScope = this@composable
+                        )
+                    }
 
-                composable(Routes.MODEL_HUB) {
-                    ModelHubScreen(
-                        models = state.catalogModels,
-                        totalInstalledBytes = state.totalInstalledBytes,
-                        onDownloadOrResume = viewModel::downloadOrResumeModel,
-                        onPause = viewModel::pauseModelDownload,
-                        onCancel = viewModel::cancelModelDownload,
-                        onDelete = viewModel::deleteInstalledModel,
-                        onBack = { navController.popBackStack() }
-                    )
-                }
+                    composable(Routes.MODEL_HUB) {
+                        ModelHubScreen(
+                            models = state.catalogModels,
+                            totalInstalledBytes = state.totalInstalledBytes,
+                            onDownloadOrResume = viewModel::downloadOrResumeModel,
+                            onPause = viewModel::pauseModelDownload,
+                            onCancel = viewModel::cancelModelDownload,
+                            onDelete = viewModel::deleteInstalledModel,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
 
-                composable(Routes.SETTINGS) {
-                    SettingsScreen(
-                        themeMode = state.selection.themeMode,
-                        preferences = state.enginePreferences,
-                        consoleLog = state.consoleLog,
-                        discoveredCommandsProvider = viewModel::discoverAdvancedCommands,
-                        onThemeModeChanged = viewModel::setThemeMode,
-                        onExternalOpenModeChanged = viewModel::setExternalOpenMode,
-                        onBackendChanged = viewModel::setExecutionBackend,
-                        onTileSizeChanged = viewModel::setTileSize,
-                        onOutputFormatChanged = viewModel::setOutputFormat,
-                        onCustomOutputFolderChanged = viewModel::setCustomOutputFolder,
-                        onThreadCountChanged = viewModel::setThreadCount,
-                        onHideProgramOutputChanged = viewModel::setHideProgramOutput,
-                        onRunFolderBatch = { treeUri ->
-                            viewModel.runFolderBatchUpscale(treeUri)
-                            navController.navigate(Routes.PROCESSING) { launchSingleTop = true }
-                        },
-                        onRunRawCommand = viewModel::runRawAdvancedCommand,
-                        onResetEngineCache = viewModel::resetEngineCache,
-                        onBack = { navController.popBackStack() }
-                    )
+                    composable(Routes.SETTINGS) {
+                        SettingsScreen(
+                            themeMode = state.selection.themeMode,
+                            preferences = state.enginePreferences,
+                            consoleLog = state.consoleLog,
+                            discoveredCommandsProvider = viewModel::discoverAdvancedCommands,
+                            onThemeModeChanged = viewModel::setThemeMode,
+                            onExternalOpenModeChanged = viewModel::setExternalOpenMode,
+                            onBackendChanged = viewModel::setExecutionBackend,
+                            onTileSizeChanged = viewModel::setTileSize,
+                            onOutputFormatChanged = viewModel::setOutputFormat,
+                            onCustomOutputFolderChanged = viewModel::setCustomOutputFolder,
+                            onThreadCountChanged = viewModel::setThreadCount,
+                            onHideProgramOutputChanged = viewModel::setHideProgramOutput,
+                            onRunFolderBatch = { treeUri ->
+                                viewModel.runFolderBatchUpscale(treeUri)
+                                navController.navigate(Routes.PROCESSING) { launchSingleTop = true }
+                            },
+                            onRunRawCommand = viewModel::runRawAdvancedCommand,
+                            onResetEngineCache = viewModel::resetEngineCache,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
                 }
             }
         }

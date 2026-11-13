@@ -133,13 +133,17 @@ class RealScaleSmokeInstrumentedTest {
             }
             composeRule.onNodeWithContentDescription("Selected photo preview").assertIsDisplayed()
 
-            // 5. Verify un-downloaded Photo preset prompts on-demand download (zero bundled AI models)
+            // 5. Verify un-downloaded Photo preset prompts on-demand download in sticky bar
             composeRule.onNodeWithText("Photo").performScrollTo().performClick()
-            composeRule.onNodeWithText("Get Photo model · 2.3 MB").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("Get Photo model · 2.3 MB").assertIsDisplayed()
 
-            // 6. Switch back to Instant preset and run 4x upscale
+            // 6. Switch back to Instant preset, select 4x scale, verify live summary, and tap sticky Enhance CTA
             composeRule.onNodeWithText("Instant").performScrollTo().performClick()
-            composeRule.onNodeWithText("Upscale photo · 4×").performScrollTo().performClick()
+            composeRule.onNodeWithText("4×").performScrollTo().performClick()
+            composeRule.waitUntil(timeoutMillis = 5_000L) {
+                composeRule.onAllNodes(hasText("24×18 → 96×72", substring = true)).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("Enhance").performClick()
 
             composeRule.waitUntil(timeoutMillis = 20_000L) {
                 composeRule.onAllNodesWithText("Result").fetchSemanticsNodes().isNotEmpty() ||

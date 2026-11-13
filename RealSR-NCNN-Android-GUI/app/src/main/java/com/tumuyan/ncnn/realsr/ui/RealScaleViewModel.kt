@@ -447,6 +447,32 @@ class RealScaleViewModel(
         }
     }
 
+    fun rerunRecentCreation(creation: RecentCreationEntity) {
+        val beforeFile = File(creation.beforeImagePath)
+        val uriToLoad = if (beforeFile.isFile) {
+            Uri.fromFile(beforeFile)
+        } else {
+            Uri.parse(creation.sourceUri)
+        }
+        val presetId = runCatching { PresetId.valueOf(creation.presetId) }.getOrDefault(PresetId.INSTANT)
+        val preset = UpscalePreset.fromId(presetId)
+        val validScale = if (creation.scale in preset.supportedScales) creation.scale else preset.defaultScale
+        val uris = listOf(uriToLoad)
+        persistSelectedUris(uris)
+        savedStateHandle[STATE_SELECTED_PRESET] = preset.id.name
+        savedStateHandle[STATE_SELECTED_SCALE] = validScale
+        selectionFlow.update { prev ->
+            prev.copy(
+                selectedUris = uris,
+                selectedPreset = preset,
+                selectedScale = validScale,
+                selectedModelOverrideId = null,
+                preflightAdvisory = null
+            )
+        }
+        requestPrimaryUpscale()
+    }
+
     fun saveResultToGallery(creation: RecentCreationEntity) {
         viewModelScope.launch {
             val file = File(creation.outputPath)
@@ -542,6 +568,10 @@ class RealScaleViewModel(
 
     fun setExternalOpenMode(mode: ExternalOpenMode) {
         container.engine.updatePreferences { it.copy(externalOpenMode = mode) }
+    }
+
+    fun setHapticsEnabled(enabled: Boolean) {
+        container.engine.updatePreferences { it.copy(hapticsEnabled = enabled) }
     }
 
     fun setExecutionBackend(backend: ExecutionBackend) {

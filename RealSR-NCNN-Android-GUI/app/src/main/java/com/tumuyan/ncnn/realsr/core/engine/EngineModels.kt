@@ -40,7 +40,8 @@ data class EnginePreferences(
     val hideProgramOutput: Boolean = false,
     val externalOpenMode: ExternalOpenMode = ExternalOpenMode.QUICK_SHEET,
     val lastUsedPresetId: PresetId = PresetId.INSTANT,
-    val lastUsedScale: Int = 2
+    val lastUsedScale: Int = 2,
+    val hapticsEnabled: Boolean = true
 )
 
 data class ModelExecutionSpec(

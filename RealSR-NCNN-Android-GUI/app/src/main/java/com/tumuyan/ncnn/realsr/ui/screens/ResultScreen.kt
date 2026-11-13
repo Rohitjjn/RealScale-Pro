@@ -1,5 +1,8 @@
 package com.tumuyan.ncnn.realsr.ui.screens
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,11 +36,13 @@ import com.tumuyan.ncnn.realsr.ui.components.EditorialTopBar
 import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
 import com.tumuyan.ncnn.realsr.ui.components.TerracottaPrimaryButton
 import com.tumuyan.ncnn.realsr.ui.components.formatDurationHuman
+import com.tumuyan.ncnn.realsr.ui.components.rememberReduceMotion
 import com.tumuyan.ncnn.realsr.ui.theme.RealScaleIcons
 import com.tumuyan.ncnn.realsr.ui.theme.RealScaleThemeTokens
 import com.tumuyan.ncnn.realsr.ui.theme.Spacing
 import java.io.File
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ResultScreen(
     creations: List<RecentCreationEntity>,
@@ -46,10 +51,13 @@ fun ResultScreen(
     onSave: (RecentCreationEntity) -> Unit,
     onShare: (android.content.Context, RecentCreationEntity) -> Unit,
     onTryAnotherPreset: (RecentCreationEntity) -> Unit,
-    onBackToStudio: () -> Unit
+    onBackToStudio: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null
 ) {
     val colors = RealScaleThemeTokens.colors
     val context = LocalContext.current
+    val reduceMotion = rememberReduceMotion()
     val active = creations.getOrNull(selectedIndex) ?: creations.firstOrNull()
 
     Column(
@@ -86,6 +94,17 @@ fun ResultScreen(
             return
         }
 
+        val sharedViewerModifier = if (!reduceMotion && sharedTransitionScope != null && animatedVisibilityScope != null) {
+            with(sharedTransitionScope) {
+                Modifier.sharedBounds(
+                    sharedContentState = rememberSharedContentState(key = "creation-${active.id}"),
+                    animatedVisibilityScope = animatedVisibilityScope
+                )
+            }
+        } else {
+            Modifier
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -97,6 +116,7 @@ fun ResultScreen(
                 beforeFile = File(active.beforeImagePath),
                 afterFile = File(active.outputPath),
                 modifier = Modifier
+                    .then(sharedViewerModifier)
                     .fillMaxWidth()
                     .weight(1f)
             )
