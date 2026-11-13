@@ -268,8 +268,12 @@ jobs:
 
           adb shell am instrument -w -r \
             -e class com.tumuyan.ncnn.realsr.RealScaleSmokeInstrumentedTest \
-            com.tumuyan.ncnn.realsr.debug.test/androidx.test.runner.AndroidJUnitRunner > /tmp/instrument.log 2>&1 || true
+            com.realscale.pro.debug.test/androidx.test.runner.AndroidJUnitRunner > /tmp/instrument.log 2>&1 || true
           cat /tmp/instrument.log
+
+          mkdir -p visual-screenshots
+          adb pull /sdcard/Android/data/com.realscale.pro.debug/cache/screenshots/. visual-screenshots/ || true
+          ls -lh visual-screenshots/ || true
 
           LOGCAT_CRASH=$(adb logcat -d -b crash 2>/dev/null | tail -n 35 || true)
           adb emu kill || kill "$EMU_PID" 2>/dev/null || true
@@ -282,3 +286,12 @@ jobs:
           fi
           SUMMARY=$(grep "OK (" /tmp/instrument.log | tr -d '\r')
           echo "::notice title=InstrumentationPassed::Emulator smoke tests passed: ${SUMMARY}"
+
+      - name: Upload Emulator Visual Verification Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: realscale-visual-screenshots
+          path: visual-screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 14

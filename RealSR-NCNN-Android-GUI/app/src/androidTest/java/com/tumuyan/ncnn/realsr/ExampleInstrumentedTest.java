@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
     public void useAppContext() {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        assertEquals("com.tumuyan.ncnn.realsr", appContext.getPackageName());
+        assertTrue(appContext.getPackageName().startsWith("com.realscale.pro"));
     }
 }

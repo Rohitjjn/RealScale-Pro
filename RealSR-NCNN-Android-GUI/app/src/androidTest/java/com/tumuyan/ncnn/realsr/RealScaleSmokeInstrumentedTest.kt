@@ -62,6 +62,10 @@ class RealScaleSmokeInstrumentedTest {
     @Test
     fun engineBinaryTarXzExtractsAllNativeToolsExecutable() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        assertTrue(
+            "Expected com.realscale.pro applicationId, got ${context.packageName}",
+            context.packageName.startsWith("com.realscale.pro")
+        )
         val engineDir = EngineAssetExtractor.ensureExtracted(context, forceReset = false)
         assertTrue("Engine directory should exist", engineDir.isDirectory)
 
@@ -97,13 +101,21 @@ class RealScaleSmokeInstrumentedTest {
                 composeRule.onAllNodesWithText("RealScale-Pro").fetchSemanticsNodes().isNotEmpty()
             }
 
-            // 1. Cold-start Studio screen assertions
+            // 1. Cold-start Studio screen assertions + Light canvas visual verification
             composeRule.onNodeWithText("RealScale-Pro").assertIsDisplayed()
             composeRule.onNodeWithText("Choose a photo").assertIsDisplayed()
+            composeRule.waitForIdle()
+            val studioLightShot = captureAndSaveScreenshot(context, "01_studio_light.png")
+            if (studioLightShot != null) {
+                assertCanvasHasWarmLightEditorialBackground(studioLightShot)
+                studioLightShot.recycle()
+            }
 
             // 2. Navigate to Library via bottom bar, verify empty state, then return to Studio
             composeRule.onNodeWithText("Library").performClick()
             composeRule.onNodeWithText("No creations yet").assertIsDisplayed()
+            composeRule.waitForIdle()
+            captureAndSaveScreenshot(context, "02_library.png")?.recycle()
             composeRule.onNodeWithText("Studio").performClick()
 
             // 3. Navigate to Model Hub, filter Photo models, verify HuggingFace catalog item, return
@@ -111,13 +123,21 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.onNodeWithText("Model Hub").assertIsDisplayed()
             composeRule.onNodeWithText("Photo").performClick()
             composeRule.onNodeWithText("Everyday Photo v3").assertIsDisplayed()
+            composeRule.waitForIdle()
+            captureAndSaveScreenshot(context, "03_model_hub.png")?.recycle()
             composeRule.onNodeWithContentDescription("Navigate back").performClick()
 
-            // 3. Navigate to Settings, toggle Warm Dark -> Warm Light theme, return
+            // 4. Navigate to Settings, toggle Warm Dark -> verify Dark canvas -> Warm Light theme, return
             composeRule.onNodeWithContentDescription("Open Settings").performClick()
             composeRule.onNodeWithText("Settings").assertIsDisplayed()
             composeRule.onNodeWithText("Appearance").assertIsDisplayed()
             composeRule.onNodeWithText("Warm Dark").performClick()
+            composeRule.waitForIdle()
+            val settingsDarkShot = captureAndSaveScreenshot(context, "04_settings_dark.png")
+            if (settingsDarkShot != null) {
+                assertCanvasHasWarmDarkEditorialBackground(settingsDarkShot)
+                settingsDarkShot.recycle()
+            }
             composeRule.onNodeWithText("Warm Light").performClick()
             composeRule.onNodeWithContentDescription("Navigate back").performClick()
 
@@ -148,6 +168,9 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.waitUntil(timeoutMillis = 5_000L) {
                 composeRule.onAllNodes(hasText("24×18 → 96×72", substring = true)).fetchSemanticsNodes().isNotEmpty()
             }
+            composeRule.onNodeWithText("Preview").assertIsDisplayed()
+            composeRule.waitForIdle()
+            captureAndSaveScreenshot(context, "05_studio_selected.png")?.recycle()
             composeRule.onNodeWithText("Enhance").performClick()
 
             composeRule.waitUntil(timeoutMillis = 20_000L) {
@@ -257,11 +280,70 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.onNode(hasText("128 × 96", substring = true)).assertIsDisplayed()
             composeRule.onNodeWithText("Enhance").assertIsDisplayed()
             composeRule.onNodeWithText("Open in RealScale-Pro").assertIsDisplayed()
+            composeRule.waitForIdle()
+            captureAndSaveScreenshot(context, "06_quick_upscale_sheet.png")?.recycle()
         } finally {
             runCatching {
                 scenario.onActivity { it.finish() }
             }
         }
+    }
+
+    private fun captureAndSaveScreenshot(context: android.content.Context, fileName: String): Bitmap? {
+        return runCatching {
+            val bmp = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot() ?: return null
+            val dir = File(context.externalCacheDir ?: context.cacheDir, "screenshots").apply { mkdirs() }
+            FileOutputStream(File(dir, fileName)).use { out ->
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            bmp
+        }.getOrNull()
+    }
+
+    private fun assertCanvasHasWarmLightEditorialBackground(bmp: Bitmap) {
+        assertTrue("Expected valid screenshot dimensions", bmp.width >= 320 && bmp.height >= 480)
+        var warmLightMatches = 0
+        var samples = 0
+        for (y in (bmp.height / 8) until (bmp.height * 7 / 8) step 24) {
+            for (x in 16 until bmp.width - 16 step 24) {
+                val px = bmp.getPixel(x, y)
+                val r = Color.red(px)
+                val g = Color.green(px)
+                val b = Color.blue(px)
+                samples++
+                // Warm ivory (#FAF9F5) or warm cream surface (#EFE9DE / #F3EFE7)
+                if (r >= 232 && g >= 226 && b >= 214 && r >= b) {
+                    warmLightMatches++
+                }
+            }
+        }
+        assertTrue(
+            "Expected Warm Light canvas (#FAF9F5/#EFE9DE) to cover >=30% of Studio screen, got $warmLightMatches/$samples",
+            samples > 0 && warmLightMatches * 100 / samples >= 30
+        )
+    }
+
+    private fun assertCanvasHasWarmDarkEditorialBackground(bmp: Bitmap) {
+        assertTrue("Expected valid screenshot dimensions", bmp.width >= 320 && bmp.height >= 480)
+        var warmDarkMatches = 0
+        var samples = 0
+        for (y in (bmp.height / 8) until (bmp.height * 7 / 8) step 24) {
+            for (x in 16 until bmp.width - 16 step 24) {
+                val px = bmp.getPixel(x, y)
+                val r = Color.red(px)
+                val g = Color.green(px)
+                val b = Color.blue(px)
+                samples++
+                // Warm charcoal (#181715) or dark card (#23211E)
+                if (r in 14..48 && g in 13..46 && b in 11..44) {
+                    warmDarkMatches++
+                }
+            }
+        }
+        assertTrue(
+            "Expected Warm Dark canvas (#181715/#23211E) to cover >=30% of Settings screen, got $warmDarkMatches/$samples",
+            samples > 0 && warmDarkMatches * 100 / samples >= 30
+        )
     }
 
     private fun createSolidPng(dest: File, width: Int, height: Int, color: Int): File {

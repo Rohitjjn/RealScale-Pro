@@ -12,12 +12,12 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.tumuyan.ncnn.realsr"
+        applicationId = "com.realscale.pro"
         minSdk = 24
         // Keep targetSdk = 28 so extracted native CLI binaries in cache/realsr remain executable on Android 10+
         targetSdk = 28
-        versionCode = 53
-        versionName = "2.0.0"
+        versionCode = 54
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
