@@ -3,6 +3,8 @@ package com.tumuyan.ncnn.realsr.ui
 import android.app.Activity
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -18,7 +20,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
+import com.tumuyan.ncnn.realsr.ui.screens.ActiveModelDownloadsCard
 import com.tumuyan.ncnn.realsr.ui.screens.ModelHubScreen
 import com.tumuyan.ncnn.realsr.ui.screens.ProcessingScreen
 import com.tumuyan.ncnn.realsr.ui.screens.ResultScreen
@@ -100,12 +104,38 @@ fun RealScaleApp(
             containerColor = colors.canvas,
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
         ) { innerPadding ->
+            val activeDownloadStates = remember(state.catalogModels) {
+                state.catalogModels.filter {
+                    it.status == ModelInstallStatus.DOWNLOADING ||
+                        it.status == ModelInstallStatus.QUEUED ||
+                        it.status == ModelInstallStatus.VERIFYING
+                }
+            }
             SharedTransitionLayout {
-                NavHost(
-                    navController = navController,
-                    startDestination = Routes.STUDIO,
-                    modifier = Modifier.padding(innerPadding)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
                 ) {
+                    if (activeDownloadStates.isNotEmpty() && currentRoute != Routes.MODEL_HUB) {
+                        ActiveModelDownloadsCard(
+                            activeModels = activeDownloadStates,
+                            wifiOnly = state.enginePreferences.wifiOnlyDownloads,
+                            onOpenHub = {
+                                navController.navigate(Routes.MODEL_HUB) { launchSingleTop = true }
+                            },
+                            modifier = Modifier.padding(
+                                horizontal = com.tumuyan.ncnn.realsr.ui.theme.Spacing.lg,
+                                vertical = com.tumuyan.ncnn.realsr.ui.theme.Spacing.xs
+                            )
+                        )
+                    }
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = Routes.STUDIO,
+                        modifier = Modifier.weight(1f)
+                    ) {
                     composable(Routes.STUDIO) {
                         StudioScreen(
                             state = state,
@@ -189,6 +219,8 @@ fun RealScaleApp(
                         ModelHubScreen(
                             models = state.catalogModels,
                             totalInstalledBytes = state.totalInstalledBytes,
+                            wifiOnlyDownloads = state.enginePreferences.wifiOnlyDownloads,
+                            onWifiOnlyChanged = viewModel::setWifiOnlyDownloads,
                             onDownloadOrResume = viewModel::downloadOrResumeModel,
                             onPause = viewModel::pauseModelDownload,
                             onCancel = viewModel::cancelModelDownload,
@@ -220,6 +252,7 @@ fun RealScaleApp(
                             onBack = { navController.popBackStack() }
                         )
                     }
+                }
                 }
             }
         }

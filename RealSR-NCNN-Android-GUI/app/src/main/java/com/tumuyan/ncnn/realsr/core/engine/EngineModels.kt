@@ -41,7 +41,8 @@ data class EnginePreferences(
     val externalOpenMode: ExternalOpenMode = ExternalOpenMode.QUICK_SHEET,
     val lastUsedPresetId: PresetId = PresetId.INSTANT,
     val lastUsedScale: Int = 2,
-    val hapticsEnabled: Boolean = true
+    val hapticsEnabled: Boolean = true,
+    val wifiOnlyDownloads: Boolean = false
 )
 
 data class ModelExecutionSpec(

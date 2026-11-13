@@ -123,6 +123,7 @@ class ProcessingServiceEngine(
             .putString(KEY_LAST_PRESET, updated.lastUsedPresetId.name)
             .putInt(KEY_LAST_SCALE, updated.lastUsedScale)
             .putBoolean(KEY_HAPTICS_ENABLED, updated.hapticsEnabled)
+            .putBoolean(KEY_WIFI_ONLY_DOWNLOADS, updated.wifiOnlyDownloads)
             .apply()
     }
 
@@ -840,7 +841,8 @@ class ProcessingServiceEngine(
             externalOpenMode = externalMode,
             lastUsedPresetId = lastPreset,
             lastUsedScale = validScale,
-            hapticsEnabled = prefsStore.getBoolean(KEY_HAPTICS_ENABLED, true)
+            hapticsEnabled = prefsStore.getBoolean(KEY_HAPTICS_ENABLED, true),
+            wifiOnlyDownloads = prefsStore.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, false)
         )
     }
 
@@ -856,6 +858,7 @@ class ProcessingServiceEngine(
         private const val KEY_LAST_PRESET = "last_preset_id"
         private const val KEY_LAST_SCALE = "last_scale"
         private const val KEY_HAPTICS_ENABLED = "haptics_enabled"
+        private const val KEY_WIFI_ONLY_DOWNLOADS = "wifi_only_downloads"
         private const val NOTIFY_DETAILED_AUTO_DISMISS = 3
         private const val MAX_LOG_CHARS = 24_000
         private val PERCENT_REGEX = Regex("""(\d{1,3}(?:\.\d+)?)%""")

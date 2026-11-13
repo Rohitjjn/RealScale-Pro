@@ -322,6 +322,50 @@ object RealScaleIcons {
         }
     }
 
+    val Search: ImageVector by lazy {
+        strokeIcon("Search") {
+            path(
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 1.75f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round
+            ) {
+                moveTo(15.5f, 10.5f)
+                lineTo(15.1f, 12.6f)
+                lineTo(13.6f, 14.3f)
+                lineTo(11.5f, 15.2f)
+                lineTo(9.2f, 15.1f)
+                lineTo(7.2f, 14.0f)
+                lineTo(5.9f, 12.1f)
+                lineTo(5.6f, 9.8f)
+                lineTo(6.5f, 7.6f)
+                lineTo(8.3f, 6.1f)
+                lineTo(10.6f, 5.6f)
+                lineTo(12.9f, 6.2f)
+                lineTo(14.6f, 7.8f)
+                close()
+                moveTo(14.5f, 14.5f)
+                lineTo(19.5f, 19.5f)
+            }
+        }
+    }
+
+    val LibraryGrid: ImageVector by lazy {
+        strokeIcon("LibraryGrid") {
+            path(
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = 1.75f,
+                strokeLineCap = StrokeCap.Round,
+                strokeLineJoin = StrokeJoin.Round
+            ) {
+                moveTo(4f, 4f); lineTo(10.5f, 4f); lineTo(10.5f, 10.5f); lineTo(4f, 10.5f); close()
+                moveTo(13.5f, 4f); lineTo(20f, 4f); lineTo(20f, 10.5f); lineTo(13.5f, 10.5f); close()
+                moveTo(4f, 13.5f); lineTo(10.5f, 13.5f); lineTo(10.5f, 20f); lineTo(4f, 20f); close()
+                moveTo(13.5f, 13.5f); lineTo(20f, 13.5f); lineTo(20f, 20f); lineTo(13.5f, 20f); close()
+            }
+        }
+    }
+
     private inline fun strokeIcon(
         name: String,
         block: ImageVector.Builder.() -> Unit

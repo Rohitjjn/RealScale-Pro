@@ -535,7 +535,10 @@ class RealScaleViewModel(
     // Model Hub actions
     fun downloadOrResumeModel(modelId: String) {
         viewModelScope.launch {
-            container.modelRepository.startOrResumeDownload(modelId)
+            container.modelRepository.startOrResumeDownload(
+                modelId = modelId,
+                wifiOnly = uiState.value.enginePreferences.wifiOnlyDownloads
+            )
         }
     }
 
@@ -572,6 +575,10 @@ class RealScaleViewModel(
 
     fun setHapticsEnabled(enabled: Boolean) {
         container.engine.updatePreferences { it.copy(hapticsEnabled = enabled) }
+    }
+
+    fun setWifiOnlyDownloads(wifiOnly: Boolean) {
+        container.engine.updatePreferences { it.copy(wifiOnlyDownloads = wifiOnly) }
     }
 
     fun setExecutionBackend(backend: ExecutionBackend) {
