@@ -4,6 +4,7 @@ kotlin = "2.4.21"
 ksp = "2.3.12"
 composeBom = "2026.09.00"
 navigationCompose = "2.10.2"
+glance = "1.2.0"
 room = "2.8.5"
 workManager = "2.12.0"
 coil = "3.6.3"
@@ -44,6 +45,8 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
 
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }

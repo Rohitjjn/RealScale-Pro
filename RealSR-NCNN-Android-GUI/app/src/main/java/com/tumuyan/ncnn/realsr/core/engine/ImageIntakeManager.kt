@@ -286,4 +286,47 @@ object ImageIntakeManager {
             }
         }
     }
+
+    fun measureTemporaryCacheBytes(context: Context): Long {
+        var total = 0L
+        listOf(File(context.cacheDir, "intake"), File(context.cacheDir, "shared")).forEach { dir ->
+            dir.listFiles()?.forEach { f -> if (f.isFile) total += f.length() }
+        }
+        File(context.cacheDir, "realsr").listFiles()?.forEach { f ->
+            if (f.isFile && isTransientEngineImageFile(f.name)) {
+                total += f.length()
+            }
+        }
+        return total
+    }
+
+    suspend fun clearTemporaryCache(context: Context): Long = withContext(Dispatchers.IO) {
+        var freed = 0L
+        listOf(File(context.cacheDir, "intake"), File(context.cacheDir, "shared")).forEach { dir ->
+            dir.listFiles()?.forEach { f ->
+                if (f.isFile) {
+                    val len = f.length()
+                    if (f.delete()) freed += len
+                }
+            }
+        }
+        File(context.cacheDir, "realsr").listFiles()?.forEach { f ->
+            if (f.isFile && isTransientEngineImageFile(f.name)) {
+                val len = f.length()
+                if (f.delete()) freed += len
+            }
+        }
+        freed
+    }
+
+    private fun isTransientEngineImageFile(name: String): Boolean {
+        val lower = name.lowercase(Locale.US)
+        return lower.endsWith(".png") ||
+            lower.endsWith(".jpg") ||
+            lower.endsWith(".jpeg") ||
+            lower.endsWith(".webp") ||
+            lower.endsWith(".bmp") ||
+            lower.startsWith("raw_") ||
+            lower.startsWith("norm_")
+    }
 }

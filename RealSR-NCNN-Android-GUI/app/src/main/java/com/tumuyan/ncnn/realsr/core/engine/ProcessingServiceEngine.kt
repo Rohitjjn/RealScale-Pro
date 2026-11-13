@@ -122,6 +122,8 @@ class ProcessingServiceEngine(
             .putString(KEY_EXTERNAL_OPEN_MODE, updated.externalOpenMode.name)
             .putString(KEY_LAST_PRESET, updated.lastUsedPresetId.name)
             .putInt(KEY_LAST_SCALE, updated.lastUsedScale)
+            .putString(KEY_DEFAULT_PRESET, updated.defaultPresetId?.name)
+            .putBoolean(KEY_KEEP_SCREEN_ON, updated.keepScreenOnDuringEnhance)
             .putBoolean(KEY_HAPTICS_ENABLED, updated.hapticsEnabled)
             .putBoolean(KEY_WIFI_ONLY_DOWNLOADS, updated.wifiOnlyDownloads)
             .apply()
@@ -633,6 +635,7 @@ class ProcessingServiceEngine(
                 val insertedId = recentCreationDao.insert(creation)
                 val savedEntity = creation.copy(id = insertedId)
                 sessionCreations += savedEntity
+                com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater.refreshAll(appContext)
 
                 val shouldPostNotif = notifyWhenDone || jobQueue.shouldNotifyOnSessionComplete()
                 jobQueue.markActiveFinished()
@@ -831,6 +834,9 @@ class ProcessingServiceEngine(
         val rawScale = prefsStore.getInt(KEY_LAST_SCALE, presetObj.defaultScale)
         val validScale = if (rawScale in presetObj.supportedScales) rawScale else presetObj.defaultScale
 
+        val defaultPreset = prefsStore.getString(KEY_DEFAULT_PRESET, null)
+            ?.let { runCatching { PresetId.valueOf(it) }.getOrNull() }
+
         return EnginePreferences(
             backend = backend,
             tileSize = prefsStore.getInt(KEY_TILE_SIZE, 0),
@@ -841,6 +847,8 @@ class ProcessingServiceEngine(
             externalOpenMode = externalMode,
             lastUsedPresetId = lastPreset,
             lastUsedScale = validScale,
+            defaultPresetId = defaultPreset,
+            keepScreenOnDuringEnhance = prefsStore.getBoolean(KEY_KEEP_SCREEN_ON, true),
             hapticsEnabled = prefsStore.getBoolean(KEY_HAPTICS_ENABLED, true),
             wifiOnlyDownloads = prefsStore.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, false)
         )
@@ -857,6 +865,8 @@ class ProcessingServiceEngine(
         private const val KEY_EXTERNAL_OPEN_MODE = "external_open_mode"
         private const val KEY_LAST_PRESET = "last_preset_id"
         private const val KEY_LAST_SCALE = "last_scale"
+        private const val KEY_DEFAULT_PRESET = "default_preset_id"
+        private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_HAPTICS_ENABLED = "haptics_enabled"
         private const val KEY_WIFI_ONLY_DOWNLOADS = "wifi_only_downloads"
         private const val NOTIFY_DETAILED_AUTO_DISMISS = 3

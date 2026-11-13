@@ -101,7 +101,12 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.onNodeWithText("RealScale-Pro").assertIsDisplayed()
             composeRule.onNodeWithText("Choose a photo").assertIsDisplayed()
 
-            // 2. Navigate to Model Hub, filter Photo models, verify HuggingFace catalog item, return
+            // 2. Navigate to Library via bottom bar, verify empty state, then return to Studio
+            composeRule.onNodeWithText("Library").performClick()
+            composeRule.onNodeWithText("No creations yet").assertIsDisplayed()
+            composeRule.onNodeWithText("Studio").performClick()
+
+            // 3. Navigate to Model Hub, filter Photo models, verify HuggingFace catalog item, return
             composeRule.onNodeWithContentDescription("Open Model Hub").performClick()
             composeRule.onNodeWithText("Model Hub").assertIsDisplayed()
             composeRule.onNodeWithText("Photo").performClick()

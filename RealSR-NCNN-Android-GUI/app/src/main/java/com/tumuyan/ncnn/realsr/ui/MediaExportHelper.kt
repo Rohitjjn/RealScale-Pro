@@ -91,6 +91,52 @@ object MediaExportHelper {
         context.startActivity(chooser)
     }
 
+    fun shareMultipleImages(context: Context, files: List<File>) {
+        val valid = files.filter { it.isFile }
+        if (valid.isEmpty()) return
+        if (valid.size == 1) {
+            shareImage(context, valid.first())
+            return
+        }
+        val authority = "${context.packageName}.fileprovider"
+        val uris = ArrayList<Uri>(valid.size)
+        var clip: ClipData? = null
+        for (f in valid) {
+            val u = FileProvider.getUriForFile(context, authority, f)
+            uris.add(u)
+            if (clip == null) {
+                clip = ClipData.newRawUri("Enhanced photos", u)
+            } else {
+                clip.addItem(ClipData.Item(u))
+            }
+        }
+        val sendIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "image/*"
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            clipData = clip
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = Intent.createChooser(sendIntent, "Share ${valid.size} enhanced photos").apply {
+            clipData = clip
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            if (context !is android.app.Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+        context.startActivity(chooser)
+    }
+
+    fun openInGallery(context: Context, savedUri: Uri, mimeType: String) {
+        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(savedUri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            if (context !is android.app.Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+        context.startActivity(viewIntent)
+    }
+
     fun buildSharePendingIntent(context: Context, file: File, requestCode: Int): PendingIntent {
         val chooser = createShareChooserIntent(context, file).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

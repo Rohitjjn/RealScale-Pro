@@ -41,6 +41,12 @@ class MainActivity : ComponentActivity() {
     private fun consumeIncomingIntent(incoming: Intent?) {
         if (incoming == null) return
 
+        if (incoming.getBooleanExtra(EXTRA_OPEN_PHOTO_PICKER, false)) {
+            incoming.removeExtra(EXTRA_OPEN_PHOTO_PICKER)
+            viewModel.requestOpenPhotoPicker()
+            return
+        }
+
         val creationId = incoming.getLongExtra(ProcessingService.EXTRA_OPEN_CREATION_ID, -1L)
         if (creationId > 0L) {
             incoming.removeExtra(ProcessingService.EXTRA_OPEN_CREATION_ID)
@@ -51,7 +57,7 @@ class MainActivity : ComponentActivity() {
         when (incoming.action) {
             Intent.ACTION_VIEW -> {
                 val dataUri = incoming.data
-                if (dataUri != null) {
+                if (dataUri != null && dataUri.scheme != "realscale") {
                     viewModel.onExternalPhotosReceived(listOf(dataUri))
                 }
             }
@@ -86,5 +92,9 @@ class MainActivity : ComponentActivity() {
             @Suppress("DEPRECATION")
             intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM).orEmpty()
         }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_PHOTO_PICKER = "com.tumuyan.ncnn.realsr.EXTRA_OPEN_PHOTO_PICKER"
     }
 }

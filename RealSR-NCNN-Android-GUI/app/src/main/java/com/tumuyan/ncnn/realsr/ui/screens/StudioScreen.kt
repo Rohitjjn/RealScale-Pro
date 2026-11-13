@@ -104,11 +104,13 @@ fun StudioScreen(
     onDismissPreflightAdvisory: () -> Unit = {},
     onQuickDownloadModel: (String) -> Unit,
     onOpenModelHub: () -> Unit,
+    onOpenLibrary: () -> Unit = {},
     onOpenSettings: () -> Unit,
     onOpenRecentCreation: (RecentCreationEntity) -> Unit,
     onShareRecentCreation: (Context, RecentCreationEntity) -> Unit = { _, _ -> },
     onRerunRecentCreation: (RecentCreationEntity) -> Unit = {},
     onDeleteRecentCreation: (RecentCreationEntity) -> Unit = {},
+    onConsumePendingPhotoPicker: () -> Unit = {},
     onLaunchFadePlayed: () -> Unit = {},
     sharedTransitionScope: SharedTransitionScope? = null,
     animatedVisibilityScope: AnimatedVisibilityScope? = null
@@ -162,6 +164,15 @@ fun StudioScreen(
         multiPhotoPicker.launch(
             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
         )
+    }
+
+    LaunchedEffect(state.selection.pendingOpenPhotoPicker) {
+        if (state.selection.pendingOpenPhotoPicker) {
+            onConsumePendingPhotoPicker()
+            multiPhotoPicker.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
+        }
     }
 
     val selectedPreset = state.selection.selectedPreset
@@ -578,19 +589,38 @@ fun StudioScreen(
                 modifier = Modifier.padding(horizontal = Spacing.lg)
             )
             Spacer(modifier = Modifier.height(Spacing.lg))
-            Text(
-                text = "Recent creations",
-                style = MaterialTheme.typography.headlineSmall,
-                color = colors.ink,
-                modifier = Modifier.padding(horizontal = Spacing.lg)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.lg),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent creations",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.ink
+                )
+                if (state.recentCreations.size > 3) {
+                    Text(
+                        text = "See all (${state.recentCreations.size})",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.terracotta,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable(role = Role.Button, onClick = onOpenLibrary)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(Spacing.sm))
             if (state.recentCreations.isNotEmpty()) {
+                val studioPreviewItems = remember(state.recentCreations) { state.recentCreations.take(8) }
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = Spacing.lg),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
-                    items(state.recentCreations, key = { it.id }) { item ->
+                    items(studioPreviewItems, key = { it.id }) { item ->
                         RecentCreationCard(
                             creation = item,
                             reduceMotion = reduceMotion,

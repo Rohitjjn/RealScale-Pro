@@ -29,7 +29,9 @@ import com.tumuyan.ncnn.realsr.core.engine.RecoveryAction
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
+import com.tumuyan.ncnn.realsr.ui.components.formatBytesHuman
 import com.tumuyan.ncnn.realsr.ui.theme.ThemeMode
+import com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +40,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+
+data class SavedGalleryEvent(
+    val uri: Uri,
+    val mimeType: String,
+    val message: String
+)
 
 data class StudioSelectionState(
     val selectedUris: List<Uri> = emptyList(),
@@ -48,8 +56,10 @@ data class StudioSelectionState(
     val resultCreations: List<RecentCreationEntity> = emptyList(),
     val selectedResultIndex: Int = 0,
     val bannerMessage: String? = null,
+    val savedGalleryEvent: SavedGalleryEvent? = null,
     val hasPlayedLaunchFade: Boolean = false,
     val pendingOpenResultNavigation: Boolean = false,
+    val pendingOpenPhotoPicker: Boolean = false,
     val preflightAdvisory: PreflightVerdict.Advisory? = null
 )
 
@@ -105,6 +115,7 @@ class RealScaleViewModel(
     private val restoredPreset: UpscalePreset = run {
         val savedName = savedStateHandle.get<String>(STATE_SELECTED_PRESET)
         val presetId = savedName?.let { runCatching { PresetId.valueOf(it) }.getOrNull() }
+            ?: initialEnginePrefs.defaultPresetId
             ?: initialEnginePrefs.lastUsedPresetId
         UpscalePreset.fromId(presetId)
     }
@@ -140,7 +151,7 @@ class RealScaleViewModel(
     }
 
     private val dataFlows = combine(
-        container.database.recentCreationDao().observeRecent(24),
+        container.database.recentCreationDao().observeRecent(200),
         container.modelRepository.catalogModels,
         container.modelRepository.totalInstalledBytes
     ) { recent, models, installedBytes ->
@@ -405,6 +416,26 @@ class RealScaleViewModel(
         }
     }
 
+    fun openCreationsForComparison(entities: List<RecentCreationEntity>) {
+        if (entities.isEmpty()) return
+        savedStateHandle[STATE_RESULT_IDS] = entities.map { it.id }.toLongArray()
+        savedStateHandle[STATE_SELECTED_RESULT_INDEX] = 0
+        selectionFlow.update {
+            it.copy(
+                resultCreations = entities,
+                selectedResultIndex = 0
+            )
+        }
+    }
+
+    fun requestOpenPhotoPicker() {
+        selectionFlow.update { it.copy(pendingOpenPhotoPicker = true) }
+    }
+
+    fun consumePendingPhotoPicker() {
+        selectionFlow.update { it.copy(pendingOpenPhotoPicker = false) }
+    }
+
     fun openCreationById(creationId: Long) {
         viewModelScope.launch {
             val found = container.database.recentCreationDao().getById(creationId) ?: return@launch
@@ -494,13 +525,18 @@ class RealScaleViewModel(
             )
             res.fold(
                 onSuccess = { savedUri ->
+                    val mime = MediaExportHelper.mimeTypeFor(file)
                     container.database.recentCreationDao().updateSavedUri(creation.id, savedUri.toString())
                     selectionFlow.update { prev ->
                         prev.copy(
                             resultCreations = prev.resultCreations.map { item ->
                                 if (item.id == creation.id) item.copy(savedUri = savedUri.toString()) else item
                             },
-                            bannerMessage = "Saved $targetName to Pictures/RealScale-Pro"
+                            savedGalleryEvent = SavedGalleryEvent(
+                                uri = savedUri,
+                                mimeType = mime,
+                                message = "Saved $targetName to Pictures/RealScale-Pro"
+                            )
                         )
                     }
                 },
@@ -509,6 +545,10 @@ class RealScaleViewModel(
                 }
             )
         }
+    }
+
+    fun dismissSavedGalleryEvent() {
+        selectionFlow.update { it.copy(savedGalleryEvent = null) }
     }
 
     fun shareResult(context: Context, creation: RecentCreationEntity) {
@@ -524,11 +564,43 @@ class RealScaleViewModel(
         }
     }
 
+    fun shareCreations(context: Context, creations: List<RecentCreationEntity>) {
+        val files = creations.map { File(it.outputPath) }.filter { it.isFile }
+        if (files.isEmpty()) {
+            postBanner("Selected files are no longer available.")
+            return
+        }
+        runCatching {
+            MediaExportHelper.shareMultipleImages(context, files)
+        }.onFailure { err ->
+            postBanner(err.message ?: "Could not open share sheet.")
+        }
+    }
+
     fun deleteRecentCreation(creation: RecentCreationEntity) {
+        deleteCreations(listOf(creation))
+    }
+
+    fun deleteCreations(creations: List<RecentCreationEntity>) {
+        if (creations.isEmpty()) return
+        val deletedIds = creations.map { it.id }.toSet()
         viewModelScope.launch {
-            File(creation.beforeImagePath).delete()
-            File(creation.outputPath).delete()
-            container.database.recentCreationDao().deleteById(creation.id)
+            creations.forEach { c ->
+                File(c.beforeImagePath).delete()
+                File(c.outputPath).delete()
+            }
+            container.database.recentCreationDao().deleteByIds(deletedIds.toList())
+            RealScaleWidgetsUpdater.refreshAll(getApplication())
+            selectionFlow.update { prev ->
+                val remaining = prev.resultCreations.filterNot { it.id in deletedIds }
+                savedStateHandle[STATE_RESULT_IDS] = remaining.map { it.id }.toLongArray()
+                val nextIdx = prev.selectedResultIndex.coerceIn(0, (remaining.size - 1).coerceAtLeast(0))
+                savedStateHandle[STATE_SELECTED_RESULT_INDEX] = nextIdx
+                prev.copy(
+                    resultCreations = remaining,
+                    selectedResultIndex = nextIdx
+                )
+            }
         }
     }
 
@@ -573,12 +645,30 @@ class RealScaleViewModel(
         container.engine.updatePreferences { it.copy(externalOpenMode = mode) }
     }
 
+    fun setDefaultPreset(presetId: PresetId?) {
+        container.engine.updatePreferences { it.copy(defaultPresetId = presetId) }
+        if (presetId != null) {
+            selectPreset(UpscalePreset.fromId(presetId))
+        }
+    }
+
+    fun setKeepScreenOnDuringEnhance(enabled: Boolean) {
+        container.engine.updatePreferences { it.copy(keepScreenOnDuringEnhance = enabled) }
+    }
+
     fun setHapticsEnabled(enabled: Boolean) {
         container.engine.updatePreferences { it.copy(hapticsEnabled = enabled) }
     }
 
     fun setWifiOnlyDownloads(wifiOnly: Boolean) {
         container.engine.updatePreferences { it.copy(wifiOnlyDownloads = wifiOnly) }
+    }
+
+    fun clearTemporaryCache() {
+        viewModelScope.launch {
+            val freed = ImageIntakeManager.clearTemporaryCache(getApplication())
+            postBanner("Cleared ${formatBytesHuman(freed)} of temporary cache.")
+        }
     }
 
     fun setExecutionBackend(backend: ExecutionBackend) {

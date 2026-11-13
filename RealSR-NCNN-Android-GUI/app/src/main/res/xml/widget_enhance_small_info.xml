@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_enhance_desc"
+    android:initialLayout="@layout/widget_loading_placeholder"
+    android:minHeight="96dp"
+    android:minWidth="148dp"
+    android:previewImage="@drawable/brand_logo_medallion"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="86400000"
+    android:widgetCategory="home_screen" />

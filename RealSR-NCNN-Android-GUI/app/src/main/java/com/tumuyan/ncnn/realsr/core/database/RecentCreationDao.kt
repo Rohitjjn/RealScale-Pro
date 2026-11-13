@@ -9,7 +9,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface RecentCreationDao {
     @Query("SELECT * FROM recent_creations ORDER BY createdAtEpochMs DESC LIMIT :limit")
-    fun observeRecent(limit: Int = 20): Flow<List<RecentCreationEntity>>
+    fun observeRecent(limit: Int = 200): Flow<List<RecentCreationEntity>>
+
+    @Query("SELECT * FROM recent_creations ORDER BY createdAtEpochMs DESC LIMIT :limit")
+    suspend fun getRecentOnce(limit: Int = 3): List<RecentCreationEntity>
 
     @Query("SELECT * FROM recent_creations WHERE id = :id LIMIT 1")
     suspend fun getById(id: Long): RecentCreationEntity?
@@ -22,6 +25,9 @@ interface RecentCreationDao {
 
     @Query("DELETE FROM recent_creations WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM recent_creations WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
 
     @Query("DELETE FROM recent_creations")
     suspend fun clearAll()

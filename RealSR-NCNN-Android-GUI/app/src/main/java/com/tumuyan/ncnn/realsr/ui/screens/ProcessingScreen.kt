@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,6 +62,7 @@ import kotlin.math.roundToInt
 fun ProcessingScreen(
     engineState: EngineState,
     queue: List<QueuedJobItem> = emptyList(),
+    keepScreenOn: Boolean = true,
     onCancel: () -> Unit,
     onCancelQueuedItem: (String) -> Unit = {},
     onApplyRecovery: (RecoveryAction) -> Unit = {},
@@ -69,6 +72,18 @@ fun ProcessingScreen(
 ) {
     val colors = RealScaleThemeTokens.colors
     val context = LocalContext.current
+    val view = LocalView.current
+    val isActiveRun = engineState is EngineState.Preparing || engineState is EngineState.Running
+    DisposableEffect(view, keepScreenOn, isActiveRun) {
+        val shouldKeep = keepScreenOn && isActiveRun
+        val prev = view.keepScreenOn
+        if (shouldKeep) {
+            view.keepScreenOn = true
+        }
+        onDispose {
+            view.keepScreenOn = prev
+        }
+    }
     val uiPrefs = remember(context) {
         context.getSharedPreferences("realscale_ui_prefs", Context.MODE_PRIVATE)
     }
