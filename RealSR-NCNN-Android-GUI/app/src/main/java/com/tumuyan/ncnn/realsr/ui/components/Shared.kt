@@ -340,7 +340,7 @@ fun ModelPickerSheet(
 
     // A model downloaded from this sheet becomes the selection once installed.
     LaunchedEffect(installedIds, pending) {
-        val p = pending
+        val p = pending.value
         if (p != null && p in installedIds) {
             onSelect(p)
             pending.value = null

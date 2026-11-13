@@ -102,7 +102,7 @@ fun RealScaleSheet(
                 .fillMaxWidth()
                 .then(if (tall) Modifier.fillMaxSize(0.9f) else Modifier)
                 .onGloballyPositioned { panelHeightPx.value = it.size.height.coerceAtLeast(1) }
-                .graphicsLayer { translationY = panelOffset.value * panelHeightPx }
+                .graphicsLayer { translationY = panelOffset.value * panelHeightPx.value }
                 .navigationBarsPadding()
                 .clip(RealScaleShape.SheetTop)
                 .background(c.canvas),

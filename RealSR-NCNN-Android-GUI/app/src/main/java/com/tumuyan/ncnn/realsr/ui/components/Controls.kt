@@ -232,7 +232,7 @@ fun RealScaleRange(
 ) {
     val c = LocalRealScaleColors.current
     val fraction = ((value - min).toFloat() / (max - min).coerceAtLeast(1)).coerceIn(0f, 1f)
-    val trackWidthPx = remember { androidx.compose.runtime.mutableStateOf(0f) }
+    var trackWidthPx by remember { androidx.compose.runtime.mutableStateOf(0f) }
     val density = androidx.compose.ui.platform.LocalDensity.current
 
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -240,7 +240,7 @@ fun RealScaleRange(
             modifier = Modifier
                 .weight(1f)
                 .height(44.dp)
-                .onGloballyPositioned { trackWidthPx.value = it.size.width.toFloat() }
+                .onGloballyPositioned { trackWidthPx = it.size.width.toFloat() }
                 .clearAndSetSemantics {
                     role = Role.Slider
                     stateDescription = "$value$suffix"
@@ -281,7 +281,7 @@ fun RealScaleRange(
             )
             // thumb (24dp canvas circle, 2dp ink ring) positioned by measured width
             val thumbPx = with(density) { 24.dp.toPx() }
-            val maxOffset = (trackWidthPx.value - thumbPx).coerceAtLeast(0f)
+            val maxOffset = (trackWidthPx - thumbPx).coerceAtLeast(0f)
             Box(
                 Modifier
                     .offset(x = with(density) { (maxOffset * fraction).toDp() })
