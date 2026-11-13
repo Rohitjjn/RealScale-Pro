@@ -1,0 +1,284 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'arena/**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  UPSTREAM_APK_1_13_2_URL: https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.13.2/RealSR-NCNN-Android-GUI-armv8a-1.13.2.apk
+
+jobs:
+  build:
+    name: Build, Unit Test & Verify Slim APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Ensure Android SDK
+        run: |
+          if [ -z "${ANDROID_HOME:-}" ] || [ ! -d "${ANDROID_HOME:-}" ]; then
+            export ANDROID_HOME="$HOME/android-sdk"
+            mkdir -p "$ANDROID_HOME/cmdline-tools"
+            curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/cmdtools.zip
+            unzip -q /tmp/cmdtools.zip -d "$ANDROID_HOME/cmdline-tools"
+            mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          fi
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          SDKMGR=$(find "$ANDROID_HOME" -name sdkmanager | head -n 1)
+          (yes || true) | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Prepare slim engine assets without AI models
+        run: |
+          mkdir -p /tmp/upstream-assets/apk1132
+          curl -fL "$UPSTREAM_APK_1_13_2_URL" -o /tmp/upstream-assets/apk-1.13.2.apk
+          unzip -q /tmp/upstream-assets/apk-1.13.2.apk 'assets/realsr/*' -d /tmp/upstream-assets/apk1132
+
+          ASSET_REALSR="RealSR-NCNN-Android-GUI/app/src/main/assets/realsr"
+          rm -rf "$ASSET_REALSR"
+          mkdir -p "$ASSET_REALSR"
+          cp -r /tmp/upstream-assets/apk1132/assets/realsr/* "$ASSET_REALSR/"
+
+          # Strip every bundled AI model folder from assets
+          rm -rf "$ASSET_REALSR"/models*
+
+          # Pack unmodified ELF executables and .so libraries into solid binaries.tar.xz
+          python3 - << 'PY'
+          import os, shutil, subprocess
+          asset_dir = "RealSR-NCNN-Android-GUI/app/src/main/assets/realsr"
+          pack_dir = "/tmp/realsr-solid-pack"
+          if os.path.exists(pack_dir):
+              shutil.rmtree(pack_dir)
+          os.makedirs(pack_dir)
+
+          packed = []
+          for entry in sorted(os.listdir(asset_dir)):
+              full = os.path.join(asset_dir, entry)
+              if os.path.isfile(full) and not entry.endswith(".xml"):
+                  shutil.move(full, os.path.join(pack_dir, entry))
+                  packed.append(entry)
+
+          tar_path = os.path.join(asset_dir, "binaries.tar")
+          subprocess.run(["tar", "-cf", tar_path, "-C", pack_dir] + packed, check=True)
+          subprocess.run(["xz", "-f", "--arm64", "--lzma2=dict=16MiB,preset=9e", tar_path], check=True)
+          xz_mb = os.path.getsize(tar_path + ".xz") / 1048576
+          print(f"::notice title=SlimEngineAssets::Packed {len(packed)} unmodified binaries into binaries.tar.xz ({xz_mb:.2f} MiB)")
+          PY
+
+      - name: Run unit tests, assembleDebug, assembleRelease & assembleDebugAndroidTest
+        working-directory: RealSR-NCNN-Android-GUI
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          if ! ./gradlew testDebugUnitTest assembleDebug assembleRelease assembleDebugAndroidTest > /tmp/gradle.log 2>&1; then
+            ERR=$(grep -B 2 -A 35 -E "e: file:|FAILURE:|What went wrong:|FAILED" /tmp/gradle.log | head -n 90 || tail -n 80 /tmp/gradle.log)
+            MSG=$(printf "%s" "$ERR" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=GradleBuildError::${MSG:0:3800}"
+            cat /tmp/gradle.log
+            exit 1
+          fi
+          cat /tmp/gradle.log | tail -n 40
+
+      - name: Verify APK size (<= 30 MB) and zero bundled AI models
+        run: |
+          echo "### RealScale Pro APK Size & Asset Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Variant | File | Size (MiB) | Size (Bytes) | Bundled AI Models |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- | --- | --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+
+          for VARIANT in release debug; do
+            APK_PATH=$(find "RealSR-NCNN-Android-GUI/app/build/outputs/apk/$VARIANT" -name "*.apk" | head -n 1)
+            test -f "$APK_PATH"
+            BYTES=$(stat -c%s "$APK_PATH")
+            MB=$(python3 -c "print(f'{$BYTES / 1048576:.2f}')")
+            echo "| \`$VARIANT\` | \`$(basename "$APK_PATH")\` | **$MB MiB** | \`$BYTES\` | \`0\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=ApkSize_${VARIANT}::${VARIANT} APK = $MB MiB ($BYTES bytes) [target <25 MB, gate <=30 MB]"
+
+            if unzip -l "$APK_PATH" | awk '{print $4}' | grep -E "^assets/.*(models-|\.(bin|param|mnn)$)"; then
+              MATCHED=$(unzip -l "$APK_PATH" | awk '{print $4}' | grep -E "^assets/.*(models-|\.(bin|param|mnn)$)" | tr '\n' ' ')
+              echo "::error title=BundledModelsFound::${VARIANT} APK contains model files: $MATCHED"
+              exit 1
+            fi
+
+            if [ "$VARIANT" = "release" ] && [ "$BYTES" -gt $((30 * 1024 * 1024)) ]; then
+              echo "::error title=ApkTooLarge::Release APK exceeds 30 MiB gate ($MB MiB)"
+              exit 1
+            fi
+          done
+          echo "::notice title=ZeroModelsVerified::unzip -l verified zero models-*, .bin, .param, or .mnn files in both debug & release APKs."
+
+      - name: Upload Distributable APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: realscale-pro-apk
+          path: |
+            RealSR-NCNN-Android-GUI/app/build/outputs/apk/release/*.apk
+            RealSR-NCNN-Android-GUI/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+      - name: Upload Instrumentation APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: instrumentation-apks
+          path: |
+            RealSR-NCNN-Android-GUI/app/build/outputs/apk/debug/*.apk
+            RealSR-NCNN-Android-GUI/app/build/outputs/apk/androidTest/debug/*.apk
+          retention-days: 3
+
+      - name: Publish GitHub Release on v* tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_APK=$(find RealSR-NCNN-Android-GUI/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          OUT_APK="RealScale-Pro-${TAG_NAME}-arm64.apk"
+          cp "$RELEASE_APK" "$OUT_APK"
+          sha256sum "$OUT_APK" > "${OUT_APK}.sha256"
+          gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" \
+            --title "RealScale Pro ${TAG_NAME}" \
+            --generate-notes
+          gh release upload "$TAG_NAME" "$OUT_APK" "${OUT_APK}.sha256" --clobber
+
+  emulator-smoke-test:
+    name: Emulator Instrumentation Smoke Test
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Download built APKs
+        uses: actions/download-artifact@v8
+        with:
+          name: instrumentation-apks
+          path: apks
+
+      - name: Boot Android 11 ATD Emulator & Run RealScaleSmokeInstrumentedTest
+        run: |
+          set -eu
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules >/dev/null
+            sudo udevadm control --reload-rules
+            sudo udevadm trigger --name-match=kvm
+            sudo chmod 666 /dev/kvm
+            KVM_INFO=$(ls -la /dev/kvm)
+            ACCEL_ARGS="-accel on"
+          else
+            KVM_INFO="NO_KVM"
+            ACCEL_ARGS="-accel off"
+          fi
+          echo "::notice title=KvmStatus::KVM device: ${KVM_INFO}"
+
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ANDROID_HOME="$SDK"
+          export ANDROID_SDK_ROOT="$SDK"
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+
+          # Upgrade cmdline-tools to >=22.0 to avoid broken target=android-0 AVD metadata (#14484)
+          (yes || true) | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          (yes || true) | "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "cmdline-tools;latest" >/dev/null
+          if [ -d "$SDK/cmdline-tools/latest-2" ]; then
+            sudo rm -rf "$SDK/cmdline-tools/latest"
+            sudo mv "$SDK/cmdline-tools/latest-2" "$SDK/cmdline-tools/latest"
+          fi
+          CLT="$SDK/cmdline-tools/latest/bin"
+          export PATH="$CLT:$SDK/platform-tools:$SDK/emulator:$PATH"
+
+          IMG="system-images;android-30;aosp_atd;x86_64"
+          (yes || true) | "$CLT/sdkmanager" --install "platform-tools" "emulator" "platforms;android-30" "$IMG" >/dev/null
+          echo no | "$CLT/avdmanager" create avd --force -n smoke_avd --package "$IMG" --device "pixel_4"
+          printf 'disk.dataPartition.size=2048M\nhw.ramSize=2048\nhw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/smoke_avd.avd/config.ini"
+
+          "$SDK/emulator/emulator" -avd smoke_avd \
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot \
+            -partition-size 2048 -memory 2048 -cores 2 $ACCEL_ARGS > /tmp/emulator.log 2>&1 &
+          EMU_PID=$!
+
+          BOOTED=0
+          START_TS=$(date +%s)
+          for i in $(seq 1 120); do
+            if ! kill -0 "$EMU_PID" 2>/dev/null; then
+              DIAG=$(tail -n 60 /tmp/emulator.log | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+              echo "::error title=EmulatorExitedEarly::Emulator process exited:${DIAG:0:3500}"
+              exit 1
+            fi
+            BOOT_PROP=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
+            PM_READY=$(adb shell pm path android 2>/dev/null | tr -d '\r' || true)
+            if [ "$BOOT_PROP" = "1" ] && [ -n "$PM_READY" ]; then
+              BOOTED=1
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$BOOTED" -ne 1 ]; then
+            DIAG=$(tail -n 60 /tmp/emulator.log | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=EmulatorBootTimeout::Timed out after 240s. Log:${DIAG:0:3500}"
+            kill "$EMU_PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          BOOT_SECS=$(( $(date +%s) - START_TS ))
+          ABIS=$(adb shell getprop ro.product.cpu.abilist | tr -d '\r')
+          echo "::notice title=EmulatorBooted::Android 11 ATD booted in ${BOOT_SECS}s (ABIs: ${ABIS})"
+
+          adb shell settings put global window_animation_scale 0.0 || true
+          adb shell settings put global transition_animation_scale 0.0 || true
+          adb shell settings put global animator_duration_scale 0.0 || true
+          adb shell settings put global hide_error_dialogs 1 || true
+          adb shell settings put secure anr_show_background 0 || true
+          adb shell wm dismiss-keyguard || true
+          adb shell input keyevent 82 || true
+          adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS || true
+          sleep 3
+
+          APP_APK=$(find apks -path "*/debug/*.apk" ! -path "*/androidTest/*" | head -n 1)
+          TEST_APK=$(find apks -path "*/androidTest/debug/*.apk" | head -n 1)
+          adb install -r -g "$APP_APK"
+          adb install -r -g "$TEST_APK"
+
+          adb shell am instrument -w -r \
+            -e class com.tumuyan.ncnn.realsr.RealScaleSmokeInstrumentedTest \
+            com.tumuyan.ncnn.realsr.debug.test/androidx.test.runner.AndroidJUnitRunner > /tmp/instrument.log 2>&1 || true
+          cat /tmp/instrument.log
+
+          LOGCAT_CRASH=$(adb logcat -d -b crash 2>/dev/null | tail -n 35 || true)
+          adb emu kill || kill "$EMU_PID" 2>/dev/null || true
+
+          if ! grep -q "OK (" /tmp/instrument.log; then
+            ERR=$(head -n 70 /tmp/instrument.log; printf "\n--- CRASH ---\n%s" "$LOGCAT_CRASH")
+            MSG=$(printf "%s" "$ERR" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=InstrumentationFailure::${MSG:0:3800}"
+            exit 1
+          fi
+          SUMMARY=$(grep "OK (" /tmp/instrument.log | tr -d '\r')
+          echo "::notice title=InstrumentationPassed::Emulator smoke tests passed: ${SUMMARY}"

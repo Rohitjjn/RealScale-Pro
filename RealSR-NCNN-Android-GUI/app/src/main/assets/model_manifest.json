@@ -1,0 +1,550 @@
+{
+  "manifestVersion": 1,
+  "updatedAt": "2026-11-12",
+  "sourceRepo": "https://huggingface.co/tumuyan2/realsr-models",
+  "mirrorInfo": "https://github.com/tumuyan/realsr-models",
+  "models": [
+    {
+      "id": "models-RealeSR-general-v3",
+      "displayName": "Everyday Photo v3",
+      "description": "Fast, balanced 4× enhancement for everyday phone photos, portraits, and landscapes.",
+      "category": "PHOTO",
+      "recommendedForPreset": "PHOTO",
+      "engineTool": "realsr-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 2443547,
+      "files": [
+        {
+          "fileName": "x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-RealeSR-general-v3/x4.bin",
+          "sizeBytes": 2435272,
+          "sha256": "01450f4a79b81c0f1f3eeefc31121167886125c25e41a6d4773e8ec8062528a1"
+        },
+        {
+          "fileName": "x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-RealeSR-general-v3/x4.param",
+          "sizeBytes": 8275,
+          "sha256": "ce766e261369b911c3f3f607266380e6e6133e82699fed5e3b3afa07482c34c1"
+        }
+      ]
+    },
+    {
+      "id": "models-upconv_7_anime_style_art_rgb",
+      "displayName": "Anime & Illustration",
+      "description": "Crisp ink lines, smooth gradients, and gentle JPEG cleanup for anime, comics, and digital art.",
+      "category": "ANIME",
+      "recommendedForPreset": "ANIME",
+      "engineTool": "waifu2x-ncnn",
+      "defaultScale": 2,
+      "supportedScales": [2, 4],
+      "denoiseLevel": 2,
+      "totalBytes": 5536475,
+      "files": [
+        {
+          "fileName": "noise0_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/noise0_scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "e1d2c4d91be98e72c0d48d08626cbe7d879aa2b80f740133dcc0d860eabb4189"
+        },
+        {
+          "fileName": "noise0_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/noise0_scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        },
+        {
+          "fileName": "noise1_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/noise1_scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "536fd7070b023463d30bd105f675acf301760dce539f2fb974bd06906045514f"
+        },
+        {
+          "fileName": "noise1_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/noise1_scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        },
+        {
+          "fileName": "noise2_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/noise2_scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "435f9082425c4520d3586757411ac409b1d67e428ed37ec571feb06f823e245e"
+        },
+        {
+          "fileName": "noise2_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/noise2_scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        },
+        {
+          "fileName": "noise3_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/noise3_scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "3e783a9117d4564fbd0cc376375b29d7eb05bd2e457f748898e82eefb1ace2f1"
+        },
+        {
+          "fileName": "noise3_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/noise3_scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        },
+        {
+          "fileName": "scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "27d880903ff81390a3b4a900b67af3381c465279e34297546c9a58781855f7ef"
+        },
+        {
+          "fileName": "scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_anime_style_art_rgb/scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        }
+      ]
+    },
+    {
+      "id": "models-DF2K",
+      "displayName": "Maximum Detail DF2K",
+      "description": "High-capacity 4× generative reconstruction for fine textures, foliage, fabric, and architecture.",
+      "category": "MAXIMUM",
+      "recommendedForPreset": "MAXIMUM",
+      "engineTool": "realsr-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 33540513,
+      "files": [
+        {
+          "fileName": "x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-DF2K/x4.bin",
+          "sizeBytes": 33424520,
+          "sha256": "a3f5eb53906ef54d5c5d125b2c9dd5f570d9dbb779e3d934df14b5375fd923c1"
+        },
+        {
+          "fileName": "x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-DF2K/x4.param",
+          "sizeBytes": 115993,
+          "sha256": "a7f31e75518ad279c179202bf77da9eca3141124a67e5261d97235849e6cc323"
+        }
+      ]
+    },
+    {
+      "id": "models-upconv_7_photo",
+      "displayName": "Gentle Photo 2×",
+      "description": "Faithful 2× photo enlargement that preserves film grain and subtle skin tones without over-sharpening.",
+      "category": "PHOTO",
+      "engineTool": "waifu2x-ncnn",
+      "defaultScale": 2,
+      "supportedScales": [2, 4],
+      "denoiseLevel": 1,
+      "totalBytes": 5536475,
+      "files": [
+        {
+          "fileName": "noise0_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/noise0_scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "fbfc8d57e4333748c9c6db2ec4d5454c98cd1c6aa53289f2989c3bdb4e84b673"
+        },
+        {
+          "fileName": "noise0_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/noise0_scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        },
+        {
+          "fileName": "noise1_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/noise1_scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "9f8ce2c4df1ed862a7441e3b49ad965b8e34aaa6d87c1cad52a1768210fdfee6"
+        },
+        {
+          "fileName": "noise1_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/noise1_scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        },
+        {
+          "fileName": "noise2_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/noise2_scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "432ca8f62ffc4873794a399ded70b17af23aa870b25e5ddba76f029b7ce14c2b"
+        },
+        {
+          "fileName": "noise2_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/noise2_scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        },
+        {
+          "fileName": "noise3_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/noise3_scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "a24379eb4e954005da1804223f428e67340e3f0037e4f7b9f568f0d0f20e9f20"
+        },
+        {
+          "fileName": "noise3_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/noise3_scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        },
+        {
+          "fileName": "scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/scale2.0x_model.bin",
+          "sizeBytes": 1106248,
+          "sha256": "25a2bb25b29e43e63179aac216cd87690791243a436328506d4ef9fca88ee962"
+        },
+        {
+          "fileName": "scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-upconv_7_photo/scale2.0x_model.param",
+          "sizeBytes": 1047,
+          "sha256": "413195ffde05b4d43807792c6c020c916cecdf25dcf002ee83f5e28d5cc246c6"
+        }
+      ]
+    },
+    {
+      "id": "models-cunet",
+      "displayName": "Illustration CUNet",
+      "description": "Deeper cascade network for detailed artwork, cel animation, and heavily compressed screenshots.",
+      "category": "ANIME",
+      "engineTool": "waifu2x-ncnn",
+      "defaultScale": 2,
+      "supportedScales": [2, 4],
+      "denoiseLevel": 2,
+      "totalBytes": 13918245,
+      "files": [
+        {
+          "fileName": "noise0_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/noise0_scale2.0x_model.bin",
+          "sizeBytes": 2776400,
+          "sha256": "5329a9375c9cfb64a60a2903fd8ae6e2851d9b069556bf025dbab9d0216fb27c"
+        },
+        {
+          "fileName": "noise0_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/noise0_scale2.0x_model.param",
+          "sizeBytes": 7249,
+          "sha256": "ccc3b2f1c9fad829ecdda40cac8dc853fcddf14917170efba888b256fbf9074a"
+        },
+        {
+          "fileName": "noise1_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/noise1_scale2.0x_model.bin",
+          "sizeBytes": 2776400,
+          "sha256": "862c0e40f3df956ff57bd4d168c85dea5d375b614077fdddd3ac8cfdb9a686da"
+        },
+        {
+          "fileName": "noise1_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/noise1_scale2.0x_model.param",
+          "sizeBytes": 7249,
+          "sha256": "ccc3b2f1c9fad829ecdda40cac8dc853fcddf14917170efba888b256fbf9074a"
+        },
+        {
+          "fileName": "noise2_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/noise2_scale2.0x_model.bin",
+          "sizeBytes": 2776400,
+          "sha256": "5c836e6ae022636cdd5590fbb66dbca2a5fc20bbf8e628884c3612ef72d51858"
+        },
+        {
+          "fileName": "noise2_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/noise2_scale2.0x_model.param",
+          "sizeBytes": 7249,
+          "sha256": "ccc3b2f1c9fad829ecdda40cac8dc853fcddf14917170efba888b256fbf9074a"
+        },
+        {
+          "fileName": "noise3_scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/noise3_scale2.0x_model.bin",
+          "sizeBytes": 2776400,
+          "sha256": "f42c18610fecb14a40f75cca9b9276a6889689d5937a4f75f0c2b21bde7e49ed"
+        },
+        {
+          "fileName": "noise3_scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/noise3_scale2.0x_model.param",
+          "sizeBytes": 7249,
+          "sha256": "ccc3b2f1c9fad829ecdda40cac8dc853fcddf14917170efba888b256fbf9074a"
+        },
+        {
+          "fileName": "scale2.0x_model.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/scale2.0x_model.bin",
+          "sizeBytes": 2776400,
+          "sha256": "d82ed30207fd07e1c16726a9ca838ce44e6e25a105b0278c7ca681516ee0e18e"
+        },
+        {
+          "fileName": "scale2.0x_model.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-cunet/scale2.0x_model.param",
+          "sizeBytes": 7249,
+          "sha256": "ccc3b2f1c9fad829ecdda40cac8dc853fcddf14917170efba888b256fbf9074a"
+        }
+      ]
+    },
+    {
+      "id": "models-MNN-RealESRGAN_x4plus_anime_6B",
+      "displayName": "Anime 6B (CPU & GPU)",
+      "description": "Compact 6-block Real-ESRGAN anime model running on MNN — works fast on both GPU and CPU.",
+      "category": "ANIME",
+      "engineTool": "mnnsr-ncnn",
+      "entryFile": "RealESRGAN_x4plus_anime_6B-x4.mnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 17934208,
+      "files": [
+        {
+          "fileName": "RealESRGAN_x4plus_anime_6B-x4.mnn",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-MNNSR/RealESRGAN_x4plus_anime_6B-x4.mnn",
+          "sizeBytes": 17934208,
+          "sha256": "b802e0976cd173d2fd1beba5d075865723972fa8a02ceee89208eb719f6c574b"
+        }
+      ]
+    },
+    {
+      "id": "models-ESRGAN-AnimeSharpLite",
+      "displayName": "AnimeSharp Lite 4×",
+      "description": "Bold edge crispness for modern anime stills and wallpapers at half the size of full ESRGAN.",
+      "category": "ANIME",
+      "engineTool": "realsr-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 20144908,
+      "files": [
+        {
+          "fileName": "x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-AnimeSharpLite/x4.bin",
+          "sizeBytes": 20085364,
+          "sha256": "8301319c42ddba71922c4424098fe0a2088a5f1f94f6ef4bcf1385e17b2bc053"
+        },
+        {
+          "fileName": "x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-AnimeSharpLite/x4.param",
+          "sizeBytes": 59544,
+          "sha256": "560fd03dc3e425a8a519320fec7a5ce9209fa5986c49c0d3e708cb1e489835fc"
+        }
+      ]
+    },
+    {
+      "id": "models-srmd",
+      "displayName": "Clean Studio SRMD",
+      "description": "Multi-scale (2×, 3×, 4×) super-resolution for clean DSLR/mirrorless photos on Vulkan GPUs.",
+      "category": "PHOTO",
+      "engineTool": "srmd-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [2, 3, 4],
+      "denoiseLevel": 3,
+      "totalBytes": 18393516,
+      "files": [
+        {
+          "fileName": "srmd_x2.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmd_x2.bin",
+          "sizeBytes": 3026272,
+          "sha256": "4eea55fc0acd3fad68b46d2b3cdad6cd6b4f8b18f390397eb6074e024316b13a"
+        },
+        {
+          "fileName": "srmd_x2.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmd_x2.param",
+          "sizeBytes": 1230,
+          "sha256": "1a240d786ad57398230cdae674185a0b5848af4a6dc1bbf56648e04b26a8bc62"
+        },
+        {
+          "fileName": "srmd_x3.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmd_x3.bin",
+          "sizeBytes": 3060892,
+          "sha256": "27dd6663a4f0757374c6769b1acdf04b6141547bc0c6b48b34334f5c6f561116"
+        },
+        {
+          "fileName": "srmd_x3.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmd_x3.param",
+          "sizeBytes": 1230,
+          "sha256": "ddfa92c2824f2449b97eaf02f69cae660981bd07a52e0d74c0d53f26860e5a4a"
+        },
+        {
+          "fileName": "srmd_x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmd_x4.bin",
+          "sizeBytes": 3109360,
+          "sha256": "c8a59cffd2ec9e7b7e0c29cb149808f766812db75a4bb0feee77f7081cb0af9a"
+        },
+        {
+          "fileName": "srmd_x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmd_x4.param",
+          "sizeBytes": 1230,
+          "sha256": "2dcde0224b30ad4a65638df1f1a822915d3e9393791ff104d39cdf77fb1153fa"
+        },
+        {
+          "fileName": "srmdnf_x2.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmdnf_x2.bin",
+          "sizeBytes": 3023968,
+          "sha256": "7ad5db8ca7e6ae04738ccf8f09d157ffb8e3e8fc1c5ed8be746d2a69d305ba27"
+        },
+        {
+          "fileName": "srmdnf_x2.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmdnf_x2.param",
+          "sizeBytes": 1230,
+          "sha256": "975e36fcc252583773bbbc691672e68b71e9c8e452b3055cb2cf523c75ecdae9"
+        },
+        {
+          "fileName": "srmdnf_x3.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmdnf_x3.bin",
+          "sizeBytes": 3058588,
+          "sha256": "07520a171844c4df3e69a556e812a933d5cf976c4ebf44bddf518087ba50fd28"
+        },
+        {
+          "fileName": "srmdnf_x3.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmdnf_x3.param",
+          "sizeBytes": 1230,
+          "sha256": "f68036764d84081ae6e1ed316d4c50955c91a5a1b56548f19ba3135a726473d2"
+        },
+        {
+          "fileName": "srmdnf_x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmdnf_x4.bin",
+          "sizeBytes": 3107056,
+          "sha256": "da889e651e777ef51d18f1acb88e24046b387a2cc7398ac76fd2a68107fa81b3"
+        },
+        {
+          "fileName": "srmdnf_x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-srmd/srmdnf_x4.param",
+          "sizeBytes": 1230,
+          "sha256": "b661e34f0b16b9df50436c5c9793e7773b8873ff91e1dc8efc19dbdb5b208b87"
+        }
+      ]
+    },
+    {
+      "id": "models-DF2K_JPEG",
+      "displayName": "Old Web & JPEG Restore",
+      "description": "Removes heavy blockiness from old social-media downloads and compressed JPEGs at 4×.",
+      "category": "MAXIMUM",
+      "engineTool": "realsr-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 33540513,
+      "files": [
+        {
+          "fileName": "x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-DF2K_JPEG/x4.bin",
+          "sizeBytes": 33424520,
+          "sha256": "e862e88c3f346a3b8506d839633f5e2a16461bb8bfb3e211152f40d807a4f51c"
+        },
+        {
+          "fileName": "x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-DF2K_JPEG/x4.param",
+          "sizeBytes": 115993,
+          "sha256": "a7f31e75518ad279c179202bf77da9eca3141124a67e5261d97235849e6cc323"
+        }
+      ]
+    },
+    {
+      "id": "models-ESRGAN-Nomos8kSC",
+      "displayName": "Nomos 8K Editorial",
+      "description": "High-clarity photographic model tuned on 8K photography for crisp landscapes and street shots.",
+      "category": "MAXIMUM",
+      "engineTool": "realsr-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 33540549,
+      "files": [
+        {
+          "fileName": "x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-Nomos8kSC/x4.bin",
+          "sizeBytes": 33424520,
+          "sha256": "26fc1e9ed5e5055929fd02d23c73a0876de937e3060e0e2797bea8d4c6c495be"
+        },
+        {
+          "fileName": "x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-Nomos8kSC/x4.param",
+          "sizeBytes": 116029,
+          "sha256": "e62bddc9061dd6e3e2a22b5eb02d2ac437b5cefb1295c7281382591c6870e8ed"
+        }
+      ]
+    },
+    {
+      "id": "models-ESRGAN-UltraSharp-fp16",
+      "displayName": "UltraSharp 4×",
+      "description": "Pronounced micro-contrast and edge definition for low-resolution crops and product photos.",
+      "category": "MAXIMUM",
+      "engineTool": "realsr-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 33590099,
+      "files": [
+        {
+          "fileName": "x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-UltraSharp-fp16/x4.bin",
+          "sizeBytes": 33424520,
+          "sha256": "713ce69a8642b1907cc24da7573560dcc933faf0c74e48ab0b3b379245618701"
+        },
+        {
+          "fileName": "x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-UltraSharp-fp16/x4.param",
+          "sizeBytes": 165579,
+          "sha256": "0332002123306541c803cd675280eee7f9cdd96f0804a47129f86ebbf9ed4174"
+        }
+      ]
+    },
+    {
+      "id": "models-ESRGAN-Remacri",
+      "displayName": "Remacri Natural Texture",
+      "description": "Organic surface detail for stone, wood, skin, and vintage photography without plastic smoothing.",
+      "category": "MAXIMUM",
+      "engineTool": "realsr-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 33564815,
+      "files": [
+        {
+          "fileName": "x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-Remacri/x4.bin",
+          "sizeBytes": 33424520,
+          "sha256": "a43be595c0d743314c30b50fe7ef188be0c61cc55c46ce81adb79ba4b3c3fb7a"
+        },
+        {
+          "fileName": "x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-Remacri/x4.param",
+          "sizeBytes": 140295,
+          "sha256": "859ecba5b3592ecf3e76c93bed65e9f627b5236dd696aae5a84ecf8c93ab65ce"
+        }
+      ]
+    },
+    {
+      "id": "models-ESRGAN-UltraMix_Balanced",
+      "displayName": "UltraMix Balanced 4×",
+      "description": "Blended general-purpose model balancing sharpness and smooth tonal transitions.",
+      "category": "MAXIMUM",
+      "engineTool": "realsr-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 33564815,
+      "files": [
+        {
+          "fileName": "x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-UltraMix_Balanced/x4.bin",
+          "sizeBytes": 33424520,
+          "sha256": "171cae5968485d366b4fb575d232f98d117d94b766b15f22849cfccde40d2050"
+        },
+        {
+          "fileName": "x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-UltraMix_Balanced/x4.param",
+          "sizeBytes": 140295,
+          "sha256": "859ecba5b3592ecf3e76c93bed65e9f627b5236dd696aae5a84ecf8c93ab65ce"
+        }
+      ]
+    },
+    {
+      "id": "models-ESRGAN-AnimeSharp",
+      "displayName": "AnimeSharp Full 4×",
+      "description": "Full-capacity 4× ESRGAN model for intricate anime backgrounds and high-detail cel art.",
+      "category": "ANIME",
+      "engineTool": "realsr-ncnn",
+      "defaultScale": 4,
+      "supportedScales": [4],
+      "totalBytes": 33540549,
+      "files": [
+        {
+          "fileName": "x4.bin",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-AnimeSharp/x4.bin",
+          "sizeBytes": 33424520,
+          "sha256": "1b392e3d7b89402c1a2acb6edcee8fb1ff7a32c04ec126123957a07f5f7aa10e"
+        },
+        {
+          "fileName": "x4.param",
+          "url": "https://huggingface.co/tumuyan2/realsr-models/resolve/main/models-ESRGAN-AnimeSharp/x4.param",
+          "sizeBytes": 116029,
+          "sha256": "e62bddc9061dd6e3e2a22b5eb02d2ac437b5cefb1295c7281382591c6870e8ed"
+        }
+      ]
+    }
+  ]
+}

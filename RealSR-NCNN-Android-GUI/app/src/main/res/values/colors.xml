@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="canvas_light">#FAF9F5</color>
+    <color name="canvas_dark">#181715</color>
+    <color name="terracotta_primary">#CC785C</color>
+</resources>
