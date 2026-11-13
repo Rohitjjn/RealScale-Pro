@@ -45,6 +45,19 @@ class ImageContentClassifierTest {
         }
         assertEquals(PresetId.PHOTO, ImageContentClassifier.classifyBitmap(photoBmp))
         photoBmp.recycle()
+
+        // 3. Smooth sky gradient with gentle sensor variance (+/- 4) -> PHOTO (not falsely Anime)
+        val skyBmp = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
+        for (y in 0 until 64) {
+            for (x in 0 until 64) {
+                val r = (110 + y + rng.nextInt(-4, 5)).coerceIn(0, 255)
+                val g = (155 + y + rng.nextInt(-4, 5)).coerceIn(0, 255)
+                val b = (215 + y / 2 + rng.nextInt(-4, 5)).coerceIn(0, 255)
+                skyBmp.setPixel(x, y, Color.rgb(r, g, b))
+            }
+        }
+        assertEquals(PresetId.PHOTO, ImageContentClassifier.classifyBitmap(skyBmp))
+        skyBmp.recycle()
     }
 
     @Test

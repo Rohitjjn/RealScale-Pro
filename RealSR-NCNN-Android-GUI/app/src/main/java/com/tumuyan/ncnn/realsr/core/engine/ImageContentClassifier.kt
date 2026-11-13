@@ -40,7 +40,6 @@ object ImageContentClassifier {
         var flatPairs = 0
         var nonFlatPairs = 0
         var sharpStepPairs = 0
-        val quantizedColors = HashSet<Int>(minOf(pixels.size, 4096))
 
         for (y in 0 until h) {
             val rowOffset = y * w
@@ -49,7 +48,6 @@ object ImageContentClassifier {
                 val r = Color.red(c)
                 val g = Color.green(c)
                 val b = Color.blue(c)
-                quantizedColors.add(((r shr 4) shl 8) or ((g shr 4) shl 4) or (b shr 4))
 
                 if (x + 1 < w) {
                     val right = pixels[rowOffset + x + 1]
@@ -58,7 +56,7 @@ object ImageContentClassifier {
                     val db = abs(b - Color.blue(right))
                     val maxDiff = max(dr, max(dg, db))
                     totalPairs++
-                    if (maxDiff <= 3) {
+                    if (maxDiff <= 2) {
                         flatPairs++
                     } else {
                         nonFlatPairs++
@@ -77,7 +75,7 @@ object ImageContentClassifier {
                     val db = abs(b - Color.blue(down))
                     val maxDiff = max(dr, max(dg, db))
                     totalPairs++
-                    if (maxDiff <= 3) {
+                    if (maxDiff <= 2) {
                         flatPairs++
                     } else {
                         nonFlatPairs++
@@ -94,13 +92,10 @@ object ImageContentClassifier {
         if (totalPairs == 0) return PresetId.PHOTO
         val flatRatio = flatPairs.toFloat() / totalPairs.toFloat()
         val sharpRatio = if (nonFlatPairs > 0) sharpStepPairs.toFloat() / nonFlatPairs.toFloat() else 0f
-        val paletteRatio = quantizedColors.size.toFloat() / pixels.size.toFloat()
 
         // Flat cel-shaded art, screenshots, icons, and line illustrations exhibit either
-        // substantial flat regions (>= 34%) or compact palettes with crisp step contours.
-        val isAnimeOrArt = flatRatio >= 0.34f ||
-            (flatRatio >= 0.22f && sharpRatio >= 0.20f) ||
-            (paletteRatio <= 0.08f && pixels.size >= 256)
+        // substantial flat regions (>= 42%) or moderate flat fills paired with crisp inked contours.
+        val isAnimeOrArt = flatRatio >= 0.42f || (flatRatio >= 0.24f && sharpRatio >= 0.15f)
 
         return if (isAnimeOrArt) PresetId.ANIME else PresetId.PHOTO
     }
