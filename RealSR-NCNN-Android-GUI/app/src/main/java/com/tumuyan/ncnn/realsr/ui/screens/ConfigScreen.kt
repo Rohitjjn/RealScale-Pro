@@ -200,7 +200,7 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
                         else -> OutputFormat.PNG
                     },
                     deviceRamBytes = (deviceProfile?.ramGb ?: 8.0 * 1024).toLong() * 1024 * 1024,
-                    freeStorageBytes = deviceProfile?.freeStorageGb ?: 32.0 * 1024 * 1024 * 1024,
+                    freeStorageBytes = (deviceProfile?.freeStorageGb ?: 32.0 * 1024 * 1024 * 1024).toLong(),
                 )
             }
             when (verdict) {
@@ -213,10 +213,10 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
         }
     }
 
-    private fun doLaunch() {
+    fun doLaunch() {
         viewModel.engine.startUpscale(
             com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest(
-                inputUris = listOf(inputPhoto.uri),
+                inputUris = listOf(inputPhoto!!.uri),
                 preset = preset,
                 scale = effectiveScale,
                 modelSpec = when {
@@ -398,7 +398,7 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
                             if (!scaleSupported || scale > (chosenModel?.supportedScales ?: preset.supportedScales).maxOrNull() ?: 4) {
                                 scale = p.defaultScale
                             }
-                            if (modelId != "auto" && chosenModel?.catalog.category.uppercase() != p.id.name.uppercase()) {
+                            if (modelId != "auto" && chosenModel?.category.uppercase() != p.id.name.uppercase()) {
                                 modelId = "auto"
                             }
                             persist()
@@ -513,7 +513,7 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
                                 TilePreset.MAX to "Maximum",
                                 TilePreset.CUSTOM to "Custom",
                             ).forEach { (t, label) ->
-                                val disabled = t == TilePreset.MAX && !(tierLevel >= 2 && (deviceProfile?.ramGb ?: 0) >= 12.0)
+                                val disabled = t == TilePreset.MAX && !(tierLevel >= 2 && (deviceProfile?.ramGb ?: 0.0) >= 12.0)
                                 RealScaleChip(
                                     label = label,
                                     selected = tile == t,
@@ -673,13 +673,14 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
             body = "This removes ${chosenModel?.displayName ?: confirmDeleteModel ?: "this model"} from the device. It can be re-downloaded later.",
             confirmLabel = "Delete",
             onConfirm = {
-                val id = confirmDeleteModel ?: return@onConfirm
-                confirmDeleteModel = null
-                scope.launch {
-                    viewModel.modelRepository.deleteInstalledModel(id)
-                    if (modelId == id) modelId = "auto"
-                    persist()
-                    viewModel.showToast("Model deleted")
+                confirmDeleteModel?.let { id ->
+                    confirmDeleteModel = null
+                    scope.launch {
+                        viewModel.modelRepository.deleteInstalledModel(id)
+                        if (modelId == id) modelId = "auto"
+                        persist()
+                        viewModel.showToast("Model deleted")
+                    }
                 }
             },
             cancelLabel = "Cancel",
@@ -717,7 +718,7 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
 }
 
 /** TilePreset pixel size for the rule above. */
-private fun TilePreset.px: Int = when (this) {
+private val TilePreset.px: Int = when (this) {
     TilePreset.SAFE -> 128
     TilePreset.BALANCED -> 256
     TilePreset.FAST -> 384

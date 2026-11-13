@@ -154,7 +154,7 @@ fun AboutScreen(viewModel: AppViewModel, navController: NavHostController) {
         }
     }
 
-    ShareAppSheet(open = shareOpen, onClose = { shareOpen = false }, viewModel = viewModel)
+    ShareAppSheet(open = shareOpen.value, onClose = { shareOpen.value = false }, viewModel = viewModel)
 }
 
 private fun String.capitalize(): String = if (isEmpty()) this else this.substring(0, 1).uppercase() + this.substring(1)
