@@ -105,7 +105,7 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.onNodeWithText("RealScale-Pro").assertIsDisplayed()
             composeRule.onNodeWithText("Choose a photo").assertIsDisplayed()
             composeRule.waitForIdle()
-            val studioLightShot = captureAndSaveScreenshot(context, "01_studio_light.png")
+            val studioLightShot = captureDecorBitmap(scenario, context, "01_studio_light.png")
             if (studioLightShot != null) {
                 assertCanvasHasWarmLightEditorialBackground(studioLightShot)
                 studioLightShot.recycle()
@@ -115,7 +115,7 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.onNodeWithText("Library").performClick()
             composeRule.onNodeWithText("No creations yet").assertIsDisplayed()
             composeRule.waitForIdle()
-            captureAndSaveScreenshot(context, "02_library.png")?.recycle()
+            captureDecorBitmap(scenario, context, "02_library.png")?.recycle()
             composeRule.onNodeWithText("Studio").performClick()
 
             // 3. Navigate to Model Hub, filter Photo models, verify HuggingFace catalog item, return
@@ -124,7 +124,7 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.onNodeWithText("Photo").performClick()
             composeRule.onNodeWithText("Everyday Photo v3").assertIsDisplayed()
             composeRule.waitForIdle()
-            captureAndSaveScreenshot(context, "03_model_hub.png")?.recycle()
+            captureDecorBitmap(scenario, context, "03_model_hub.png")?.recycle()
             composeRule.onNodeWithContentDescription("Navigate back").performClick()
 
             // 4. Navigate to Settings, toggle Warm Dark -> verify Dark canvas -> Warm Light theme, return
@@ -133,7 +133,7 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.onNodeWithText("Appearance").assertIsDisplayed()
             composeRule.onNodeWithText("Warm Dark").performClick()
             composeRule.waitForIdle()
-            val settingsDarkShot = captureAndSaveScreenshot(context, "04_settings_dark.png")
+            val settingsDarkShot = captureDecorBitmap(scenario, context, "04_settings_dark.png")
             if (settingsDarkShot != null) {
                 assertCanvasHasWarmDarkEditorialBackground(settingsDarkShot)
                 settingsDarkShot.recycle()
@@ -170,7 +170,7 @@ class RealScaleSmokeInstrumentedTest {
             }
             composeRule.onNodeWithText("Preview").assertIsDisplayed()
             composeRule.waitForIdle()
-            captureAndSaveScreenshot(context, "05_studio_selected.png")?.recycle()
+            captureDecorBitmap(scenario, context, "05_studio_selected.png")?.recycle()
             composeRule.onNodeWithText("Enhance").performClick()
 
             composeRule.waitUntil(timeoutMillis = 20_000L) {
@@ -281,7 +281,7 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.onNodeWithText("Enhance").assertIsDisplayed()
             composeRule.onNodeWithText("Open in RealScale-Pro").assertIsDisplayed()
             composeRule.waitForIdle()
-            captureAndSaveScreenshot(context, "06_quick_upscale_sheet.png")?.recycle()
+            captureDecorBitmap(scenario, context, "06_quick_upscale_sheet.png")?.recycle()
         } finally {
             runCatching {
                 scenario.onActivity { it.finish() }
@@ -289,15 +289,28 @@ class RealScaleSmokeInstrumentedTest {
         }
     }
 
-    private fun captureAndSaveScreenshot(context: android.content.Context, fileName: String): Bitmap? {
-        return runCatching {
-            val bmp = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot() ?: return null
-            val dir = File(context.externalCacheDir ?: context.cacheDir, "screenshots").apply { mkdirs() }
-            FileOutputStream(File(dir, fileName)).use { out ->
-                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+    private fun <A : android.app.Activity> captureDecorBitmap(
+        scenario: ActivityScenario<A>,
+        context: android.content.Context,
+        fileName: String
+    ): Bitmap? {
+        var captured: Bitmap? = null
+        runCatching {
+            scenario.onActivity { activity ->
+                val decor = activity.window.decorView
+                val w = decor.width.coerceAtLeast(1)
+                val h = decor.height.coerceAtLeast(1)
+                val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(bmp)
+                decor.draw(canvas)
+                val dir = File(context.externalCacheDir ?: context.cacheDir, "screenshots").apply { mkdirs() }
+                FileOutputStream(File(dir, fileName)).use { out ->
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                captured = bmp
             }
-            bmp
-        }.getOrNull()
+        }
+        return captured
     }
 
     private fun assertCanvasHasWarmLightEditorialBackground(bmp: Bitmap) {
