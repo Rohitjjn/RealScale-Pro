@@ -73,15 +73,16 @@ fun ResultScreen(
         EditorialTopBar(
             title = "Result",
             onBack = onBackToStudio,
-            actions = {
-                if (active != null) {
+            trailing = if (active != null) {
+                {
                     AccessibleIconButton(
                         icon = RealScaleIcons.Trash,
                         contentDescription = "Delete result",
-                        onClick = { onDelete(active) },
-                        tint = colors.muted
+                        onClick = { onDelete(active) }
                     )
                 }
+            } else {
+                null
             }
         )
 

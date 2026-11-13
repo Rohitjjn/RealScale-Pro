@@ -384,7 +384,7 @@ private fun EditorialBottomBar(
         listOf(
             BottomTabItem(Routes.STUDIO, "Studio", RealScaleIcons.Sparkle),
             BottomTabItem(Routes.LIBRARY, "Library", RealScaleIcons.LibraryGrid),
-            BottomTabItem(Routes.MODEL_HUB, "Models", RealScaleIcons.Layers)
+            BottomTabItem(Routes.MODEL_HUB, "Models", RealScaleIcons.ModelHub)
         )
     }
 
