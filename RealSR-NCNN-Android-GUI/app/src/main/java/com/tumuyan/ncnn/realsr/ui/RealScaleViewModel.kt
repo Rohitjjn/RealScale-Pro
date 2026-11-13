@@ -185,7 +185,7 @@ class RealScaleViewModel(
         if (savedResultIds != null && savedResultIds.isNotEmpty()) {
             viewModelScope.launch {
                 val dao = container.database.recentCreationDao()
-                val restored = savedResultIds.mapNotNull { dao.getById(it) }
+                val restored = savedResultIds.toList().mapNotNull { dao.getById(it) }
                 if (restored.isNotEmpty() && selectionFlow.value.resultCreations.isEmpty()) {
                     selectionFlow.update { prev ->
                         prev.copy(
