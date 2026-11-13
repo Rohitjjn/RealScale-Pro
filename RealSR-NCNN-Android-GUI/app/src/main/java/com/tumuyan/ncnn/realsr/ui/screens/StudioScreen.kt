@@ -4,6 +4,9 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,12 +34,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -45,10 +52,12 @@ import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.ui.RealScaleUiState
 import com.tumuyan.ncnn.realsr.ui.components.AccessibleIconButton
+import com.tumuyan.ncnn.realsr.ui.components.BrandLogoMedallion
 import com.tumuyan.ncnn.realsr.ui.components.EditorialCard
 import com.tumuyan.ncnn.realsr.ui.components.HairlineProgressBar
 import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
 import com.tumuyan.ncnn.realsr.ui.components.TerracottaPrimaryButton
+import com.tumuyan.ncnn.realsr.ui.components.rememberReduceMotion
 import com.tumuyan.ncnn.realsr.ui.theme.RealScaleIcons
 import com.tumuyan.ncnn.realsr.ui.theme.RealScaleThemeTokens
 import com.tumuyan.ncnn.realsr.ui.theme.Spacing
@@ -68,10 +77,30 @@ fun StudioScreen(
     onQuickDownloadModel: (String) -> Unit,
     onOpenModelHub: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenRecentCreation: (RecentCreationEntity) -> Unit
+    onOpenRecentCreation: (RecentCreationEntity) -> Unit,
+    onLaunchFadePlayed: () -> Unit = {}
 ) {
     val colors = RealScaleThemeTokens.colors
     val greeting = remember { editorialGreeting() }
+    val reduceMotion = rememberReduceMotion()
+    val shouldAnimateGreeting = !reduceMotion && !state.selection.hasPlayedLaunchFade
+    val greetingProgress = remember {
+        Animatable(if (shouldAnimateGreeting) 0f else 1f)
+    }
+    LaunchedEffect(shouldAnimateGreeting) {
+        if (shouldAnimateGreeting) {
+            greetingProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing)
+            )
+            onLaunchFadePlayed()
+        } else {
+            greetingProgress.snapTo(1f)
+            onLaunchFadePlayed()
+        }
+    }
+    val density = LocalDensity.current
+    val slideOffsetPx = with(density) { 6.dp.toPx() } * (1f - greetingProgress.value)
 
     val multiPhotoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 20)
@@ -101,19 +130,29 @@ fun StudioScreen(
             .verticalScroll(rememberScrollState())
             .padding(bottom = Spacing.xxl)
     ) {
-        // Top header bar
+        // Top header bar with master brand logo + wordmark
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = Spacing.lg, end = Spacing.sm, top = Spacing.md, bottom = Spacing.xs),
+                .padding(start = Spacing.lg, end = Spacing.sm, top = Spacing.md, bottom = Spacing.xs)
+                .graphicsLayer {
+                    alpha = greetingProgress.value
+                },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = "RealScale Pro",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.muted
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BrandLogoMedallion(
+                    size = 28.dp,
+                    contentDescription = "RealScale-Pro brand emblem"
+                )
+                Spacer(modifier = Modifier.width(Spacing.xs))
+                Text(
+                    text = "RealScale-Pro",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colors.ink
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AccessibleIconButton(
                     icon = RealScaleIcons.ModelHub,
@@ -129,9 +168,14 @@ fun StudioScreen(
             }
         }
 
-        // Warm editorial serif greeting
+        // Warm editorial serif greeting (subtle one-time <600ms entrance, skipped on reduce motion)
         Column(
-            modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm)
+            modifier = Modifier
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
+                .graphicsLayer {
+                    alpha = greetingProgress.value
+                    translationY = slideOffsetPx
+                }
         ) {
             Text(
                 text = greeting,
@@ -442,22 +486,22 @@ fun StudioScreen(
             }
         }
 
-        // Recent Creations strip
+        // Recent Creations strip + designed empty state featuring brand emblem
+        Spacer(modifier = Modifier.height(Spacing.xl))
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = colors.hairlineSoft,
+            modifier = Modifier.padding(horizontal = Spacing.lg)
+        )
+        Spacer(modifier = Modifier.height(Spacing.lg))
+        Text(
+            text = "Recent creations",
+            style = MaterialTheme.typography.headlineSmall,
+            color = colors.ink,
+            modifier = Modifier.padding(horizontal = Spacing.lg)
+        )
+        Spacer(modifier = Modifier.height(Spacing.sm))
         if (state.recentCreations.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(Spacing.xl))
-            HorizontalDivider(
-                thickness = 1.dp,
-                color = colors.hairlineSoft,
-                modifier = Modifier.padding(horizontal = Spacing.lg)
-            )
-            Spacer(modifier = Modifier.height(Spacing.lg))
-            Text(
-                text = "Recent creations",
-                style = MaterialTheme.typography.headlineSmall,
-                color = colors.ink,
-                modifier = Modifier.padding(horizontal = Spacing.lg)
-            )
-            Spacer(modifier = Modifier.height(Spacing.sm))
             LazyRow(
                 contentPadding = PaddingValues(horizontal = Spacing.lg),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
@@ -466,6 +510,36 @@ fun StudioScreen(
                     RecentCreationCard(
                         creation = item,
                         onClick = { onOpenRecentCreation(item) }
+                    )
+                }
+            }
+        } else {
+            EditorialCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.lg),
+                containerColor = colors.surfaceSoft,
+                borderColor = colors.hairlineSoft,
+                contentPadding = PaddingValues(horizontal = Spacing.lg, vertical = Spacing.lg)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    BrandLogoMedallion(size = 44.dp)
+                    Spacer(modifier = Modifier.height(Spacing.sm))
+                    Text(
+                        text = "Your enhanced photos will appear here",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.ink,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Every upscale runs privately on your device and stays in your local history.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.muted,
+                        textAlign = TextAlign.Center
                     )
                 }
             }

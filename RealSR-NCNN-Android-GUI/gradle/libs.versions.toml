@@ -10,6 +10,7 @@ coil = "3.6.3"
 coroutines = "1.11.0"
 kotlinxSerializationJson = "1.11.0"
 coreKtx = "1.19.1"
+coreSplashscreen = "1.2.0"
 lifecycle = "2.11.0"
 activityCompose = "1.13.0"
 documentfile = "1.1.0"
@@ -23,6 +24,7 @@ robolectric = "4.17"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-documentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "documentfile" }
 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }

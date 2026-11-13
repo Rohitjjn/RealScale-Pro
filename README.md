@@ -1,8 +1,8 @@
-# RealScale Pro
+# RealScale-Pro
 
 **Private, offline-first AI photo upscaler for Android — rebuilt in Jetpack Compose with an 18.5 MB APK and an on-demand Model Hub.**
 
-RealScale Pro modernizes [`tumuyan/RealSR-NCNN-Android`](https://github.com/tumuyan/RealSR-NCNN-Android) (`v1.13.2`) into a calm, warm editorial Android app anyone can use in three taps — while keeping every native NCNN / MNN / Vulkan / OpenCL upscaling engine 100% intact under the hood.
+RealScale-Pro modernizes [`tumuyan/RealSR-NCNN-Android`](https://github.com/tumuyan/RealSR-NCNN-Android) (`v1.13.2`) into a calm, warm editorial Android app anyone can use in three taps — while keeping every native NCNN / MNN / Vulkan / OpenCL upscaling engine 100% intact under the hood.
 
 ---
 
@@ -27,7 +27,7 @@ RealScale Pro modernizes [`tumuyan/RealSR-NCNN-Android`](https://github.com/tumu
 
 ## APK Size Comparison
 
-| Build | Upstream `1.13.2` | RealScale Pro `2.0.0` |
+| Build | Upstream `1.13.2` | RealScale-Pro `2.0.0` |
 | --- | --- | --- |
 | **Release APK (`arm64-v8a`)** | `~475 MB` | **`18.54 MiB`** (`19,436,217` bytes) |
 | **Debug APK** | `~480 MB` | **`29.87 MiB`** (`31,325,047` bytes) |
@@ -38,7 +38,7 @@ RealScale Pro modernizes [`tumuyan/RealSR-NCNN-Android`](https://github.com/tumu
 
 ## Architecture
 
-RealScale Pro lives in `RealSR-NCNN-Android-GUI/` (`RealSR-NCNN-Android-CLI/` remains untouched upstream C++/JNI reference source):
+RealScale-Pro lives in `RealSR-NCNN-Android-GUI/` (`RealSR-NCNN-Android-CLI/` remains untouched upstream C++/JNI reference source):
 
 ```text
 com.tumuyan.ncnn.realsr
@@ -86,7 +86,7 @@ cd RealSR-NCNN-Android-GUI
 
 ## Credits & License
 
-RealScale Pro is released under the **MIT License** (see [`LICENSE`](LICENSE)) and builds directly upon the open-source work of:
+RealScale-Pro is released under the **MIT License** (see [`LICENSE`](LICENSE)) and builds directly upon the open-source work of:
 
 - **[tumuyan/RealSR-NCNN-Android](https://github.com/tumuyan/RealSR-NCNN-Android)** & **[tumuyan2/realsr-models](https://huggingface.co/tumuyan2/realsr-models)** — Android CLI integration, `ProcessingService` / `ImageProcessor` runtime, and converted NCNN/MNN model repository by **tumuyan**.
 - **[nihui](https://github.com/nihui)** — [`ncnn`](https://github.com/Tencent/ncnn), [`realsr-ncnn-vulkan`](https://github.com/nihui/realsr-ncnn-vulkan), [`waifu2x-ncnn-vulkan`](https://github.com/nihui/waifu2x-ncnn-vulkan), [`srmd-ncnn-vulkan`](https://github.com/nihui/srmd-ncnn-vulkan), and [`realcugan-ncnn-vulkan`](https://github.com/nihui/realcugan-ncnn-vulkan).

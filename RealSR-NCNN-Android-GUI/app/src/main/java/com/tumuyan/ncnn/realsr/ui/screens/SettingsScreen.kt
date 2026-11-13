@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +53,7 @@ import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
 import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
 import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
 import com.tumuyan.ncnn.realsr.core.engine.PresetCommandResolver
+import com.tumuyan.ncnn.realsr.ui.components.BrandLogoMedallion
 import com.tumuyan.ncnn.realsr.ui.components.EditorialCard
 import com.tumuyan.ncnn.realsr.ui.components.EditorialTopBar
 import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
@@ -493,18 +495,30 @@ fun SettingsScreen(
 
             // About & Upstream Open-Source Credits
             EditorialCard(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "About RealScale Pro",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = colors.ink
-                )
-                Spacer(modifier = Modifier.height(Spacing.xs))
-                Text(
-                    text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · 100% On-Device & Offline-First",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = colors.body
-                )
-                Spacer(modifier = Modifier.height(Spacing.xs))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BrandLogoMedallion(
+                        size = 56.dp,
+                        contentDescription = "RealScale-Pro logo"
+                    )
+                    Spacer(modifier = Modifier.width(Spacing.md))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "About RealScale-Pro",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = colors.ink
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · On-Device Image Upscaling",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.body
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = "Zero analytics, zero accounts, zero ads, and zero cloud uploads. Network access is used exclusively when you download models from Model Hub.",
                     style = MaterialTheme.typography.bodySmall,
@@ -514,13 +528,13 @@ fun SettingsScreen(
                 HorizontalDivider(thickness = 1.dp, color = colors.hairline)
                 Spacer(modifier = Modifier.height(Spacing.md))
                 Text(
-                    text = "Upstream Credits & License (BSD 3-Clause)",
+                    text = "Upstream Credits & License (MIT / BSD)",
                     style = MaterialTheme.typography.titleSmall,
                     color = colors.ink
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Built upon RealSR-NCNN-Android by tumuyan (BSD 3-Clause), Tencent NCNN & realsr/waifu2x/realcugan/srmd-ncnn-vulkan by nihui (MIT / BSD), Alibaba MNN (Apache-2.0), Anime4KCPP by TianZerL, and ImageMagick.",
+                    text = "Built upon RealSR-NCNN-Android by tumuyan (MIT), Tencent NCNN & realsr/waifu2x/realcugan/srmd-ncnn-vulkan by nihui (MIT / BSD), Alibaba MNN (Apache-2.0), Anime4KCPP by TianZerL, and ImageMagick.",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.muted
                 )

@@ -92,11 +92,11 @@ class RealScaleSmokeInstrumentedTest {
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         try {
             composeRule.waitUntil(timeoutMillis = 10_000L) {
-                composeRule.onAllNodesWithText("RealScale Pro").fetchSemanticsNodes().isNotEmpty()
+                composeRule.onAllNodesWithText("RealScale-Pro").fetchSemanticsNodes().isNotEmpty()
             }
 
             // 1. Cold-start Studio screen assertions
-            composeRule.onNodeWithText("RealScale Pro").assertIsDisplayed()
+            composeRule.onNodeWithText("RealScale-Pro").assertIsDisplayed()
             composeRule.onNodeWithText("Choose a photo").assertIsDisplayed()
 
             // 2. Navigate to Model Hub, filter Photo models, verify HuggingFace catalog item, return

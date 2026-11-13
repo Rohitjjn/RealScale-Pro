@@ -169,7 +169,7 @@ public class ProcessingService extends Service {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
                 .setContentTitle(title)
                 .setContentText(text)
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.ic_stat_realscale)
                 .setContentIntent(pendingIntent)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true);

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.ui.components.BeforeAfterSplitView
+import com.tumuyan.ncnn.realsr.ui.components.BrandLogoMedallion
 import com.tumuyan.ncnn.realsr.ui.components.EditorialTopBar
 import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
 import com.tumuyan.ncnn.realsr.ui.components.TerracottaPrimaryButton
@@ -69,6 +70,8 @@ fun ResultScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                BrandLogoMedallion(size = 56.dp)
+                Spacer(modifier = Modifier.height(Spacing.md))
                 Text(
                     text = "No result loaded",
                     style = MaterialTheme.typography.headlineSmall,

@@ -31,6 +31,7 @@
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
+            android:theme="@style/Theme.RealSR.Splash"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

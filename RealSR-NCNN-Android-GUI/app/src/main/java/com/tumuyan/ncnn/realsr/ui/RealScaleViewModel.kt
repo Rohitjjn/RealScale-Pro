@@ -36,7 +36,8 @@ data class StudioSelectionState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val resultCreations: List<RecentCreationEntity> = emptyList(),
     val selectedResultIndex: Int = 0,
-    val bannerMessage: String? = null
+    val bannerMessage: String? = null,
+    val hasPlayedLaunchFade: Boolean = false
 )
 
 data class RealScaleUiState(
@@ -405,6 +406,12 @@ class RealScaleViewModel(
 
     fun dismissBanner() {
         selectionFlow.update { it.copy(bannerMessage = null) }
+    }
+
+    fun markLaunchFadePlayed() {
+        if (!selectionFlow.value.hasPlayedLaunchFade) {
+            selectionFlow.update { it.copy(hasPlayedLaunchFade = true) }
+        }
     }
 
     private fun postBanner(msg: String) {

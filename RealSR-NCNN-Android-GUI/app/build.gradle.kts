@@ -30,7 +30,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            resValue("string", "app_name", "RealScale Pro Debug")
+            resValue("string", "app_name", "RealScale-Pro")
         }
 
         release {
@@ -100,6 +100,7 @@ ksp {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.documentfile)
     implementation(libs.tukaani.xz)
 

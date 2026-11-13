@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.tumuyan.ncnn.realsr.ui.RealScaleApp
 import com.tumuyan.ncnn.realsr.ui.RealScaleViewModel
 
@@ -26,6 +27,7 @@ class MainActivity : ComponentActivity() {
     ) { /* Foreground upscaling continues regardless of notification permission */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 

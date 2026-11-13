@@ -113,7 +113,8 @@ fun RealScaleApp(
                         onOpenRecentCreation = { entity ->
                             viewModel.openRecentCreation(entity)
                             navController.navigate(Routes.RESULT) { launchSingleTop = true }
-                        }
+                        },
+                        onLaunchFadePlayed = viewModel::markLaunchFadePlayed
                     )
                 }
 
