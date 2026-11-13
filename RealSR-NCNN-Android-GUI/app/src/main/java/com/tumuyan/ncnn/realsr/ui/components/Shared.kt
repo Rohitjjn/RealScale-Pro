@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -47,7 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tumuyan.ncnn.realsr.R
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
-import com.tumuyan.ncnn.realsr.core.model.ModelInstallStatus
+import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.core.engine.planner.ModeId
 import com.tumuyan.ncnn.realsr.ui.state.AppViewModel
 import com.tumuyan.ncnn.realsr.ui.theme.LocalRealScaleColors

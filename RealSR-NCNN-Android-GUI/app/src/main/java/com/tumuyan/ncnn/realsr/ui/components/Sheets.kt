@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,7 +59,7 @@ fun RealScaleSheet(
 ) {
     val rendered = remember { mutableStateOf(open) }
     val scrimAlpha = remember { Animatable(0f) }
-    val panelOffset = remember { Animatable(1f) } // fraction of panel height (1 = offscreen)
+    val panelOffset = remember { mutableStateOf(1f) } // fraction of panel height (1 = offscreen)
     val density = LocalDensity.current
     val panelHeightPx = remember { mutableStateOf(1) }
 
@@ -68,12 +67,12 @@ fun RealScaleSheet(
         if (open) {
             rendered.value = true
             scrimAlpha.snapTo(0f)
-            panelOffset.snapTo(1f)
+            panelOffset.value = 1f
             scrimAlpha.animateTo(1f, tween(MotionDuration.Fade))
-            panelOffset.animateTo(0f, tween(MotionDuration.SheetIn, easing = SpringEasing))
+            panelOffset.value = 0f
         } else if (rendered.value) {
             scrimAlpha.animateTo(0f, tween(MotionDuration.FadeOut))
-            panelOffset.animateTo(1f, tween(MotionDuration.SheetOut, easing = androidx.compose.animation.core.EaseIn))
+            panelOffset.value = 1f
             rendered.value = false
         }
     }
@@ -127,11 +126,9 @@ fun RealScaleSheet(
                                 totalDrag += dragAmount.y.coerceAtLeast(0f)
                                 val current = panelOffset.value
                                 // follow the finger downward only
-                                val deltaFraction = (dragAmount.y / panelHeightPx).coerceAtLeast(0f)
+                                val deltaFraction = (dragAmount.y / panelHeightPx.value).coerceAtLeast(0f)
                                 if (dragAmount.y > 0f) {
-                                    launch {
-                                        panelOffset.snapTo((current + deltaFraction).coerceIn(0f, 1f))
-                                    }
+                                    panelOffset.value = (current + deltaFraction).coerceIn(0f, 1f)
                                 }
                             },
                         )
