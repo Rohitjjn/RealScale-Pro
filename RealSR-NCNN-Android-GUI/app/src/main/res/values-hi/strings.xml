@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RealScale-Pro</string>
+    <string name="open">खोलें</string>
+    <string name="run">चलाएँ</string>
+    <string name="save">सहेजें</string>
+    <string name="setting">सेटिंग्स</string>
+    <string name="done">पूर्ण</string>
+    <string name="busy">प्रोसेस हो रहा है</string>
+    <string name="save_succeed">फ़ोटो सफलतापूर्वक सहेजी गई!</string>
+    <string name="save_fail">फ़ोटो सहेजने में विफल</string>
+    <string name="keep_screen">एन्हांस करते समय स्क्रीन चालू रखें</string>
+    <string name="use_cpu">NCNN के लिए CPU संगतता मोड का उपयोग करें</string>
+    <string name="save_format">इमेज फ़ॉर्मेट</string>
+    <string name="general">सामान्य</string>
+    <string name="widget_enhance_desc">RealScale-Pro में ऑफ़लाइन फ़ोटो चुनें और तुरंत शार्प करें।</string>
+    <string name="widget_recent_desc">RealScale-Pro में अपनी हाल ही में एन्हांस की गई फ़ोटो देखें और खोलें।</string>
+    <string name="ui_nav_studio">स्टूडियो</string>
+    <string name="ui_nav_library">लाइब्रेरी</string>
+    <string name="ui_nav_models">मॉडल्स</string>
+    <string name="ui_choose_photo">फ़ोटो चुनें</string>
+    <string name="ui_change_photo">फ़ोटो बदलें</string>
+    <string name="ui_enhance">एन्हांस करें</string>
+    <string name="ui_preview_crop">क्रॉप प्रीव्यू</string>
+    <string name="ui_enhancement_style">एन्हांसमेंट स्टाइल</string>
+    <string name="ui_output_scale">आउटपुट स्केल</string>
+    <string name="ui_recent_creations">हाल की रचनाएँ</string>
+    <string name="ui_save">सहेजें</string>
+    <string name="ui_share">शेयर करें</string>
+    <string name="ui_try_another_preset">दूसरा प्रीसेट आज़माएँ</string>
+    <string name="ui_open_in_gallery">गैलरी में खोलें</string>
+    <string name="ui_model_hub">मॉडल हब</string>
+    <string name="ui_settings">सेटिंग्स</string>
+</resources>

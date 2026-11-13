@@ -1,5 +1,7 @@
 package com.tumuyan.ncnn.realsr.ui
 
+import android.app.PendingIntent
+import android.content.ClipData
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -22,15 +24,17 @@ object MediaExportHelper {
     suspend fun saveToGalleryOrFolder(
         context: Context,
         sourceFile: File,
-        customTreeUri: String?
+        customTreeUri: String?,
+        displayFileName: String? = null
     ): Result<Uri> = withContext(Dispatchers.IO) {
         runCatching {
+            val targetName = displayFileName?.takeIf { it.isNotBlank() } ?: sourceFile.name
             val mimeType = mimeTypeFor(sourceFile)
             if (!customTreeUri.isNullOrBlank()) {
                 val treeUri = Uri.parse(customTreeUri)
                 val folder = DocumentFile.fromTreeUri(context, treeUri)
                 if (folder != null && folder.canWrite()) {
-                    val created = folder.createFile(mimeType, sourceFile.name)
+                    val created = folder.createFile(mimeType, targetName)
                         ?: throw IllegalStateException("Unable to create output file in selected folder")
                     context.contentResolver.openOutputStream(created.uri)?.use { out ->
                         FileInputStream(sourceFile).use { input -> input.copyTo(out) }
@@ -41,7 +45,7 @@ object MediaExportHelper {
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
-                    put(MediaStore.Images.Media.DISPLAY_NAME, sourceFile.name)
+                    put(MediaStore.Images.Media.DISPLAY_NAME, targetName)
                     put(MediaStore.Images.Media.MIME_TYPE, mimeType)
                     put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/RealScale-Pro")
                     put(MediaStore.Images.Media.IS_PENDING, 1)
@@ -64,7 +68,7 @@ object MediaExportHelper {
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
                     "RealScale-Pro"
                 ).apply { mkdirs() }
-                val outFile = File(picturesDir, sourceFile.name)
+                val outFile = uniqueFileInDir(picturesDir, targetName)
                 FileInputStream(sourceFile).use { input ->
                     FileOutputStream(outFile).use { out -> input.copyTo(out) }
                 }
@@ -80,17 +84,101 @@ object MediaExportHelper {
     }
 
     fun shareImage(context: Context, file: File) {
-        val authority = "${context.packageName}.fileprovider"
-        val shareUri = FileProvider.getUriForFile(context, authority, file)
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = mimeTypeFor(file)
-            putExtra(Intent.EXTRA_STREAM, shareUri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val chooser = createShareChooserIntent(context, file)
+        if (context !is android.app.Activity) {
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        context.startActivity(Intent.createChooser(intent, "Share upscaled photo"))
+        context.startActivity(chooser)
     }
 
-    private fun mimeTypeFor(file: File): String =
+    fun shareMultipleImages(context: Context, files: List<File>) {
+        val valid = files.filter { it.isFile }
+        if (valid.isEmpty()) return
+        if (valid.size == 1) {
+            shareImage(context, valid.first())
+            return
+        }
+        val authority = "${context.packageName}.fileprovider"
+        val uris = ArrayList<Uri>(valid.size)
+        var clip: ClipData? = null
+        for (f in valid) {
+            val u = FileProvider.getUriForFile(context, authority, f)
+            uris.add(u)
+            if (clip == null) {
+                clip = ClipData.newRawUri("Enhanced photos", u)
+            } else {
+                clip.addItem(ClipData.Item(u))
+            }
+        }
+        val sendIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+            type = "image/*"
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            clipData = clip
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = Intent.createChooser(sendIntent, "Share ${valid.size} enhanced photos").apply {
+            clipData = clip
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            if (context !is android.app.Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+        context.startActivity(chooser)
+    }
+
+    fun openInGallery(context: Context, savedUri: Uri, mimeType: String) {
+        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(savedUri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            if (context !is android.app.Activity) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
+        context.startActivity(viewIntent)
+    }
+
+    fun buildSharePendingIntent(context: Context, file: File, requestCode: Int): PendingIntent {
+        val chooser = createShareChooserIntent(context, file).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+        return PendingIntent.getActivity(context, requestCode, chooser, flags)
+    }
+
+    private fun createShareChooserIntent(context: Context, file: File): Intent {
+        val authority = "${context.packageName}.fileprovider"
+        val shareUri = FileProvider.getUriForFile(context, authority, file)
+        val mime = mimeTypeFor(file)
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = mime
+            putExtra(Intent.EXTRA_STREAM, shareUri)
+            clipData = ClipData.newRawUri("Enhanced photo", shareUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        return Intent.createChooser(sendIntent, "Share enhanced photo").apply {
+            clipData = ClipData.newRawUri("Enhanced photo", shareUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+
+    private fun uniqueFileInDir(dir: File, desiredName: String): File {
+        val initial = File(dir, desiredName)
+        if (!initial.exists()) return initial
+        val stem = desiredName.substringBeforeLast('.', desiredName)
+        val ext = desiredName.substringAfterLast('.', "")
+        for (i in 1..999) {
+            val candidate = if (ext.isNotEmpty()) {
+                File(dir, "${stem}_$i.$ext")
+            } else {
+                File(dir, "${stem}_$i")
+            }
+            if (!candidate.exists()) return candidate
+        }
+        return File(dir, "${System.currentTimeMillis()}_$desiredName")
+    }
+
+    fun mimeTypeFor(file: File): String =
         when (file.extension.lowercase(Locale.US)) {
             "jpg", "jpeg" -> "image/jpeg"
             "webp" -> "image/webp"

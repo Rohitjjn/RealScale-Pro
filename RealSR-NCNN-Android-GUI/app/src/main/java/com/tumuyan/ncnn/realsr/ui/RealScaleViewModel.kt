@@ -4,21 +4,36 @@ import android.app.Application
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
+import com.tumuyan.ncnn.realsr.core.engine.CropPreviewEngine
 import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
 import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
+import com.tumuyan.ncnn.realsr.core.engine.ExternalOpenMode
+import com.tumuyan.ncnn.realsr.core.engine.ImageIntakeManager
 import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
+import com.tumuyan.ncnn.realsr.core.engine.OutputNameFormatter
+import com.tumuyan.ncnn.realsr.core.engine.PreflightAnalyzer
+import com.tumuyan.ncnn.realsr.core.engine.PreflightMitigation
+import com.tumuyan.ncnn.realsr.core.engine.PreflightVerdict
 import com.tumuyan.ncnn.realsr.core.engine.PresetCommandResolver
 import com.tumuyan.ncnn.realsr.core.engine.PresetId
+import com.tumuyan.ncnn.realsr.core.engine.QueuedJobItem
+import com.tumuyan.ncnn.realsr.core.engine.RecoveryAction
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
+import com.tumuyan.ncnn.realsr.ui.components.CropPreviewUiState
+import com.tumuyan.ncnn.realsr.ui.components.formatBytesHuman
 import com.tumuyan.ncnn.realsr.ui.theme.ThemeMode
+import com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +43,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 
+data class SavedGalleryEvent(
+    val uri: Uri,
+    val mimeType: String,
+    val message: String
+)
+
 data class StudioSelectionState(
     val selectedUris: List<Uri> = emptyList(),
     val selectedPreset: UpscalePreset = UpscalePreset.INSTANT,
@@ -36,13 +57,20 @@ data class StudioSelectionState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val resultCreations: List<RecentCreationEntity> = emptyList(),
     val selectedResultIndex: Int = 0,
-    val bannerMessage: String? = null
+    val bannerMessage: String? = null,
+    val savedGalleryEvent: SavedGalleryEvent? = null,
+    val hasPlayedLaunchFade: Boolean = false,
+    val pendingOpenResultNavigation: Boolean = false,
+    val pendingOpenPhotoPicker: Boolean = false,
+    val preflightAdvisory: PreflightVerdict.Advisory? = null,
+    val cropPreview: CropPreviewUiState = CropPreviewUiState.Hidden
 )
 
 data class RealScaleUiState(
     val selection: StudioSelectionState = StudioSelectionState(),
     val engineState: EngineState = EngineState.Idle,
     val enginePreferences: EnginePreferences = EnginePreferences(),
+    val queue: List<QueuedJobItem> = emptyList(),
     val consoleLog: String = "",
     val recentCreations: List<RecentCreationEntity> = emptyList(),
     val catalogModels: List<CatalogModelState> = emptyList(),
@@ -71,26 +99,62 @@ data class RealScaleUiState(
         catalogModels.firstOrNull { it.catalog.id == preset.defaultModelId }
 }
 
+private data class CoreEngineSnapshot(
+    val state: EngineState,
+    val prefs: EnginePreferences,
+    val log: String,
+    val queue: List<QueuedJobItem>
+)
+
 class RealScaleViewModel(
     application: Application,
-    private val container: RealScaleAppContainer
+    private val container: RealScaleAppContainer,
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle()
 ) : AndroidViewModel(application) {
 
     private val uiPrefs = application.getSharedPreferences(UI_PREFS_NAME, Context.MODE_PRIVATE)
+    private val initialEnginePrefs = container.engine.preferences.value
+
+    private val restoredPreset: UpscalePreset = run {
+        val savedName = savedStateHandle.get<String>(STATE_SELECTED_PRESET)
+        val presetId = savedName?.let { runCatching { PresetId.valueOf(it) }.getOrNull() }
+            ?: initialEnginePrefs.defaultPresetId
+            ?: initialEnginePrefs.lastUsedPresetId
+        UpscalePreset.fromId(presetId)
+    }
+
+    private val restoredScale: Int = run {
+        val candidate = savedStateHandle.get<Int>(STATE_SELECTED_SCALE) ?: initialEnginePrefs.lastUsedScale
+        if (candidate in restoredPreset.supportedScales) candidate else restoredPreset.defaultScale
+    }
+
+    private val restoredUris: List<Uri> = savedStateHandle
+        .get<ArrayList<String>>(STATE_SELECTED_URIS)
+        ?.mapNotNull { runCatching { Uri.parse(it) }.getOrNull() }
+        .orEmpty()
+
     private val selectionFlow = MutableStateFlow(
-        StudioSelectionState(themeMode = loadThemeMode())
+        StudioSelectionState(
+            selectedUris = restoredUris,
+            selectedPreset = restoredPreset,
+            selectedScale = restoredScale,
+            selectedModelOverrideId = savedStateHandle.get<String>(STATE_MODEL_OVERRIDE),
+            themeMode = loadThemeMode(),
+            selectedResultIndex = savedStateHandle.get<Int>(STATE_SELECTED_RESULT_INDEX) ?: 0
+        )
     )
 
     private val coreFlows = combine(
         container.engine.state,
         container.engine.preferences,
-        container.engine.consoleLog
-    ) { engineState, prefs, log ->
-        Triple(engineState, prefs, log)
+        container.engine.consoleLog,
+        container.engine.queue
+    ) { engineState, prefs, log, queue ->
+        CoreEngineSnapshot(engineState, prefs, log, queue)
     }
 
     private val dataFlows = combine(
-        container.database.recentCreationDao().observeRecent(24),
+        container.database.recentCreationDao().observeRecent(200),
         container.modelRepository.catalogModels,
         container.modelRepository.totalInstalledBytes
     ) { recent, models, installedBytes ->
@@ -101,10 +165,10 @@ class RealScaleViewModel(
         selectionFlow,
         coreFlows,
         dataFlows
-    ) { sel, (engineState, prefs, log), (recent, models, installedBytes) ->
-        val updatedSelection = if (engineState is EngineState.Completed && sel.resultCreations != engineState.result.creations) {
+    ) { sel, core, (recent, models, installedBytes) ->
+        val updatedSelection = if (core.state is EngineState.Completed && sel.resultCreations != core.state.result.creations) {
             sel.copy(
-                resultCreations = engineState.result.creations,
+                resultCreations = core.state.result.creations,
                 selectedResultIndex = 0
             )
         } else {
@@ -112,9 +176,10 @@ class RealScaleViewModel(
         }
         RealScaleUiState(
             selection = updatedSelection,
-            engineState = engineState,
-            enginePreferences = prefs,
-            consoleLog = log,
+            engineState = core.state,
+            enginePreferences = core.prefs,
+            queue = core.queue,
+            consoleLog = core.log,
             recentCreations = recent,
             catalogModels = models,
             totalInstalledBytes = installedBytes
@@ -126,16 +191,34 @@ class RealScaleViewModel(
     )
 
     init {
-        // Warm up native engine extraction on background thread so Instant upscale starts immediately
         viewModelScope.launch {
             container.engine.ensureInitialized(forceReset = false)
+        }
+        // Restore active Result creations across process death if SavedStateHandle has IDs
+        val savedResultIds = savedStateHandle.get<LongArray>(STATE_RESULT_IDS)
+        if (savedResultIds != null && savedResultIds.isNotEmpty()) {
+            viewModelScope.launch {
+                val dao = container.database.recentCreationDao()
+                val restored = savedResultIds.toList().mapNotNull { dao.getById(it) }
+                if (restored.isNotEmpty() && selectionFlow.value.resultCreations.isEmpty()) {
+                    selectionFlow.update { prev ->
+                        prev.copy(
+                            resultCreations = restored,
+                            selectedResultIndex = prev.selectedResultIndex.coerceIn(0, restored.lastIndex)
+                        )
+                    }
+                }
+            }
         }
         viewModelScope.launch {
             container.engine.state.collect { st ->
                 if (st is EngineState.Completed) {
+                    val creations = st.result.creations
+                    savedStateHandle[STATE_RESULT_IDS] = creations.map { it.id }.toLongArray()
+                    savedStateHandle[STATE_SELECTED_RESULT_INDEX] = 0
                     selectionFlow.update {
                         it.copy(
-                            resultCreations = st.result.creations,
+                            resultCreations = creations,
                             selectedResultIndex = 0
                         )
                     }
@@ -146,11 +229,32 @@ class RealScaleViewModel(
 
     fun onPhotosSelected(uris: List<Uri>) {
         if (uris.isEmpty()) return
-        selectionFlow.update { it.copy(selectedUris = uris, bannerMessage = null) }
+        persistSelectedUris(uris)
+        selectionFlow.update { it.copy(selectedUris = uris, bannerMessage = null, preflightAdvisory = null) }
+    }
+
+    /**
+     * Stages externally shared / opened URIs into app cache immediately while caller URI
+     * permission is active, falling back to the raw URIs if staging is skipped in unit tests.
+     */
+    fun onExternalPhotosReceived(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        persistSelectedUris(uris)
+        selectionFlow.update { it.copy(selectedUris = uris, bannerMessage = null, preflightAdvisory = null) }
+        viewModelScope.launch {
+            val staged = uris.mapNotNull { uri ->
+                ImageIntakeManager.stageIncomingUri(getApplication(), uri).getOrNull()?.stagedUri
+            }
+            if (staged.size == uris.size) {
+                persistSelectedUris(staged)
+                selectionFlow.update { it.copy(selectedUris = staged) }
+            }
+        }
     }
 
     fun clearSelectedPhotos() {
-        selectionFlow.update { it.copy(selectedUris = emptyList()) }
+        persistSelectedUris(emptyList())
+        selectionFlow.update { it.copy(selectedUris = emptyList(), preflightAdvisory = null) }
     }
 
     fun selectPreset(preset: UpscalePreset) {
@@ -160,16 +264,21 @@ class RealScaleViewModel(
             } else {
                 preset.defaultScale
             }
+            savedStateHandle[STATE_SELECTED_PRESET] = preset.id.name
+            savedStateHandle[STATE_SELECTED_SCALE] = nextScale
+            savedStateHandle[STATE_MODEL_OVERRIDE] = null
             prev.copy(
                 selectedPreset = preset,
                 selectedScale = nextScale,
-                selectedModelOverrideId = null
+                selectedModelOverrideId = null,
+                preflightAdvisory = null
             )
         }
     }
 
     fun selectScale(scale: Int) {
-        selectionFlow.update { it.copy(selectedScale = scale) }
+        savedStateHandle[STATE_SELECTED_SCALE] = scale
+        selectionFlow.update { it.copy(selectedScale = scale, preflightAdvisory = null) }
     }
 
     fun selectModelOverride(modelId: String?) {
@@ -180,8 +289,119 @@ class RealScaleViewModel(
             } else {
                 prev.selectedScale
             }
-            prev.copy(selectedModelOverrideId = modelId, selectedScale = nextScale)
+            savedStateHandle[STATE_MODEL_OVERRIDE] = modelId
+            savedStateHandle[STATE_SELECTED_SCALE] = nextScale
+            prev.copy(
+                selectedModelOverrideId = modelId,
+                selectedScale = nextScale,
+                preflightAdvisory = null
+            )
         }
+    }
+
+    /**
+     * Evaluates pre-flight memory, dimension, and storage safety before launching the upscale job.
+     * If safe, begins immediately; otherwise surfaces a calm advisory with one-tap mitigations.
+     */
+    fun requestPrimaryUpscale() {
+        val current = uiState.value
+        val uris = current.selection.selectedUris
+        if (uris.isEmpty()) return
+
+        val preset = current.selection.selectedPreset
+        val spec = container.modelRepository.resolveExecutionSpec(
+            preset = preset,
+            scale = current.selection.selectedScale,
+            catalogStates = current.catalogModels,
+            overrideModelId = current.selection.selectedModelOverrideId
+        )
+        if (preset.requiresDownload && spec == null) return
+
+        val effectiveScale = spec?.scale ?: current.selection.selectedScale
+        viewModelScope.launch {
+            val verdict = PreflightAnalyzer.inspectAndEvaluate(
+                context = getApplication(),
+                uris = uris,
+                scale = effectiveScale,
+                preset = preset,
+                preferences = current.enginePreferences
+            )
+            when (verdict) {
+                PreflightVerdict.Safe -> startPrimaryUpscale()
+                is PreflightVerdict.Advisory -> {
+                    selectionFlow.update { it.copy(preflightAdvisory = verdict) }
+                }
+            }
+        }
+    }
+
+    fun applyPreflightMitigation(mitigation: PreflightMitigation) {
+        when (mitigation) {
+            PreflightMitigation.LowerScaleTo2x -> selectScale(2)
+            is PreflightMitigation.ProcessInTiles -> setTileSize(mitigation.tileSize)
+            is PreflightMitigation.SmallerTileSize -> setTileSize(mitigation.tileSize)
+        }
+        selectionFlow.update { it.copy(preflightAdvisory = null) }
+        startPrimaryUpscale()
+    }
+
+    fun confirmPreflightProceedAnyway() {
+        selectionFlow.update { it.copy(preflightAdvisory = null) }
+        startPrimaryUpscale()
+    }
+
+    fun dismissPreflightAdvisory() {
+        selectionFlow.update { it.copy(preflightAdvisory = null) }
+    }
+
+    fun requestCropPreview(scaleOverride: Int? = null) {
+        val current = uiState.value
+        val primaryUri = current.selection.selectedUris.firstOrNull() ?: return
+        val preset = current.selection.selectedPreset
+        val targetScale = scaleOverride?.takeIf { it in preset.supportedScales } ?: current.selection.selectedScale
+        if (scaleOverride != null && targetScale != current.selection.selectedScale) {
+            selectScale(targetScale)
+        }
+        val spec = container.modelRepository.resolveExecutionSpec(
+            preset = preset,
+            scale = targetScale,
+            catalogStates = current.catalogModels,
+            overrideModelId = current.selection.selectedModelOverrideId
+        )
+        if (preset.requiresDownload && spec == null) return
+
+        val effectiveScale = spec?.scale ?: targetScale
+        selectionFlow.update {
+            it.copy(cropPreview = CropPreviewUiState.Loading(preset.title, effectiveScale))
+        }
+        viewModelScope.launch {
+            val res = CropPreviewEngine.generateCropPreview(
+                context = getApplication(),
+                sourceUri = primaryUri,
+                preset = preset,
+                scale = effectiveScale,
+                preferences = current.enginePreferences,
+                modelSpec = if (preset.id == PresetId.INSTANT && current.selection.selectedModelOverrideId == null) null else spec,
+                modelsRootDir = container.modelRepository.modelsRootDir
+            )
+            selectionFlow.update { prev ->
+                // Ignore stale result if user dismissed sheet while rendering
+                if (prev.cropPreview is CropPreviewUiState.Hidden) {
+                    prev
+                } else {
+                    res.fold(
+                        onSuccess = { preview -> prev.copy(cropPreview = CropPreviewUiState.Ready(preview)) },
+                        onFailure = { err ->
+                            prev.copy(cropPreview = CropPreviewUiState.Error(err.message ?: "Could not render crop preview."))
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissCropPreview() {
+        selectionFlow.update { it.copy(cropPreview = CropPreviewUiState.Hidden) }
     }
 
     fun startPrimaryUpscale(): Boolean {
@@ -201,6 +421,7 @@ class RealScaleViewModel(
         }
 
         val effectiveScale = spec?.scale ?: current.selection.selectedScale
+        selectionFlow.update { it.copy(preflightAdvisory = null) }
         container.engine.startUpscale(
             UpscaleRequest(
                 inputUris = uris,
@@ -210,14 +431,27 @@ class RealScaleViewModel(
                     null
                 } else {
                     spec
-                }
+                },
+                autoSaveToGallery = true
             )
         )
         return true
     }
 
+    fun applyErrorRecovery(action: RecoveryAction): Boolean {
+        return container.engine.retryWithRecovery(action)
+    }
+
     fun cancelProcessing() {
         container.engine.cancel()
+    }
+
+    fun cancelQueuedItem(itemId: String) {
+        container.engine.cancelQueuedItem(itemId)
+    }
+
+    fun enableBackgroundCompletionNotification() {
+        container.engine.requestCompletionNotificationForActiveSession()
     }
 
     fun acknowledgeEngineState() {
@@ -225,6 +459,8 @@ class RealScaleViewModel(
     }
 
     fun openRecentCreation(entity: RecentCreationEntity) {
+        savedStateHandle[STATE_RESULT_IDS] = longArrayOf(entity.id)
+        savedStateHandle[STATE_SELECTED_RESULT_INDEX] = 0
         selectionFlow.update {
             it.copy(
                 resultCreations = listOf(entity),
@@ -233,9 +469,50 @@ class RealScaleViewModel(
         }
     }
 
+    fun openCreationsForComparison(entities: List<RecentCreationEntity>) {
+        if (entities.isEmpty()) return
+        savedStateHandle[STATE_RESULT_IDS] = entities.map { it.id }.toLongArray()
+        savedStateHandle[STATE_SELECTED_RESULT_INDEX] = 0
+        selectionFlow.update {
+            it.copy(
+                resultCreations = entities,
+                selectedResultIndex = 0
+            )
+        }
+    }
+
+    fun requestOpenPhotoPicker() {
+        selectionFlow.update { it.copy(pendingOpenPhotoPicker = true) }
+    }
+
+    fun consumePendingPhotoPicker() {
+        selectionFlow.update { it.copy(pendingOpenPhotoPicker = false) }
+    }
+
+    fun openCreationById(creationId: Long) {
+        viewModelScope.launch {
+            val found = container.database.recentCreationDao().getById(creationId) ?: return@launch
+            savedStateHandle[STATE_RESULT_IDS] = longArrayOf(found.id)
+            savedStateHandle[STATE_SELECTED_RESULT_INDEX] = 0
+            selectionFlow.update {
+                it.copy(
+                    resultCreations = listOf(found),
+                    selectedResultIndex = 0,
+                    pendingOpenResultNavigation = true
+                )
+            }
+        }
+    }
+
+    fun consumePendingResultNavigation() {
+        selectionFlow.update { it.copy(pendingOpenResultNavigation = false) }
+    }
+
     fun selectResultIndex(index: Int) {
         selectionFlow.update { prev ->
-            prev.copy(selectedResultIndex = index.coerceIn(0, (prev.resultCreations.size - 1).coerceAtLeast(0)))
+            val clamped = index.coerceIn(0, (prev.resultCreations.size - 1).coerceAtLeast(0))
+            savedStateHandle[STATE_SELECTED_RESULT_INDEX] = clamped
+            prev.copy(selectedResultIndex = clamped)
         }
     }
 
@@ -247,9 +524,37 @@ class RealScaleViewModel(
             Uri.parse(creation.sourceUri)
         }
         container.engine.acknowledgeTerminalState()
+        val uris = listOf(uriToLoad)
+        persistSelectedUris(uris)
         selectionFlow.update { prev ->
-            prev.copy(selectedUris = listOf(uriToLoad))
+            prev.copy(selectedUris = uris, preflightAdvisory = null)
         }
+    }
+
+    fun rerunRecentCreation(creation: RecentCreationEntity) {
+        val beforeFile = File(creation.beforeImagePath)
+        val uriToLoad = if (beforeFile.isFile) {
+            Uri.fromFile(beforeFile)
+        } else {
+            Uri.parse(creation.sourceUri)
+        }
+        val presetId = runCatching { PresetId.valueOf(creation.presetId) }.getOrDefault(PresetId.INSTANT)
+        val preset = UpscalePreset.fromId(presetId)
+        val validScale = if (creation.scale in preset.supportedScales) creation.scale else preset.defaultScale
+        val uris = listOf(uriToLoad)
+        persistSelectedUris(uris)
+        savedStateHandle[STATE_SELECTED_PRESET] = preset.id.name
+        savedStateHandle[STATE_SELECTED_SCALE] = validScale
+        selectionFlow.update { prev ->
+            prev.copy(
+                selectedUris = uris,
+                selectedPreset = preset,
+                selectedScale = validScale,
+                selectedModelOverrideId = null,
+                preflightAdvisory = null
+            )
+        }
+        requestPrimaryUpscale()
     }
 
     fun saveResultToGallery(creation: RecentCreationEntity) {
@@ -259,20 +564,32 @@ class RealScaleViewModel(
                 postBanner("Output file is no longer available.")
                 return@launch
             }
+            val origName = ImageIntakeManager.resolveDisplayName(getApplication(), Uri.parse(creation.sourceUri))
+            val targetName = OutputNameFormatter.buildGalleryFileName(
+                originalDisplayName = origName,
+                scale = creation.scale,
+                outputExtension = file.extension
+            )
             val res = MediaExportHelper.saveToGalleryOrFolder(
                 context = getApplication(),
                 sourceFile = file,
-                customTreeUri = uiState.value.enginePreferences.outputTreeUri
+                customTreeUri = uiState.value.enginePreferences.outputTreeUri,
+                displayFileName = targetName
             )
             res.fold(
                 onSuccess = { savedUri ->
+                    val mime = MediaExportHelper.mimeTypeFor(file)
                     container.database.recentCreationDao().updateSavedUri(creation.id, savedUri.toString())
                     selectionFlow.update { prev ->
                         prev.copy(
                             resultCreations = prev.resultCreations.map { item ->
                                 if (item.id == creation.id) item.copy(savedUri = savedUri.toString()) else item
                             },
-                            bannerMessage = "Saved to Gallery · Pictures/RealScale-Pro"
+                            savedGalleryEvent = SavedGalleryEvent(
+                                uri = savedUri,
+                                mimeType = mime,
+                                message = "Saved $targetName to Pictures/RealScale-Pro"
+                            )
                         )
                     }
                 },
@@ -281,6 +598,10 @@ class RealScaleViewModel(
                 }
             )
         }
+    }
+
+    fun dismissSavedGalleryEvent() {
+        selectionFlow.update { it.copy(savedGalleryEvent = null) }
     }
 
     fun shareResult(context: Context, creation: RecentCreationEntity) {
@@ -296,18 +617,53 @@ class RealScaleViewModel(
         }
     }
 
+    fun shareCreations(context: Context, creations: List<RecentCreationEntity>) {
+        val files = creations.map { File(it.outputPath) }.filter { it.isFile }
+        if (files.isEmpty()) {
+            postBanner("Selected files are no longer available.")
+            return
+        }
+        runCatching {
+            MediaExportHelper.shareMultipleImages(context, files)
+        }.onFailure { err ->
+            postBanner(err.message ?: "Could not open share sheet.")
+        }
+    }
+
     fun deleteRecentCreation(creation: RecentCreationEntity) {
+        deleteCreations(listOf(creation))
+    }
+
+    fun deleteCreations(creations: List<RecentCreationEntity>) {
+        if (creations.isEmpty()) return
+        val deletedIds = creations.map { it.id }.toSet()
         viewModelScope.launch {
-            File(creation.beforeImagePath).delete()
-            File(creation.outputPath).delete()
-            container.database.recentCreationDao().deleteById(creation.id)
+            creations.forEach { c ->
+                File(c.beforeImagePath).delete()
+                File(c.outputPath).delete()
+            }
+            container.database.recentCreationDao().deleteByIds(deletedIds.toList())
+            RealScaleWidgetsUpdater.refreshAll(getApplication())
+            selectionFlow.update { prev ->
+                val remaining = prev.resultCreations.filterNot { it.id in deletedIds }
+                savedStateHandle[STATE_RESULT_IDS] = remaining.map { it.id }.toLongArray()
+                val nextIdx = prev.selectedResultIndex.coerceIn(0, (remaining.size - 1).coerceAtLeast(0))
+                savedStateHandle[STATE_SELECTED_RESULT_INDEX] = nextIdx
+                prev.copy(
+                    resultCreations = remaining,
+                    selectedResultIndex = nextIdx
+                )
+            }
         }
     }
 
     // Model Hub actions
     fun downloadOrResumeModel(modelId: String) {
         viewModelScope.launch {
-            container.modelRepository.startOrResumeDownload(modelId)
+            container.modelRepository.startOrResumeDownload(
+                modelId = modelId,
+                wifiOnly = uiState.value.enginePreferences.wifiOnlyDownloads
+            )
         }
     }
 
@@ -336,6 +692,36 @@ class RealScaleViewModel(
     fun setThemeMode(mode: ThemeMode) {
         uiPrefs.edit().putString(KEY_THEME_MODE, mode.name).apply()
         selectionFlow.update { it.copy(themeMode = mode) }
+    }
+
+    fun setExternalOpenMode(mode: ExternalOpenMode) {
+        container.engine.updatePreferences { it.copy(externalOpenMode = mode) }
+    }
+
+    fun setDefaultPreset(presetId: PresetId?) {
+        container.engine.updatePreferences { it.copy(defaultPresetId = presetId) }
+        if (presetId != null) {
+            selectPreset(UpscalePreset.fromId(presetId))
+        }
+    }
+
+    fun setKeepScreenOnDuringEnhance(enabled: Boolean) {
+        container.engine.updatePreferences { it.copy(keepScreenOnDuringEnhance = enabled) }
+    }
+
+    fun setHapticsEnabled(enabled: Boolean) {
+        container.engine.updatePreferences { it.copy(hapticsEnabled = enabled) }
+    }
+
+    fun setWifiOnlyDownloads(wifiOnly: Boolean) {
+        container.engine.updatePreferences { it.copy(wifiOnlyDownloads = wifiOnly) }
+    }
+
+    fun clearTemporaryCache() {
+        viewModelScope.launch {
+            val freed = ImageIntakeManager.clearTemporaryCache(getApplication())
+            postBanner("Cleared ${formatBytesHuman(freed)} of temporary cache.")
+        }
     }
 
     fun setExecutionBackend(backend: ExecutionBackend) {
@@ -407,6 +793,16 @@ class RealScaleViewModel(
         selectionFlow.update { it.copy(bannerMessage = null) }
     }
 
+    fun markLaunchFadePlayed() {
+        if (!selectionFlow.value.hasPlayedLaunchFade) {
+            selectionFlow.update { it.copy(hasPlayedLaunchFade = true) }
+        }
+    }
+
+    private fun persistSelectedUris(uris: List<Uri>) {
+        savedStateHandle[STATE_SELECTED_URIS] = ArrayList(uris.map { it.toString() })
+    }
+
     private fun postBanner(msg: String) {
         selectionFlow.update { it.copy(bannerMessage = msg) }
     }
@@ -420,6 +816,15 @@ class RealScaleViewModel(
         private val application: Application
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+            return RealScaleViewModel(
+                application = application,
+                container = RealScaleAppContainer.getInstance(application),
+                savedStateHandle = extras.createSavedStateHandle()
+            ) as T
+        }
+
+        @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             return RealScaleViewModel(
                 application = application,
@@ -431,5 +836,11 @@ class RealScaleViewModel(
     companion object {
         private const val UI_PREFS_NAME = "realscale_ui_prefs"
         private const val KEY_THEME_MODE = "theme_mode"
+        private const val STATE_SELECTED_URIS = "selected_uris"
+        private const val STATE_SELECTED_PRESET = "selected_preset"
+        private const val STATE_SELECTED_SCALE = "selected_scale"
+        private const val STATE_MODEL_OVERRIDE = "selected_model_override"
+        private const val STATE_RESULT_IDS = "result_creation_ids"
+        private const val STATE_SELECTED_RESULT_INDEX = "selected_result_index"
     }
 }

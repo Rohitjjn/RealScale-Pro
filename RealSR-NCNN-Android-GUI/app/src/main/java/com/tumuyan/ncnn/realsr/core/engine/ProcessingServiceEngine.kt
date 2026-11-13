@@ -7,13 +7,13 @@ import android.content.ServiceConnection
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.IBinder
-import android.provider.OpenableColumns
 import androidx.documentfile.provider.DocumentFile
 import com.tumuyan.ncnn.realsr.ImageProcessor
 import com.tumuyan.ncnn.realsr.ProcessingService
 import com.tumuyan.ncnn.realsr.ProgressLogHelper
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationDao
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
+import com.tumuyan.ncnn.realsr.ui.MediaExportHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -21,20 +21,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.util.Locale
 import java.util.UUID
 import kotlin.coroutines.resume
+import kotlin.math.roundToInt
 
 class ProcessingServiceEngine(
     context: Context,
@@ -45,6 +46,7 @@ class ProcessingServiceEngine(
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
     private val prefsStore = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val jobQueue = EngineJobQueue()
 
     private val _state = MutableStateFlow<EngineState>(EngineState.Idle)
     override val state: StateFlow<EngineState> = _state.asStateFlow()
@@ -55,6 +57,9 @@ class ProcessingServiceEngine(
     private val _preferences = MutableStateFlow(loadPreferences())
     override val preferences: StateFlow<EnginePreferences> = _preferences.asStateFlow()
 
+    private val _queue = MutableStateFlow<List<QueuedJobItem>>(emptyList())
+    override val queue: StateFlow<List<QueuedJobItem>> = _queue.asStateFlow()
+
     @Volatile
     private var boundService: ProcessingService? = null
 
@@ -64,12 +69,18 @@ class ProcessingServiceEngine(
     @Volatile
     private var isBound = false
 
-    private var activeJob: Job? = null
+    private var workerJob: Job? = null
+
+    @Volatile
+    private var cancelCurrentItemOnly: Boolean = false
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             val service = (binder as? ProcessingService.LocalBinder)?.service
             if (service != null) {
+                service.setCancelListener {
+                    cancel()
+                }
                 boundService = service
                 isBound = true
                 if (!serviceDeferred.isCompleted) {
@@ -108,15 +119,30 @@ class ProcessingServiceEngine(
             .putString(KEY_OUTPUT_FORMAT, updated.outputFormat.name)
             .putString(KEY_OUTPUT_TREE_URI, updated.outputTreeUri)
             .putBoolean(KEY_HIDE_OUTPUT, updated.hideProgramOutput)
+            .putString(KEY_EXTERNAL_OPEN_MODE, updated.externalOpenMode.name)
+            .putString(KEY_LAST_PRESET, updated.lastUsedPresetId.name)
+            .putInt(KEY_LAST_SCALE, updated.lastUsedScale)
+            .putString(KEY_DEFAULT_PRESET, updated.defaultPresetId?.name)
+            .putBoolean(KEY_KEEP_SCREEN_ON, updated.keepScreenOnDuringEnhance)
+            .putBoolean(KEY_HAPTICS_ENABLED, updated.hapticsEnabled)
+            .putBoolean(KEY_WIFI_ONLY_DOWNLOADS, updated.wifiOnlyDownloads)
             .apply()
     }
 
     override fun startUpscale(request: UpscaleRequest) {
         if (request.inputUris.isEmpty()) return
-        activeJob?.cancel()
-        activeJob = scope.launch {
-            executeUpscaleBatch(request)
+        // Remember last-used preset & scale for Studio and Quick Sheet
+        updatePreferences {
+            it.copy(
+                lastUsedPresetId = request.preset.id,
+                lastUsedScale = request.scale
+            )
         }
+        jobQueue.enqueue(request) { idx, uri ->
+            ImageIntakeManager.resolveDisplayName(appContext, uri) ?: "Photo ${idx + 1}"
+        }
+        refreshQueueSnapshot()
+        ensureQueueWorkerRunning()
     }
 
     override fun startDirectoryUpscale(
@@ -125,14 +151,15 @@ class ProcessingServiceEngine(
         scale: Int,
         modelSpec: ModelExecutionSpec?
     ) {
-        activeJob?.cancel()
-        activeJob = scope.launch {
+        scope.launch {
             val dir = DocumentFile.fromTreeUri(appContext, directoryUri)
             if (dir == null || !dir.isDirectory) {
-                _state.value = EngineState.Failed(
-                    userMessage = "Could not open the selected folder.",
-                    technicalOutput = "Invalid tree URI: $directoryUri"
-                )
+                if (jobQueue.isIdle()) {
+                    _state.value = EngineState.Failed(
+                        userMessage = "Could not open the selected folder.",
+                        technicalOutput = "Invalid tree URI: $directoryUri"
+                    )
+                }
                 return@launch
             }
             val imageUris = dir.listFiles()
@@ -142,18 +169,21 @@ class ProcessingServiceEngine(
                 .map { it.uri }
 
             if (imageUris.isEmpty()) {
-                _state.value = EngineState.Failed(
-                    userMessage = "No supported images were found in the selected folder.",
-                    technicalOutput = "Empty directory scan: $directoryUri"
-                )
+                if (jobQueue.isIdle()) {
+                    _state.value = EngineState.Failed(
+                        userMessage = "No supported images were found in the selected folder.",
+                        technicalOutput = "Empty directory scan: $directoryUri"
+                    )
+                }
                 return@launch
             }
-            executeUpscaleBatch(
+            startUpscale(
                 UpscaleRequest(
                     inputUris = imageUris,
                     preset = preset,
                     scale = scale,
-                    modelSpec = modelSpec
+                    modelSpec = modelSpec,
+                    autoSaveToGallery = true
                 )
             )
         }
@@ -162,8 +192,8 @@ class ProcessingServiceEngine(
     override fun runAdvancedCommand(rawCommand: String) {
         val trimmed = rawCommand.trim()
         if (trimmed.isEmpty()) return
-        activeJob?.cancel()
-        activeJob = scope.launch {
+        cancel()
+        workerJob = scope.launch {
             val jobId = UUID.randomUUID().toString().take(8)
             _state.value = EngineState.Preparing("Preparing engine…")
             val realsrDir = ensureInitialized(forceReset = false).getOrElse { err ->
@@ -174,6 +204,7 @@ class ProcessingServiceEngine(
                 return@launch
             }
             appendLog("$ $trimmed")
+            val startMs = System.currentTimeMillis()
             _state.value = EngineState.Running(
                 jobId = jobId,
                 presetTitle = "Advanced Command",
@@ -183,7 +214,10 @@ class ProcessingServiceEngine(
                 currentFileName = trimmed.substringBefore(' '),
                 etaMillis = null,
                 previewUri = null,
-                latestStatusLine = "Running command…"
+                latestStatusLine = "Running command",
+                stage = ProcessingStage.ENHANCING,
+                hasDeterminateProgress = false,
+                elapsedMillis = 0L
             )
             try {
                 val service = obtainForegroundService()
@@ -200,7 +234,9 @@ class ProcessingServiceEngine(
                         if (prev is EngineState.Running) {
                             prev.copy(
                                 progressFraction = pct ?: prev.progressFraction,
-                                latestStatusLine = line
+                                hasDeterminateProgress = pct != null || prev.hasDeterminateProgress,
+                                elapsedMillis = System.currentTimeMillis() - startMs,
+                                latestStatusLine = "Running command"
                             )
                         } else {
                             prev
@@ -227,9 +263,61 @@ class ProcessingServiceEngine(
         }
     }
 
+    override fun cancelQueuedItem(itemId: String) {
+        when (jobQueue.cancelItem(itemId)) {
+            EngineJobQueue.CancelItemResult.REMOVED_PENDING -> {
+                refreshQueueSnapshot()
+            }
+            EngineJobQueue.CancelItemResult.CANCEL_RUNNING -> {
+                cancelCurrentItemOnly = true
+                boundService?.cancelTask()
+            }
+            EngineJobQueue.CancelItemResult.NOT_FOUND -> Unit
+        }
+    }
+
+    override fun requestCompletionNotificationForActiveSession() {
+        jobQueue.enableSessionCompletionNotification()
+    }
+
+    override fun retryWithRecovery(action: RecoveryAction): Boolean {
+        val failed = _state.value as? EngineState.Failed ?: return false
+        val baseReq = failed.failedRequest ?: return false
+        return when (action) {
+            RecoveryAction.RETRY_ON_CPU -> {
+                updatePreferences { it.copy(backend = ExecutionBackend.CPU) }
+                startUpscale(baseReq)
+                true
+            }
+            RecoveryAction.SMALLER_TILE_SIZE -> {
+                updatePreferences { it.copy(tileSize = 64) }
+                startUpscale(baseReq)
+                true
+            }
+            RecoveryAction.TRY_INSTANT -> {
+                val instantScale = if (baseReq.scale in UpscalePreset.INSTANT.supportedScales) {
+                    baseReq.scale
+                } else {
+                    UpscalePreset.INSTANT.defaultScale
+                }
+                startUpscale(
+                    baseReq.copy(
+                        preset = UpscalePreset.INSTANT,
+                        scale = instantScale,
+                        modelSpec = null
+                    )
+                )
+                true
+            }
+        }
+    }
+
     override fun cancel() {
-        val job = activeJob
-        activeJob = null
+        jobQueue.clearAll()
+        refreshQueueSnapshot()
+        cancelCurrentItemOnly = false
+        val job = workerJob
+        workerJob = null
         boundService?.cancelTask()
         job?.cancel()
         runCatching {
@@ -256,46 +344,102 @@ class ProcessingServiceEngine(
         }
     }
 
-    private suspend fun executeUpscaleBatch(request: UpscaleRequest) {
-        val jobId = UUID.randomUUID().toString().take(8)
-        val batchStartMs = System.currentTimeMillis()
-        val prefs = _preferences.value
+    @Synchronized
+    private fun ensureQueueWorkerRunning() {
+        if (workerJob?.isActive == true) return
+        workerJob = scope.launch {
+            drainQueueSequentially()
+        }
+    }
+
+    private suspend fun drainQueueSequentially() {
+        val sessionId = UUID.randomUUID().toString().take(8)
+        val sessionStartMs = System.currentTimeMillis()
+        val sessionCreations = mutableListOf<RecentCreationEntity>()
+        var lastFailureState: EngineState.Failed? = null
 
         try {
-            _state.value = EngineState.Preparing("Preparing upscaling engine…")
+            _state.value = EngineState.Preparing("Preparing photo…")
             val realsrDir = ensureInitialized(forceReset = false).getOrElse { err ->
+                jobQueue.clearAll()
+                refreshQueueSnapshot()
                 _state.value = EngineState.Failed(
-                    userMessage = "Could not prepare native upscaling engine.",
+                    userMessage = "Could not prepare the upscaling engine.",
                     technicalOutput = err.stackTraceToString()
                 )
                 return
             }
 
             val service = obtainForegroundService()
-            val creations = mutableListOf<RecentCreationEntity>()
-            val totalFiles = request.inputUris.size
 
-            for ((index, uri) in request.inputUris.withIndex()) {
-                val fileStartMs = System.currentTimeMillis()
-                val displayName = resolveDisplayName(uri) ?: "Photo ${index + 1}"
-                val inputExt = resolveInputExtension(displayName, uri)
-                val beforeFile = File(creationsDir, "before_${batchStartMs}_${index}.$inputExt")
-                copyUriToFile(uri, beforeFile)
+            while (true) {
+                val notifyWhenDone = jobQueue.shouldNotifyOnSessionComplete()
+                val lease = jobQueue.pollNextLease() ?: break
+                refreshQueueSnapshot()
+
+                val entry = lease.entry
+                val pos = lease.positionInSession
+                val total = lease.totalInSession
+                val prefs = _preferences.value
+                val itemStartMs = System.currentTimeMillis()
+                cancelCurrentItemOnly = false
+
+                val batchTitlePrefix = if (total > 1) "$pos of $total · " else ""
+                val notifTitle = "${batchTitlePrefix}${entry.preset.title} ${entry.scale}×"
+
+                // Stage 1: Preparing (copy stream + convert HEIC/AVIF/GIF if needed)
+                _state.value = EngineState.Running(
+                    jobId = sessionId,
+                    presetTitle = "${entry.preset.title} · ${entry.scale}×",
+                    progressFraction = ((pos - 1).toFloat() / total.toFloat()).coerceIn(0f, 0.99f),
+                    currentFileIndex = pos,
+                    totalFiles = total,
+                    currentFileName = entry.fileNameHint,
+                    etaMillis = null,
+                    previewUri = entry.uri.toString(),
+                    latestStatusLine = "Preparing",
+                    stage = ProcessingStage.PREPARING,
+                    hasDeterminateProgress = false,
+                    elapsedMillis = 0L,
+                    currentItemId = entry.id
+                )
+                service.updateStructuredProgress(notifTitle, "Preparing photo…", -1)
+
+                val beforeFile = try {
+                    ImageIntakeManager.prepareEngineInputFile(
+                        context = appContext,
+                        uri = entry.uri,
+                        creationsDir = creationsDir,
+                        filePrefix = "before_${itemStartMs}_${pos}",
+                        realsrDir = realsrDir,
+                        service = service
+                    )
+                } catch (e: UnsupportedImageFormatException) {
+                    lastFailureState = EngineState.Failed(
+                        userMessage = e.message ?: "Unsupported image format.",
+                        technicalOutput = e.stackTraceToString(),
+                        recoveryActions = emptyList(),
+                        failedRequest = null
+                    )
+                    jobQueue.markActiveFinished()
+                    refreshQueueSnapshot()
+                    continue
+                }
 
                 val (inW, inH) = decodeDimensions(beforeFile)
                 val outExt = prefs.outputFormat.extension
                 val outputFile = File(
                     creationsDir,
-                    "RealScale_${batchStartMs}_${index}_${request.preset.id.name.lowercase(Locale.US)}_${request.scale}x.$outExt"
+                    "RealScale_${itemStartMs}_${pos}_${entry.preset.id.name.lowercase(Locale.US)}_${entry.scale}x.$outExt"
                 )
 
                 val command = PresetCommandResolver.buildUpscaleCommand(
-                    preset = request.preset,
-                    scale = request.scale,
+                    preset = entry.preset,
+                    scale = entry.scale,
                     inputPath = beforeFile.absolutePath,
                     outputPath = outputFile.absolutePath,
                     preferences = prefs,
-                    modelOverride = request.modelSpec,
+                    modelOverride = entry.modelSpec,
                     modelsRootDir = modelsRootDir
                 )
 
@@ -303,78 +447,184 @@ class ProcessingServiceEngine(
                     appendLog("$ $command")
                 }
 
+                // Stage 2: Enhancing (with 1s elapsed-time ticker for indeterminate tools like Instant)
+                val enhanceStartMs = System.currentTimeMillis()
                 _state.value = EngineState.Running(
-                    jobId = jobId,
-                    presetTitle = "${request.preset.title} · ${request.scale}×",
-                    progressFraction = index.toFloat() / totalFiles.toFloat(),
-                    currentFileIndex = index + 1,
-                    totalFiles = totalFiles,
-                    currentFileName = displayName,
+                    jobId = sessionId,
+                    presetTitle = "${entry.preset.title} · ${entry.scale}×",
+                    progressFraction = ((pos - 1).toFloat() / total.toFloat()).coerceIn(0f, 0.99f),
+                    currentFileIndex = pos,
+                    totalFiles = total,
+                    currentFileName = entry.fileNameHint,
                     etaMillis = null,
                     previewUri = beforeFile.toURI().toString(),
-                    latestStatusLine = "Starting ${request.preset.title} upscale…"
+                    latestStatusLine = "Enhancing",
+                    stage = ProcessingStage.ENHANCING,
+                    hasDeterminateProgress = false,
+                    elapsedMillis = 0L,
+                    currentItemId = entry.id
                 )
+                service.updateStructuredProgress(notifTitle, "Enhancing…", -1)
 
-                val cmdResult = runServiceCommand(
-                    service = service,
-                    command = command,
-                    workingDir = realsrDir.absolutePath
-                ) { line ->
-                    if (!prefs.hideProgramOutput) {
-                        appendLog(line)
-                    }
-                    val filePct = parsePercentage(line)
-                    val overallFraction = if (filePct != null) {
-                        ((index.toFloat() + filePct) / totalFiles.toFloat()).coerceIn(0f, 0.99f)
-                    } else {
-                        null
-                    }
-                    val elapsed = System.currentTimeMillis() - batchStartMs
-                    val eta = if (overallFraction != null && overallFraction >= 0.04f && elapsed >= 600L) {
-                        val totalEstimated = (elapsed / overallFraction).toLong()
-                        (totalEstimated - elapsed).coerceAtLeast(500L)
-                    } else {
-                        null
-                    }
-                    _state.update { prev ->
-                        if (prev is EngineState.Running) {
-                            prev.copy(
-                                progressFraction = overallFraction ?: prev.progressFraction,
-                                etaMillis = eta ?: prev.etaMillis,
-                                latestStatusLine = humanizeStatusLine(line)
-                            )
-                        } else {
-                            prev
+                val tickerJob = scope.launch {
+                    while (isActive) {
+                        delay(500L)
+                        val elapsed = System.currentTimeMillis() - enhanceStartMs
+                        _state.update { prev ->
+                            if (prev is EngineState.Running && prev.currentItemId == entry.id) {
+                                prev.copy(elapsedMillis = elapsed)
+                            } else {
+                                prev
+                            }
+                        }
+                        val cur = _state.value
+                        if (cur is EngineState.Running && cur.currentItemId == entry.id && !cur.hasDeterminateProgress) {
+                            val sec = (elapsed / 1000L).coerceAtLeast(1L)
+                            service.updateStructuredProgress(notifTitle, "Enhancing · ${sec}s", -1)
                         }
                     }
+                }
+
+                var smoothedRatePctPerMs: Double? = null
+                var lastPctSample: Pair<Long, Float>? = null
+
+                val cmdResult = try {
+                    runServiceCommand(
+                        service = service,
+                        command = command,
+                        workingDir = realsrDir.absolutePath
+                    ) { line ->
+                        if (!prefs.hideProgramOutput) {
+                            appendLog(line)
+                        }
+                        val parsed = EngineProgressParser.parseLine(line)
+                        val filePct = parsed?.fraction
+                        if (filePct != null && filePct > 0f) {
+                            val now = System.currentTimeMillis()
+                            val prevSample = lastPctSample
+                            if (prevSample != null && filePct > prevSample.second && now > prevSample.first) {
+                                val instRate = (filePct - prevSample.second).toDouble() / (now - prevSample.first).toDouble()
+                                smoothedRatePctPerMs = smoothedRatePctPerMs?.let { 0.7 * it + 0.3 * instRate } ?: instRate
+                            } else if (prevSample == null && now > enhanceStartMs) {
+                                smoothedRatePctPerMs = filePct.toDouble() / (now - enhanceStartMs).coerceAtLeast(1L).toDouble()
+                            }
+                            lastPctSample = now to filePct
+
+                            val overallFraction = (((pos - 1).toFloat() + filePct) / total.toFloat()).coerceIn(0f, 0.99f)
+                            val remainingItemsFraction = (total - pos).toFloat() + (1f - filePct)
+                            val velocityEtaMs = smoothedRatePctPerMs?.takeIf { it > 1e-7 }?.let { rate ->
+                                (remainingItemsFraction / rate).toLong().coerceAtLeast(500L)
+                            }
+                            val etaMs = when {
+                                parsed.nativeEtaMillis != null && total == 1 -> parsed.nativeEtaMillis.coerceAtLeast(500L)
+                                parsed.nativeEtaMillis != null && velocityEtaMs != null ->
+                                    ((parsed.nativeEtaMillis + velocityEtaMs) / 2L).coerceAtLeast(500L)
+                                else -> velocityEtaMs
+                            }
+                            val pctInt = (overallFraction * 100f).roundToInt().coerceIn(1, 99)
+
+                            _state.update { prev ->
+                                if (prev is EngineState.Running && prev.currentItemId == entry.id) {
+                                    prev.copy(
+                                        progressFraction = overallFraction,
+                                        hasDeterminateProgress = true,
+                                        etaMillis = etaMs ?: prev.etaMillis,
+                                        elapsedMillis = now - enhanceStartMs,
+                                        stage = ProcessingStage.ENHANCING,
+                                        latestStatusLine = "Enhancing"
+                                    )
+                                } else {
+                                    prev
+                                }
+                            }
+                            service.updateStructuredProgress(notifTitle, "Enhancing · $pctInt%", pctInt)
+                        }
+                    }
+                } finally {
+                    tickerJob.cancel()
+                }
+
+                if (cancelCurrentItemOnly) {
+                    beforeFile.delete()
+                    outputFile.delete()
+                    cancelCurrentItemOnly = false
+                    jobQueue.markActiveFinished()
+                    refreshQueueSnapshot()
+                    continue
                 }
 
                 if (!cmdResult.success || !outputFile.exists() || outputFile.length() == 0L) {
                     beforeFile.delete()
                     outputFile.delete()
-                    _state.value = EngineState.Failed(
-                        userMessage = buildFriendlyFailureMessage(cmdResult.output, request.preset),
-                        technicalOutput = cmdResult.output
+                    val retryReq = UpscaleRequest(
+                        inputUris = listOf(entry.uri),
+                        preset = entry.preset,
+                        scale = entry.scale,
+                        modelSpec = entry.modelSpec,
+                        autoSaveToGallery = entry.autoSaveToGallery,
+                        notifyOnCompletion = entry.notifyOnCompletion
                     )
-                    return
+                    val recovery = buildRecoveryActions(cmdResult.output, prefs, entry.preset)
+                    val techReport = buildString {
+                        appendLine("Command: $command")
+                        appendLine("Preset: ${entry.preset.id} (${entry.scale}x)")
+                        appendLine("Backend: ${prefs.backend} · TileSize: ${prefs.tileSize}")
+                        appendLine("Device ABIs: ${android.os.Build.SUPPORTED_ABIS.joinToString()}")
+                        appendLine("--- Native Output ---")
+                        append(cmdResult.output.ifBlank { _consoleLog.value.takeLast(2_000) })
+                    }
+                    lastFailureState = EngineState.Failed(
+                        userMessage = buildFriendlyFailureMessage(cmdResult.output, entry.preset),
+                        technicalOutput = techReport,
+                        recoveryActions = recovery,
+                        failedRequest = retryReq
+                    )
+                    jobQueue.markActiveFinished()
+                    refreshQueueSnapshot()
+                    continue
                 }
 
-                val exportedUri = prefs.outputTreeUri?.let { treeUriStr ->
-                    exportToConfiguredFolder(outputFile, Uri.parse(treeUriStr))
+                // Stage 3: Saving (write to Pictures/RealScale-Pro with <originalName>_x2/_x4)
+                _state.update { prev ->
+                    if (prev is EngineState.Running && prev.currentItemId == entry.id) {
+                        prev.copy(
+                            stage = ProcessingStage.SAVING,
+                            latestStatusLine = "Saving"
+                        )
+                    } else {
+                        prev
+                    }
+                }
+                service.updateStructuredProgress(notifTitle, "Saving to Gallery…", 99)
+
+                val galleryFileName = OutputNameFormatter.buildGalleryFileName(
+                    originalDisplayName = entry.fileNameHint,
+                    scale = entry.scale,
+                    outputExtension = outExt
+                )
+                val savedUriString = if (entry.autoSaveToGallery) {
+                    MediaExportHelper.saveToGalleryOrFolder(
+                        context = appContext,
+                        sourceFile = outputFile,
+                        customTreeUri = prefs.outputTreeUri,
+                        displayFileName = galleryFileName
+                    ).getOrNull()?.toString()
+                } else {
+                    null
                 }
 
                 val (outW, outH) = decodeDimensions(outputFile)
-                val fileDuration = (System.currentTimeMillis() - fileStartMs).coerceAtLeast(1L)
-                val modelIdUsed = request.modelSpec?.modelId ?: request.preset.defaultModelId
+                val fileDuration = (System.currentTimeMillis() - itemStartMs).coerceAtLeast(1L)
+                val modelIdUsed = entry.modelSpec?.modelId ?: entry.preset.defaultModelId
                 val creation = RecentCreationEntity(
-                    sourceUri = uri.toString(),
+                    sourceUri = entry.uri.toString(),
                     beforeImagePath = beforeFile.absolutePath,
                     outputPath = outputFile.absolutePath,
-                    savedUri = exportedUri?.toString(),
-                    presetId = request.preset.id.name,
-                    presetLabel = "${request.preset.title} · ${request.scale}×",
+                    savedUri = savedUriString,
+                    presetId = entry.preset.id.name,
+                    presetLabel = "${entry.preset.title} · ${entry.scale}×",
                     modelId = modelIdUsed,
-                    scale = request.scale,
+                    scale = entry.scale,
                     inputWidth = inW,
                     inputHeight = inH,
                     outputWidth = outW,
@@ -383,24 +633,57 @@ class ProcessingServiceEngine(
                     createdAtEpochMs = System.currentTimeMillis()
                 )
                 val insertedId = recentCreationDao.insert(creation)
-                creations += creation.copy(id = insertedId)
+                val savedEntity = creation.copy(id = insertedId)
+                sessionCreations += savedEntity
+                com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater.refreshAll(appContext)
+
+                val shouldPostNotif = notifyWhenDone || jobQueue.shouldNotifyOnSessionComplete()
+                jobQueue.markActiveFinished()
+                refreshQueueSnapshot()
+
+                if (shouldPostNotif && jobQueue.isIdle()) {
+                    val summary = if (sessionCreations.size == 1) {
+                        "${savedEntity.outputWidth} × ${savedEntity.outputHeight} · Saved to Pictures/RealScale-Pro"
+                    } else {
+                        "${sessionCreations.size} photos enhanced · Saved to Pictures/RealScale-Pro"
+                    }
+                    service.postCompletionNotification(
+                        savedEntity.id,
+                        "Photo ready · ${entry.preset.title} ${entry.scale}×",
+                        summary,
+                        outputFile
+                    )
+                }
             }
 
-            val totalDuration = (System.currentTimeMillis() - batchStartMs).coerceAtLeast(1L)
-            _state.value = EngineState.Completed(
-                UpscaleResult(
-                    creations = creations,
-                    totalDurationMs = totalDuration
+            refreshQueueSnapshot()
+            if (sessionCreations.isNotEmpty()) {
+                val totalDuration = (System.currentTimeMillis() - sessionStartMs).coerceAtLeast(1L)
+                _state.value = EngineState.Completed(
+                    UpscaleResult(
+                        creations = sessionCreations,
+                        totalDurationMs = totalDuration
+                    )
                 )
-            )
+            } else if (lastFailureState != null) {
+                _state.value = lastFailureState!!
+            } else {
+                _state.value = EngineState.Cancelled
+            }
         } catch (_: CancellationException) {
             _state.value = EngineState.Cancelled
         } catch (t: Throwable) {
+            jobQueue.clearAll()
+            refreshQueueSnapshot()
             _state.value = EngineState.Failed(
                 userMessage = "Upscaling stopped unexpectedly. Try switching to CPU or smaller tiles in Settings.",
                 technicalOutput = t.stackTraceToString()
             )
         }
+    }
+
+    private fun refreshQueueSnapshot() {
+        _queue.value = jobQueue.snapshot()
     }
 
     private suspend fun obtainForegroundService(): ProcessingService {
@@ -455,61 +738,9 @@ class ProcessingServiceEngine(
         )
     }
 
-    private fun copyUriToFile(uri: Uri, target: File) {
-        target.parentFile?.mkdirs()
-        if (uri.scheme == "file") {
-            val src = File(requireNotNull(uri.path))
-            src.copyTo(target, overwrite = true)
-            return
-        }
-        val input = appContext.contentResolver.openInputStream(uri)
-            ?: throw IllegalArgumentException("Unable to open selected image: $uri")
-        input.use { inStream ->
-            FileOutputStream(target).use { outStream ->
-                inStream.copyTo(outStream)
-            }
-        }
-    }
-
-    private fun exportToConfiguredFolder(sourceFile: File, treeUri: Uri): Uri? = runCatching {
-        val dir = DocumentFile.fromTreeUri(appContext, treeUri) ?: return null
-        val mime = when (sourceFile.extension.lowercase(Locale.US)) {
-            "jpg", "jpeg" -> "image/jpeg"
-            "webp" -> "image/webp"
-            else -> "image/png"
-        }
-        val doc = dir.createFile(mime, sourceFile.name) ?: return null
-        appContext.contentResolver.openOutputStream(doc.uri)?.use { out ->
-            FileInputStream(sourceFile).use { input -> input.copyTo(out) }
-        }
-        doc.uri
-    }.getOrNull()
-
-    private fun resolveDisplayName(uri: Uri): String? = runCatching {
-        if (uri.scheme == "file") return File(requireNotNull(uri.path)).name
-        appContext.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-            ?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.getString(0) else null
-            }
-    }.getOrNull()
-
-    private fun resolveInputExtension(displayName: String, uri: Uri): String {
-        val fromName = displayName.substringAfterLast('.', "").lowercase(Locale.US)
-        if (fromName in setOf("png", "jpg", "jpeg", "webp", "gif", "bmp")) {
-            return if (fromName == "jpeg") "jpg" else fromName
-        }
-        val mime = runCatching { appContext.contentResolver.getType(uri) }.getOrNull().orEmpty()
-        return when {
-            mime.contains("jpeg") || mime.contains("jpg") -> "jpg"
-            mime.contains("webp") -> "webp"
-            mime.contains("gif") -> "gif"
-            else -> "png"
-        }
-    }
-
     private fun hasImageExtension(name: String?): Boolean {
         val ext = name?.substringAfterLast('.', "")?.lowercase(Locale.US) ?: return false
-        return ext in setOf("png", "jpg", "jpeg", "webp", "bmp")
+        return ext in setOf("png", "jpg", "jpeg", "webp", "bmp", "heic", "heif", "avif", "gif")
     }
 
     private fun decodeDimensions(file: File): Pair<Int, Int> {
@@ -518,37 +749,52 @@ class ProcessingServiceEngine(
         return opts.outWidth.coerceAtLeast(0) to opts.outHeight.coerceAtLeast(0)
     }
 
-    private fun parsePercentage(line: String): Float? {
+    internal fun parsePercentage(line: String): Float? {
         if (!ProgressLogHelper.isProgressLine(line)) {
             val match = PERCENT_REGEX.find(line) ?: return null
             val pctVal = match.groupValues[1].toFloatOrNull() ?: return null
             return (pctVal / 100f).coerceIn(0f, 1f)
         }
-        val trimmed = line.trim().removeSuffix("%")
-        val pctVal = trimmed.toFloatOrNull() ?: return null
+        val firstToken = line.trim().split(WHITESPACE_REGEX).firstOrNull().orEmpty().removeSuffix("%")
+        val pctVal = firstToken.toFloatOrNull() ?: return null
         return (pctVal / 100f).coerceIn(0f, 1f)
-    }
-
-    private fun humanizeStatusLine(line: String): String {
-        val trimmed = line.trim()
-        return if (ProgressLogHelper.isProgressLine(trimmed)) {
-            "Enhancing details · $trimmed"
-        } else {
-            trimmed.take(80)
-        }
     }
 
     private fun buildFriendlyFailureMessage(output: String, preset: UpscalePreset): String {
         val lower = output.lowercase(Locale.US)
         return when {
-            lower.contains("vkcreateinstance") || lower.contains("vulkan") ->
-                "Your device GPU rejected Vulkan acceleration. Switch Processing Device to CPU in Settings and try again."
-            lower.contains("fopen") || lower.contains("failed") && preset.requiresDownload ->
-                "Model files for ${preset.title} were not found. Re-download the model in Model Hub."
-            lower.contains("out of memory") || lower.contains("oom") || lower.contains("alloc") ->
-                "Ran out of graphics memory on this photo. Set Tile Size to 128 or 64 in Settings."
+            lower.contains("vkcreateinstance") || lower.contains("vulkan") || lower.contains("vkqueuesubmit") || lower.contains("device lost") ->
+                "Your device GPU rejected Vulkan acceleration. Retry on CPU or lower the tile size below."
+            lower.contains("fopen") || lower.contains("load_param") || (lower.contains("failed") && preset.requiresDownload) ->
+                "Model files for ${preset.title} could not be loaded cleanly. Try Instant below, or re-download the model in Model Hub."
+            lower.contains("out of memory") || lower.contains("oom") || lower.contains("alloc") || lower.contains("killed") || lower.contains("signal 9") ->
+                "Not enough graphics memory for this image at this tile size. Try a smaller tile size (64 px) or CPU mode."
+            lower.contains("no space left") || lower.contains("enospc") ->
+                "Device storage is full. Free some space and try again."
             else ->
-                "Could not finish upscaling this image. Check Settings → Advanced console for details."
+                "Enhancement stopped before finishing. Try one of the recovery options below or copy technical details."
+        }
+    }
+
+    internal fun buildRecoveryActions(
+        output: String,
+        prefs: EnginePreferences,
+        preset: UpscalePreset
+    ): List<RecoveryAction> {
+        val lower = output.lowercase(Locale.US)
+        if (lower.contains("no space left") || lower.contains("enospc")) {
+            return emptyList()
+        }
+        return buildList {
+            if (prefs.backend != ExecutionBackend.CPU) {
+                add(RecoveryAction.RETRY_ON_CPU)
+            }
+            if (preset.id != PresetId.INSTANT && (prefs.tileSize == 0 || prefs.tileSize > 64)) {
+                add(RecoveryAction.SMALLER_TILE_SIZE)
+            }
+            if (preset.id != PresetId.INSTANT) {
+                add(RecoveryAction.TRY_INSTANT)
+            }
         }
     }
 
@@ -574,13 +820,37 @@ class ProcessingServiceEngine(
                 prefsStore.getString(KEY_OUTPUT_FORMAT, OutputFormat.PNG.name)!!
             )
         }.getOrDefault(OutputFormat.PNG)
+        val externalMode = runCatching {
+            ExternalOpenMode.valueOf(
+                prefsStore.getString(KEY_EXTERNAL_OPEN_MODE, ExternalOpenMode.QUICK_SHEET.name)!!
+            )
+        }.getOrDefault(ExternalOpenMode.QUICK_SHEET)
+        val lastPreset = runCatching {
+            PresetId.valueOf(
+                prefsStore.getString(KEY_LAST_PRESET, PresetId.INSTANT.name)!!
+            )
+        }.getOrDefault(PresetId.INSTANT)
+        val presetObj = UpscalePreset.fromId(lastPreset)
+        val rawScale = prefsStore.getInt(KEY_LAST_SCALE, presetObj.defaultScale)
+        val validScale = if (rawScale in presetObj.supportedScales) rawScale else presetObj.defaultScale
+
+        val defaultPreset = prefsStore.getString(KEY_DEFAULT_PRESET, null)
+            ?.let { runCatching { PresetId.valueOf(it) }.getOrNull() }
+
         return EnginePreferences(
             backend = backend,
             tileSize = prefsStore.getInt(KEY_TILE_SIZE, 0),
             threadCount = prefsStore.getString(KEY_THREADS, "").orEmpty(),
             outputFormat = format,
             outputTreeUri = prefsStore.getString(KEY_OUTPUT_TREE_URI, null),
-            hideProgramOutput = prefsStore.getBoolean(KEY_HIDE_OUTPUT, false)
+            hideProgramOutput = prefsStore.getBoolean(KEY_HIDE_OUTPUT, false),
+            externalOpenMode = externalMode,
+            lastUsedPresetId = lastPreset,
+            lastUsedScale = validScale,
+            defaultPresetId = defaultPreset,
+            keepScreenOnDuringEnhance = prefsStore.getBoolean(KEY_KEEP_SCREEN_ON, true),
+            hapticsEnabled = prefsStore.getBoolean(KEY_HAPTICS_ENABLED, true),
+            wifiOnlyDownloads = prefsStore.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, false)
         )
     }
 
@@ -592,8 +862,16 @@ class ProcessingServiceEngine(
         private const val KEY_OUTPUT_FORMAT = "output_format"
         private const val KEY_OUTPUT_TREE_URI = "output_tree_uri"
         private const val KEY_HIDE_OUTPUT = "hide_output"
+        private const val KEY_EXTERNAL_OPEN_MODE = "external_open_mode"
+        private const val KEY_LAST_PRESET = "last_preset_id"
+        private const val KEY_LAST_SCALE = "last_scale"
+        private const val KEY_DEFAULT_PRESET = "default_preset_id"
+        private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
+        private const val KEY_HAPTICS_ENABLED = "haptics_enabled"
+        private const val KEY_WIFI_ONLY_DOWNLOADS = "wifi_only_downloads"
         private const val NOTIFY_DETAILED_AUTO_DISMISS = 3
         private const val MAX_LOG_CHARS = 24_000
         private val PERCENT_REGEX = Regex("""(\d{1,3}(?:\.\d+)?)%""")
+        private val WHITESPACE_REGEX = Regex("""\s+""")
     }
 }

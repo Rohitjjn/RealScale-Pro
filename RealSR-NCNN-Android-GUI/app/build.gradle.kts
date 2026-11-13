@@ -12,12 +12,12 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.tumuyan.ncnn.realsr"
+        applicationId = "com.realscale.pro"
         minSdk = 24
         // Keep targetSdk = 28 so extracted native CLI binaries in cache/realsr remain executable on Android 10+
         targetSdk = 28
-        versionCode = 53
-        versionName = "2.0.0"
+        versionCode = 54
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,7 +30,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            resValue("string", "app_name", "RealScale Pro Debug")
+            resValue("string", "app_name", "RealScale-Pro")
         }
 
         release {
@@ -100,6 +100,7 @@ ksp {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.documentfile)
     implementation(libs.tukaani.xz)
 
@@ -113,9 +114,14 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material3.window.size)
 
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

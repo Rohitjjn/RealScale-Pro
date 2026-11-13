@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -23,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -34,7 +34,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,17 +52,24 @@ import androidx.compose.ui.unit.sp
 import com.tumuyan.ncnn.realsr.BuildConfig
 import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
 import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
+import com.tumuyan.ncnn.realsr.core.engine.ExternalOpenMode
+import com.tumuyan.ncnn.realsr.core.engine.ImageIntakeManager
 import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
 import com.tumuyan.ncnn.realsr.core.engine.PresetCommandResolver
+import com.tumuyan.ncnn.realsr.core.engine.PresetId
+import com.tumuyan.ncnn.realsr.ui.components.BrandLogoMedallion
 import com.tumuyan.ncnn.realsr.ui.components.EditorialCard
 import com.tumuyan.ncnn.realsr.ui.components.EditorialTopBar
 import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
 import com.tumuyan.ncnn.realsr.ui.components.TerracottaPrimaryButton
+import com.tumuyan.ncnn.realsr.ui.components.formatBytesHuman
 import com.tumuyan.ncnn.realsr.ui.theme.ConsoleMonoFamily
 import com.tumuyan.ncnn.realsr.ui.theme.RealScaleIcons
 import com.tumuyan.ncnn.realsr.ui.theme.RealScaleThemeTokens
 import com.tumuyan.ncnn.realsr.ui.theme.Spacing
 import com.tumuyan.ncnn.realsr.ui.theme.ThemeMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -70,12 +79,18 @@ fun SettingsScreen(
     consoleLog: String,
     discoveredCommandsProvider: () -> List<PresetCommandResolver.DiscoveredCommand>,
     onThemeModeChanged: (ThemeMode) -> Unit,
+    onDefaultPresetChanged: (PresetId?) -> Unit = {},
+    onKeepScreenOnChanged: (Boolean) -> Unit = {},
+    onHapticsChanged: (Boolean) -> Unit = {},
+    onWifiOnlyChanged: (Boolean) -> Unit = {},
+    onExternalOpenModeChanged: (ExternalOpenMode) -> Unit = {},
     onBackendChanged: (ExecutionBackend) -> Unit,
     onTileSizeChanged: (Int) -> Unit,
     onOutputFormatChanged: (OutputFormat) -> Unit,
     onCustomOutputFolderChanged: (Uri?) -> Unit,
     onThreadCountChanged: (String) -> Unit,
     onHideProgramOutputChanged: (Boolean) -> Unit,
+    onClearTempCache: () -> Unit = {},
     onRunFolderBatch: (Uri) -> Unit,
     onRunRawCommand: (String) -> Unit,
     onResetEngineCache: () -> Unit,
@@ -86,6 +101,14 @@ fun SettingsScreen(
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
     var rawCommandText by rememberSaveable { mutableStateOf("./realsr-ncnn -h") }
     var threadInput by rememberSaveable(preferences.threadCount) { mutableStateOf(preferences.threadCount) }
+    var tempCacheBytes by remember { mutableLongStateOf(0L) }
+    var cacheRefreshTick by remember { mutableStateOf(0) }
+
+    LaunchedEffect(cacheRefreshTick) {
+        tempCacheBytes = withContext(Dispatchers.IO) {
+            ImageIntakeManager.measureTemporaryCacheBytes(context)
+        }
+    }
 
     val outputFolderLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -132,7 +155,7 @@ fun SettingsScreen(
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg)
         ) {
-            // Appearance
+            // 1. Appearance
             EditorialCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Appearance",
@@ -158,7 +181,111 @@ fun SettingsScreen(
                 }
             }
 
-            // Output Settings
+            // 2. Defaults & Studio Experience
+            EditorialCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Defaults & Studio",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.ink
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                Text(
+                    text = "Default enhancement preset",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.body
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Choose which preset opens on cold start, or remember whichever preset you used last.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted
+                )
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    listOf<Pair<PresetId?, String>>(
+                        null to "Last used",
+                        PresetId.INSTANT to "Instant",
+                        PresetId.PHOTO to "Photo",
+                        PresetId.ANIME to "Anime & Art",
+                        PresetId.MAXIMUM to "Maximum"
+                    ).forEach { (presetOption, label) ->
+                        ChoiceChipItem(
+                            label = label,
+                            selected = preferences.defaultPresetId == presetOption,
+                            onClick = { onDefaultPresetChanged(presetOption) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(Spacing.md))
+                HorizontalDivider(thickness = 1.dp, color = colors.hairline)
+                Spacer(modifier = Modifier.height(Spacing.sm))
+
+                SettingsSwitchRow(
+                    title = "Keep screen on while enhancing",
+                    subtitle = "Prevent the display from sleeping during foreground upscaling.",
+                    checked = preferences.keepScreenOnDuringEnhance,
+                    onCheckedChange = onKeepScreenOnChanged
+                )
+
+                Spacer(modifier = Modifier.height(Spacing.xs))
+                HorizontalDivider(thickness = 1.dp, color = colors.hairlineSoft)
+                Spacer(modifier = Modifier.height(Spacing.xs))
+
+                SettingsSwitchRow(
+                    title = "Tactile haptics",
+                    subtitle = "Subtle haptic ticks when switching presets, scales, or long-pressing cards.",
+                    checked = preferences.hapticsEnabled,
+                    onCheckedChange = onHapticsChanged
+                )
+            }
+
+            // 3. System Integration & Downloads
+            EditorialCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "When opened from other apps",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.ink
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Choose how RealScale-Pro responds when you tap Open with on an image in Gallery, Files, or chat apps.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    listOf(
+                        ExternalOpenMode.QUICK_SHEET to "Quick sheet",
+                        ExternalOpenMode.FULL_APP to "Full app"
+                    ).forEach { (mode, label) ->
+                        ChoiceChipItem(
+                            label = label,
+                            selected = preferences.externalOpenMode == mode,
+                            onClick = { onExternalOpenModeChanged(mode) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(Spacing.md))
+                HorizontalDivider(thickness = 1.dp, color = colors.hairline)
+                Spacer(modifier = Modifier.height(Spacing.sm))
+
+                SettingsSwitchRow(
+                    title = "Wi-Fi only model downloads",
+                    subtitle = "Wait for an unmetered Wi-Fi connection before downloading AI models.",
+                    checked = preferences.wifiOnlyDownloads,
+                    onCheckedChange = onWifiOnlyChanged
+                )
+            }
+
+            // 4. Saving & Format
             EditorialCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = "Saving & format",
@@ -220,10 +347,10 @@ fun SettingsScreen(
                 }
             }
 
-            // Performance Settings
+            // 5. Performance & Storage Cache
             EditorialCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Performance",
+                    text = "Performance & storage",
                     style = MaterialTheme.typography.headlineSmall,
                     color = colors.ink
                 )
@@ -289,9 +416,34 @@ fun SettingsScreen(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(Spacing.md))
+                HorizontalDivider(thickness = 1.dp, color = colors.hairline)
+                Spacer(modifier = Modifier.height(Spacing.md))
+
+                Text(
+                    text = "Temporary image cache",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.body
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Currently using ${formatBytesHuman(tempCacheBytes)} for staged inputs. Clearing keeps all downloaded AI models and library creations intact.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                QuietOutlineButton(
+                    text = "Clear temporary cache",
+                    onClick = {
+                        onClearTempCache()
+                        tempCacheBytes = 0L
+                        cacheRefreshTick += 1
+                    }
+                )
             }
 
-            // Collapsible Advanced Section (retains every upstream power-user feature cleanly)
+            // 6. Collapsible Advanced Section
             EditorialCard(
                 modifier = Modifier.fillMaxWidth(),
                 containerColor = colors.surfaceSoft
@@ -329,7 +481,6 @@ fun SettingsScreen(
                     HorizontalDivider(thickness = 1.dp, color = colors.hairline)
                     Spacer(modifier = Modifier.height(Spacing.md))
 
-                    // Folder batch processing
                     Text(
                         text = "Folder batch upscale",
                         style = MaterialTheme.typography.titleSmall,
@@ -349,7 +500,6 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(Spacing.md))
 
-                    // Thread count (-j)
                     Text(
                         text = "Custom NCNN thread profile (-j)",
                         style = MaterialTheme.typography.titleSmall,
@@ -369,39 +519,15 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(Spacing.md))
 
-                    // Hide program output toggle
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .defaultMinSize(minHeight = Spacing.minTouchTarget),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Hide program output",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = colors.ink
-                            )
-                            Text(
-                                text = "Suppress verbose engine stdout lines in the console log",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.muted
-                            )
-                        }
-                        Switch(
-                            checked = preferences.hideProgramOutput,
-                            onCheckedChange = onHideProgramOutputChanged,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = colors.onTerracotta,
-                                checkedTrackColor = colors.terracotta
-                            )
-                        )
-                    }
+                    SettingsSwitchRow(
+                        title = "Hide program output",
+                        subtitle = "Suppress verbose engine stdout lines in the console log",
+                        checked = preferences.hideProgramOutput,
+                        onCheckedChange = onHideProgramOutputChanged
+                    )
 
                     Spacer(modifier = Modifier.height(Spacing.md))
 
-                    // Custom command & diagnostics
                     Text(
                         text = "Engine command & diagnostics (${discovered.size} presets indexed)",
                         style = MaterialTheme.typography.titleSmall,
@@ -491,20 +617,32 @@ fun SettingsScreen(
                 }
             }
 
-            // About & Upstream Open-Source Credits
+            // 7. About & Upstream Open-Source Credits
             EditorialCard(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "About RealScale Pro",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = colors.ink
-                )
-                Spacer(modifier = Modifier.height(Spacing.xs))
-                Text(
-                    text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · 100% On-Device & Offline-First",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = colors.body
-                )
-                Spacer(modifier = Modifier.height(Spacing.xs))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BrandLogoMedallion(
+                        size = 56.dp,
+                        contentDescription = "RealScale-Pro logo"
+                    )
+                    Spacer(modifier = Modifier.width(Spacing.md))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "About RealScale-Pro",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = colors.ink
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · On-Device Image Upscaling",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = colors.body
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = "Zero analytics, zero accounts, zero ads, and zero cloud uploads. Network access is used exclusively when you download models from Model Hub.",
                     style = MaterialTheme.typography.bodySmall,
@@ -514,13 +652,13 @@ fun SettingsScreen(
                 HorizontalDivider(thickness = 1.dp, color = colors.hairline)
                 Spacer(modifier = Modifier.height(Spacing.md))
                 Text(
-                    text = "Upstream Credits & License (BSD 3-Clause)",
+                    text = "Upstream Credits & License (MIT / BSD)",
                     style = MaterialTheme.typography.titleSmall,
                     color = colors.ink
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Built upon RealSR-NCNN-Android by tumuyan (BSD 3-Clause), Tencent NCNN & realsr/waifu2x/realcugan/srmd-ncnn-vulkan by nihui (MIT / BSD), Alibaba MNN (Apache-2.0), Anime4KCPP by TianZerL, and ImageMagick.",
+                    text = "Built upon RealSR-NCNN-Android by tumuyan (MIT), Tencent NCNN & realsr/waifu2x/realcugan/srmd-ncnn-vulkan by nihui (MIT / BSD), Alibaba MNN (Apache-2.0), Anime4KCPP by TianZerL, and ImageMagick.",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.muted
                 )
@@ -528,6 +666,47 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(Spacing.xl))
         }
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val colors = RealScaleThemeTokens.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = Spacing.minTouchTarget),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = Spacing.sm)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.ink
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.muted
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = colors.onTerracotta,
+                checkedTrackColor = colors.terracotta,
+                uncheckedThumbColor = colors.muted,
+                uncheckedTrackColor = colors.surfaceCard,
+                uncheckedBorderColor = colors.hairline
+            )
+        )
     }
 }
 

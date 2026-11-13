@@ -105,7 +105,7 @@ jobs:
 
       - name: Verify APK size (<= 30 MB) and zero bundled AI models
         run: |
-          echo "### RealScale Pro APK Size & Asset Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "### RealScale-Pro APK Size & Asset Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "| Variant | File | Size (MiB) | Size (Bytes) | Bundled AI Models |" >> "$GITHUB_STEP_SUMMARY"
           echo "| --- | --- | --- | --- | --- |" >> "$GITHUB_STEP_SUMMARY"
 
@@ -159,7 +159,7 @@ jobs:
           cp "$RELEASE_APK" "$OUT_APK"
           sha256sum "$OUT_APK" > "${OUT_APK}.sha256"
           gh release view "$TAG_NAME" >/dev/null 2>&1 || gh release create "$TAG_NAME" \
-            --title "RealScale Pro ${TAG_NAME}" \
+            --title "RealScale-Pro ${TAG_NAME}" \
             --generate-notes
           gh release upload "$TAG_NAME" "$OUT_APK" "${OUT_APK}.sha256" --clobber
 
@@ -268,8 +268,12 @@ jobs:
 
           adb shell am instrument -w -r \
             -e class com.tumuyan.ncnn.realsr.RealScaleSmokeInstrumentedTest \
-            com.tumuyan.ncnn.realsr.debug.test/androidx.test.runner.AndroidJUnitRunner > /tmp/instrument.log 2>&1 || true
+            com.realscale.pro.debug.test/androidx.test.runner.AndroidJUnitRunner > /tmp/instrument.log 2>&1 || true
           cat /tmp/instrument.log
+
+          mkdir -p visual-screenshots
+          adb pull /sdcard/Android/data/com.realscale.pro.debug/cache/screenshots/. visual-screenshots/ || true
+          ls -lh visual-screenshots/ || true
 
           LOGCAT_CRASH=$(adb logcat -d -b crash 2>/dev/null | tail -n 35 || true)
           adb emu kill || kill "$EMU_PID" 2>/dev/null || true
@@ -282,3 +286,12 @@ jobs:
           fi
           SUMMARY=$(grep "OK (" /tmp/instrument.log | tr -d '\r')
           echo "::notice title=InstrumentationPassed::Emulator smoke tests passed: ${SUMMARY}"
+
+      - name: Upload Emulator Visual Verification Screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: realscale-visual-screenshots
+          path: visual-screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 14

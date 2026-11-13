@@ -1,17 +1,14 @@
 package com.tumuyan.ncnn.realsr
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.tumuyan.ncnn.realsr.ui.RealScaleApp
 import com.tumuyan.ncnn.realsr.ui.RealScaleViewModel
 
@@ -21,17 +18,13 @@ class MainActivity : ComponentActivity() {
         RealScaleViewModel.Factory(application)
     }
 
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* Foreground upscaling continues regardless of notification permission */ }
-
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        requestNotificationPermissionIfNeeded()
         if (savedInstanceState == null) {
-            consumeIncomingShareIntent(intent)
+            consumeIncomingIntent(intent)
         }
 
         setContent {
@@ -42,22 +35,42 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        consumeIncomingShareIntent(intent)
+        consumeIncomingIntent(intent)
     }
 
-    private fun consumeIncomingShareIntent(incoming: Intent?) {
+    private fun consumeIncomingIntent(incoming: Intent?) {
         if (incoming == null) return
+
+        if (incoming.getBooleanExtra(EXTRA_OPEN_PHOTO_PICKER, false)) {
+            incoming.removeExtra(EXTRA_OPEN_PHOTO_PICKER)
+            viewModel.requestOpenPhotoPicker()
+            return
+        }
+
+        val creationId = incoming.getLongExtra(ProcessingService.EXTRA_OPEN_CREATION_ID, -1L)
+        if (creationId > 0L) {
+            incoming.removeExtra(ProcessingService.EXTRA_OPEN_CREATION_ID)
+            viewModel.openCreationById(creationId)
+            return
+        }
+
         when (incoming.action) {
+            Intent.ACTION_VIEW -> {
+                val dataUri = incoming.data
+                if (dataUri != null && dataUri.scheme != "realscale") {
+                    viewModel.onExternalPhotosReceived(listOf(dataUri))
+                }
+            }
             Intent.ACTION_SEND -> {
-                val single = extractParcelableUri(incoming)
+                val single = extractParcelableUri(incoming) ?: incoming.data
                 if (single != null) {
-                    viewModel.onPhotosSelected(listOf(single))
+                    viewModel.onExternalPhotosReceived(listOf(single))
                 }
             }
             Intent.ACTION_SEND_MULTIPLE -> {
                 val list = extractParcelableUriList(incoming)
                 if (list.isNotEmpty()) {
-                    viewModel.onPhotosSelected(list)
+                    viewModel.onExternalPhotosReceived(list)
                 }
             }
         }
@@ -81,15 +94,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val granted = ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
+    companion object {
+        const val EXTRA_OPEN_PHOTO_PICKER = "com.tumuyan.ncnn.realsr.EXTRA_OPEN_PHOTO_PICKER"
     }
 }

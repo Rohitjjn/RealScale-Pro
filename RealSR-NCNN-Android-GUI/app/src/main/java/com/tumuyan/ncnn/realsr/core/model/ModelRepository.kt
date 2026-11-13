@@ -85,7 +85,10 @@ class ModelRepository(
 
     val totalInstalledBytes: Flow<Long> = downloadedModelDao.observeTotalInstalledBytes()
 
-    suspend fun startOrResumeDownload(modelId: String) = withContext(ioDispatcher) {
+    suspend fun startOrResumeDownload(
+        modelId: String,
+        wifiOnly: Boolean = false
+    ) = withContext(ioDispatcher) {
         val item = manifestFlow.value.models.firstOrNull { it.id == modelId } ?: return@withContext
         val existing = downloadedModelDao.getById(modelId)
         val preservedBytes = if (existing?.status == ModelInstallStatus.PAUSED || existing?.status == ModelInstallStatus.FAILED) {
@@ -113,8 +116,9 @@ class ModelRepository(
             )
         )
 
+        val requiredNetwork = if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiredNetworkType(requiredNetwork)
             .build()
 
         val request = OneTimeWorkRequestBuilder<ModelDownloadWorker>()

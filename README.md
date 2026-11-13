@@ -1,65 +1,80 @@
-# RealScale Pro
+# RealScale-Pro
 
-**Private, offline-first AI photo upscaler for Android — rebuilt in Jetpack Compose with an 18.5 MB APK and an on-demand Model Hub.**
+**Private, offline-first AI photo upscaler for Android — rebuilt in Jetpack Compose with a ~20.2 MB APK, instant Open-with Quick Sheet, and an on-demand SHA-256 verified Model Hub.**
 
-RealScale Pro modernizes [`tumuyan/RealSR-NCNN-Android`](https://github.com/tumuyan/RealSR-NCNN-Android) (`v1.13.2`) into a calm, warm editorial Android app anyone can use in three taps — while keeping every native NCNN / MNN / Vulkan / OpenCL upscaling engine 100% intact under the hood.
+RealScale-Pro (`v2.1.0`, `com.realscale.pro`) modernizes [`tumuyan/RealSR-NCNN-Android`](https://github.com/tumuyan/RealSR-NCNN-Android) (`v1.13.2`) into a calm, warm editorial Android experience anyone can use in three taps — while keeping every native NCNN / MNN / Vulkan / OpenCL upscaling engine 100% intact under the hood.
 
 ---
 
-## Highlights
+## What's New in v2.1.0
 
-- **96% smaller install (`~475 MB` → `18.54 MiB` release APK)**
-  Zero AI model weights are bundled inside the APK. All 19 unmodified native CLI executables and shared libraries (`realsr-ncnn`, `realcugan-ncnn`, `waifu2x-ncnn`, `srmd-ncnn`, `mnnsr-ncnn`, `resize-ncnn`, `Anime4k`, `magick`, plus NCNN/MNN/OpenMP `.so` runtimes) are solid-packed into `binaries.tar.xz` (`16.63 MiB`) and unpacked once on first launch.
-- **3-Tap Photo Enhancement**
-  1. **Choose a photo** (single, multi-photo batch up to 20 images, or `Share` directly from any Gallery app).
-  2. **Pick a style** — **Instant** (`avir-lancir` sinc Lanczos, works immediately offline with zero downloads), **Photo** (`RealESRGAN General v3`, `2.3 MB`), **Anime & Art** (`Waifu2x UpConv-7`, `5.3 MB`), or **Maximum** (`DF2K`, `32.0 MB`).
-  3. **Tap Upscale** — runs inside a foreground `ProcessingService` with live percentage, ETA, and safe background execution.
-- **Interactive Before / After Split Comparison**
-  Synchronized pinch-to-zoom (`1×`–`8×`), pan, and draggable vertical split handle on the Result screen, with one-tap **Save** (`Pictures/RealScale-Pro` or custom SAF folder) and **Share**.
-- **Resumable On-Demand Model Hub**
-  14 curated real models hosted on [`huggingface.co/tumuyan2/realsr-models`](https://huggingface.co/tumuyan2/realsr-models), downloaded via `WorkManager` with HTTP `Range` resume support (`206 Partial Content`), atomic `.part` staging, and strict **SHA-256 verification** before activation. Once downloaded, models run 100% offline.
-- **Warm Editorial Design System**
-  Built in Jetpack Compose + Material 3 following Claude's warm editorial palette (`#FAF9F5` parchment canvas, `#EFE9DE` surface cards, `#141413` ink, `#CC785C` terracotta primary CTAs, `#181715` warm obsidian dark mode, weight-400 serif display headers, humanist sans body, and `1px` hairline borders without drop-shadow clutter).
-- **Full Power-User Compatibility**
-  GPU (Vulkan / OpenCL) vs CPU toggle, tile size presets (`Auto`, `64`, `128`, `256`, `512`), lossless PNG / WebP / JPG output, SAF folder batch upscaling, thread count (`l:p:s`), and raw CLI command execution with live monospace console output.
+- **Brand Identity & Adaptive Icon Suite**
+  - Official RealScale-Pro eagle medallion across adaptive (`ic_launcher_foreground` + `#BD4707` terracotta field), Android 13+ `<monochrome>` themed icon, legacy square/round mipmaps, Android 12+ `SplashScreen`, status-bar silhouette (`ic_stat_realscale`), empty states, and About screen.
+  - Application ID finalized as `com.realscale.pro` (`com.realscale.pro.debug` for debug builds).
+- **System-Wide `"Open with"` & `"Share to"` Quick Upscale Sheet**
+  - Registers both `ACTION_VIEW` (`Open with` / `Edit with` from Gallery & Files) and `ACTION_SEND` / `ACTION_SEND_MULTIPLE` (`Share`).
+  - Opens a translucent `QuickUpscaleActivity` bottom sheet directly over the source app with live resolution preview, `2×`/`4×` toggle, preset chips, `"Enhance"`, and `"Open in RealScale-Pro"`. Configurable in Settings (`Quick sheet` vs `Full app`).
+- **Sequential Engine Queue & Rich Notifications**
+  - Sequential job queue (`1` active GPU/Vulkan job + queued batch items `"2 of 5"` with per-item cancel) preventing simultaneous Vulkan OOM crashes.
+  - Silent ongoing foreground progress notification with live percentage, ETA, and **Cancel** action, plus a `BigPictureStyle` completion notification with **Share** and **Open** deep-link actions.
+- **Honest Stages, Pre-Flight Guardrails & OOM-Safe Tile Split Viewer**
+  - Human-readable stages (**Preparing** → **Enhancing** → **Saving**) with rolling-average ETA when determinate percentages arrive and elapsed timer otherwise — zero raw CLI stderr leaked to users.
+  - Pre-flight megapixel, output dimension (`16,384 px` ceiling), and storage checks with one-tap remedies (`Switch to 2×`, `Safe tile size 128`, `Use CPU`).
+  - Dual-layer `BeforeAfterSplitView` combining a downsampled base preview with viewport-cropped `BitmapRegionDecoder` tiles at zoom `> 1.5×`, tap-and-hold original peek, and double-tap `100%` toggle.
+- **Fast `"Preview"` Crop Comparison Sheet**
+  - Extracts the sharpest `224×224` high-detail patch via 3×3 gradient-energy scoring and upscales just that patch in ~1–2 seconds inside a `ModalBottomSheet` before committing to a full-image upscale.
+- **Studio, Dedicated Library & Scalable Model Hub**
+  - **Studio**: Single editorial drop-zone card, content-aware `"Suggested for this photo"` heuristic (`Photo` vs `Anime & Art`), stacked batch strip, and sticky CTA bar with live output resolution and estimated duration.
+  - **Library**: Dedicated 3-tab destination (`Studio` · `Library` · `Models`) with search, sort, multi-select **Share / Compare / Delete**, and full metadata.
+  - **Model Hub**: Storage summary header, 2-model **Starter Pack**, `Installed` vs `Available` sections, debounced search, sort (`Recommended`, `Fastest`, `Smallest`, `Best quality`, `Name`), counted filter chips, Wi-Fi-only toggle, and global download banner.
+- **Home-Screen Widgets, Tablet Layout, Hindi Localization & Baseline Profile**
+  - Jetpack Glance `1.2.0` **Small** (`Enhance a photo`) and **Medium** (`Recent creations`) home-screen widgets.
+  - `WindowWidthSizeClass` responsive navigation rail and two-pane Studio layout on tablets, foldables, and landscape (`>= 600dp`).
+  - Complete English + **Hindi (`हिन्दी`, `values-hi`)** UI localizations with Devanagari-safe `includeFontPadding` and expanded line heights.
+  - Bundled ART **Baseline Profile** (`baseline-prof.txt` + `androidx.profileinstaller:1.4.1`) for fast cold start and jank-free scrolling.
 
 ---
 
 ## APK Size Comparison
 
-| Build | Upstream `1.13.2` | RealScale Pro `2.0.0` |
+| Build | Upstream `1.13.2` | RealScale-Pro `2.1.0` |
 | --- | --- | --- |
-| **Release APK (`arm64-v8a`)** | `~475 MB` | **`18.54 MiB`** (`19,436,217` bytes) |
-| **Debug APK** | `~480 MB` | **`29.87 MiB`** (`31,325,047` bytes) |
-| **Bundled AI Model Weights** | `~440 MB` (`models-*`) | **`0 bytes`** (downloaded on demand) |
+| **Release APK (`arm64-v8a`)** | `~475 MB` | **`20.21 MiB`** (`21,195,286` bytes) |
+| **Debug APK** | `~480 MB` | **`32.85 MiB`** (`34,440,564` bytes) |
+| **Bundled AI Model Weights** | `~440 MB` (`models-*`) | **`0 bytes`** (downloaded on demand, SHA-256 verified) |
 | **Bundled Native CLI Engines** | All 8 CLI tools | **All 8 CLI tools** (100% unmodified) |
 
 ---
 
 ## Architecture
 
-RealScale Pro lives in `RealSR-NCNN-Android-GUI/` (`RealSR-NCNN-Android-CLI/` remains untouched upstream C++/JNI reference source):
+RealScale-Pro lives in `RealSR-NCNN-Android-GUI/` (`RealSR-NCNN-Android-CLI/` remains untouched upstream C++/JNI reference source):
 
 ```text
-com.tumuyan.ncnn.realsr
-├── MainActivity.kt                  # Single-activity Compose host + ACTION_SEND / SEND_MULTIPLE intake
+com.tumuyan.ncnn.realsr (applicationId: com.realscale.pro)
+├── MainActivity.kt                  # Single-activity Compose host + SplashScreen + share/widget/deep-link routing
+├── QuickUpscaleActivity.kt          # Translucent "Open with" / "Share" quick upscale bottom-sheet activity
+├── widget/
+│   └── RealScaleWidgets.kt          # Jetpack Glance 1.2.0 Small ("Enhance") & Medium ("Recent creations") widgets
 ├── core/
 │   ├── database/                    # Room 2.8 (RecentCreationEntity, DownloadedModelEntity, DAOs)
-│   ├── engine/                      # StateFlow UpscaleEngine facade over ProcessingService + binaries.tar.xz extractor
-│   └── model/                       # Bundled 14-model manifest, HTTP Range ResumableModelInstaller, WorkManager worker
+│   ├── engine/                      # StateFlow UpscaleEngine, EngineJobQueue, PreflightAnalyzer, EngineProgressParser,
+│   │                                # ImageContentClassifier, CropPreviewEngine, PresetCommandResolver, binaries.tar.xz extractor
+│   └── model/                       # 14-model HuggingFace manifest, ModelHubQueryEngine, HTTP Range ResumableModelInstaller
 ├── ui/
-│   ├── theme/                       # Warm editorial colors, serif/sans/mono type scale, 1px hairline shapes, vector icons
-│   ├── components/                  # EditorialCard, TerracottaPrimaryButton, synchronized zoom/pan BeforeAfterSplitView
-│   ├── screens/                     # StudioScreen, ProcessingScreen, ResultScreen, ModelHubScreen, SettingsScreen
-│   ├── MediaExportHelper.kt         # MediaStore Pictures/RealScale-Pro, SAF DocumentFile export, FileProvider share
-│   └── RealScaleViewModel.kt        # Unidirectional StateFlow<RealScaleUiState> ViewModel
-└── [Upstream Java Engine]           # Unmodified ProcessingService, ImageProcessor, CommandBuilder, CommandListManager,
-                                     # AssetsCopyer, ProgressLogHelper, GifUntils, PreprocessToPng, UriUntils, ShellUtils
+│   ├── theme/                       # Claude Warm Editorial palette (#FAF9F5 / #181715 / #CC785C), Devanagari-safe typography
+│   ├── components/                  # AdaptiveLayout (SideRail/TwoPane), OomSafeImageDecoders, BeforeAfterSplitView, CropPreviewSheet
+│   ├── screens/                     # StudioScreen, LibraryScreen, ProcessingScreen, ResultScreen, ModelHubScreen,
+│   │                                # SettingsScreen, QuickUpscaleSheet
+│   ├── MediaExportHelper.kt         # MediaStore Pictures/RealScale-Pro/<name>_x2/_x4, format conversion, FileProvider share
+│   └── RealScaleViewModel.kt        # SavedStateHandle + StateFlow<RealScaleUiState> ViewModel
+└── [Upstream Java Engine]           # ProcessingService (3 notification channels + Cancel/Share/Open actions), ImageProcessor,
+                                     # CommandBuilder, CommandListManager, AssetsCopyer, ProgressLogHelper, GifUntils, ShellUtils
 ```
 
 ### Key Technical Notes
-- **Android SDK Levels**: `compileSdk = 37`, `minSdk = 24` (Android 7.0+), `targetSdk = 28` (intentionally preserved so native CLI binaries extracted into `<cacheDir>/realsr` retain `execve()` execution privileges under Android 10+ SELinux policies).
-- **Toolchain**: Gradle `9.8.1`, Android Gradle Plugin `9.4.1`, Kotlin `2.4.21`, KSP `2.3.12`, Compose BOM `2026.09.00`, Room `2.8.5`, WorkManager `2.12.0`, Coil `3.6.3`, `org.tukaani:xz:1.12`.
+- **Android SDK Levels**: `compileSdk = 37`, `minSdk = 24` (Android 7.0+), `targetSdk = 28` (preserved so native CLI binaries extracted into `<cacheDir>/realsr` retain `execve()` execution privileges under Android 10+ SELinux policies).
+- **Toolchain**: Gradle `9.8.1`, Android Gradle Plugin `9.4.1`, Kotlin `2.4.21`, KSP `2.3.12`, Compose BOM `2026.09.00`, Glance `1.2.0`, ProfileInstaller `1.4.1`, Room `2.8.5`, WorkManager `2.12.0`, Coil `3.6.3`, `org.tukaani:xz:1.12`.
 
 ---
 
@@ -70,23 +85,21 @@ Prerequisites: **JDK 21** and Android SDK (`ANDROID_HOME` set).
 ```bash
 cd RealSR-NCNN-Android-GUI
 
-# Run unit + Robolectric tests (command parity, Room DAOs, SHA-256 resumable installer, ViewModel)
+# Run unit + Robolectric tests (CLI parity, queue, pre-flight, progress parser, classifier, Hub query, CropPreview, Hindi strings, ViewModel)
 ./gradlew testDebugUnitTest
 
-# Assemble slim debug & R8-minified release APKs
+# Assemble slim debug & R8-minified release APKs (with ART Baseline Profile)
 ./gradlew assembleDebug assembleRelease
 
-# Run Compose instrumentation smoke tests on a connected device or emulator
+# Run Compose instrumentation smoke & visual verification tests on a connected device or emulator
 ./gradlew connectedDebugAndroidTest
 ```
-
-> **CI Note**: `.github/workflows/build-apk.yml` automatically fetches upstream `1.13.2` native binaries, strips all `models-*` directories, packs the 19 native binaries/libraries into `assets/realsr/binaries.tar.xz`, enforces `release APK <= 30 MB` and zero bundled `.bin`/`.param`/`.mnn` model files, runs unit tests, and executes `RealScaleSmokeInstrumentedTest` on an Android emulator. Pushing a `v*` tag automatically publishes a GitHub Release with `RealScale-Pro-<tag>-arm64.apk` and its `.sha256` checksum.
 
 ---
 
 ## Credits & License
 
-RealScale Pro is released under the **MIT License** (see [`LICENSE`](LICENSE)) and builds directly upon the open-source work of:
+RealScale-Pro is released under the **MIT License** (see [`LICENSE`](LICENSE)) and builds directly upon the open-source work of:
 
 - **[tumuyan/RealSR-NCNN-Android](https://github.com/tumuyan/RealSR-NCNN-Android)** & **[tumuyan2/realsr-models](https://huggingface.co/tumuyan2/realsr-models)** — Android CLI integration, `ProcessingService` / `ImageProcessor` runtime, and converted NCNN/MNN model repository by **tumuyan**.
 - **[nihui](https://github.com/nihui)** — [`ncnn`](https://github.com/Tencent/ncnn), [`realsr-ncnn-vulkan`](https://github.com/nihui/realsr-ncnn-vulkan), [`waifu2x-ncnn-vulkan`](https://github.com/nihui/waifu2x-ncnn-vulkan), [`srmd-ncnn-vulkan`](https://github.com/nihui/srmd-ncnn-vulkan), and [`realcugan-ncnn-vulkan`](https://github.com/nihui/realcugan-ncnn-vulkan).
