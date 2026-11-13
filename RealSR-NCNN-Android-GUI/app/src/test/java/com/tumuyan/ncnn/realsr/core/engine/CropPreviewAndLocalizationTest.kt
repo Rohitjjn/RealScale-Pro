@@ -1,12 +1,13 @@
 package com.tumuyan.ncnn.realsr.core.engine
 
 import android.app.Application
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.tumuyan.ncnn.realsr.R
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -15,6 +16,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -47,7 +49,7 @@ class CropPreviewAndLocalizationTest {
     }
 
     @Test
-    fun generateCropPreviewProducesScaledOutputFile() = runTest {
+    fun generateCropPreviewProducesScaledOutputFile() = runBlocking {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val inputFile = File(app.cacheDir, "preview_src.png")
         val src = Bitmap.createBitmap(120, 90, Bitmap.Config.ARGB_8888)
@@ -71,9 +73,12 @@ class CropPreviewAndLocalizationTest {
     }
 
     @Test
-    @Config(sdk = [28], qualifiers = "hi")
     fun hindiStringResourcesResolveCleanDevanagariTranslations() {
-        val app = ApplicationProvider.getApplicationContext<Application>()
+        val base = ApplicationProvider.getApplicationContext<Application>()
+        val hiConfig = Configuration(base.resources.configuration).apply {
+            setLocale(Locale.forLanguageTag("hi"))
+        }
+        val app = base.createConfigurationContext(hiConfig)
         assertEquals("स्टूडियो", app.getString(R.string.ui_nav_studio))
         assertEquals("लाइब्रेरी", app.getString(R.string.ui_nav_library))
         assertEquals("मॉडल्स", app.getString(R.string.ui_nav_models))

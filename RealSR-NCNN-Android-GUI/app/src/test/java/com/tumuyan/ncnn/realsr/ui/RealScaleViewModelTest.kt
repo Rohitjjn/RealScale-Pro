@@ -92,7 +92,7 @@ class RealScaleViewModelTest {
     @After
     fun tearDown() {
         db.close()
-        Dispatchers.resetMain()
+        runCatching { Dispatchers.resetMain() }
     }
 
     @Test
