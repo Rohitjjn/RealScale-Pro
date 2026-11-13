@@ -110,13 +110,10 @@ fun RealScaleApp(
                         onPresetSelected = viewModel::selectPreset,
                         onScaleSelected = viewModel::selectScale,
                         onModelOverrideSelected = viewModel::selectModelOverride,
-                        onStartUpscale = {
-                            if (viewModel.startPrimaryUpscale()) {
-                                navController.navigate(Routes.PROCESSING) {
-                                    launchSingleTop = true
-                                }
-                            }
-                        },
+                        onStartUpscale = viewModel::requestPrimaryUpscale,
+                        onApplyPreflightMitigation = viewModel::applyPreflightMitigation,
+                        onConfirmPreflightProceedAnyway = viewModel::confirmPreflightProceedAnyway,
+                        onDismissPreflightAdvisory = viewModel::dismissPreflightAdvisory,
                         onQuickDownloadModel = viewModel::downloadOrResumeModel,
                         onOpenModelHub = {
                             navController.navigate(Routes.MODEL_HUB) { launchSingleTop = true }
@@ -138,6 +135,9 @@ fun RealScaleApp(
                         queue = state.queue,
                         onCancel = viewModel::cancelProcessing,
                         onCancelQueuedItem = viewModel::cancelQueuedItem,
+                        onApplyRecovery = { action ->
+                            viewModel.applyErrorRecovery(action)
+                        },
                         onRunInBackground = {
                             viewModel.enableBackgroundCompletionNotification()
                             (context as? Activity)?.moveTaskToBack(true)

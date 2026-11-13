@@ -43,7 +43,10 @@ import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
 import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
+import com.tumuyan.ncnn.realsr.core.engine.PreflightMitigation
+import com.tumuyan.ncnn.realsr.core.engine.PreflightVerdict
 import com.tumuyan.ncnn.realsr.core.engine.QueuedJobItem
+import com.tumuyan.ncnn.realsr.core.engine.RecoveryAction
 import com.tumuyan.ncnn.realsr.core.engine.StagedInputPhoto
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
@@ -54,6 +57,7 @@ import com.tumuyan.ncnn.realsr.ui.components.EditorialCard
 import com.tumuyan.ncnn.realsr.ui.components.EditorialOverline
 import com.tumuyan.ncnn.realsr.ui.components.HairlineProgressBar
 import com.tumuyan.ncnn.realsr.ui.components.IndeterminateHairlineBar
+import com.tumuyan.ncnn.realsr.ui.components.PreflightAdvisoryDialog
 import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
 import com.tumuyan.ncnn.realsr.ui.components.TerracottaPrimaryButton
 import com.tumuyan.ncnn.realsr.ui.components.formatDurationHuman
@@ -77,10 +81,15 @@ fun QuickUpscaleSheet(
     completedCreation: RecentCreationEntity?,
     savedConfirmationMessage: String?,
     showNotificationRationale: Boolean,
+    preflightAdvisory: PreflightVerdict.Advisory? = null,
     onSelectPreset: (UpscalePreset) -> Unit,
     onSelectScale: (Int) -> Unit,
     onDownloadModel: (String) -> Unit,
     onEnhance: () -> Unit,
+    onApplyPreflightMitigation: (PreflightMitigation) -> Unit = {},
+    onConfirmPreflightProceedAnyway: () -> Unit = {},
+    onDismissPreflightAdvisory: () -> Unit = {},
+    onApplyRecovery: (RecoveryAction) -> Unit = {},
     onRunInBackground: () -> Unit,
     onConfirmNotificationPermissionAndBackground: () -> Unit,
     onSkipNotificationPermissionAndBackground: () -> Unit,
@@ -94,6 +103,15 @@ fun QuickUpscaleSheet(
     val colors = RealScaleThemeTokens.colors
     val context = LocalContext.current
     val isRunning = engineState is EngineState.Preparing || engineState is EngineState.Running
+
+    preflightAdvisory?.let { advisory ->
+        PreflightAdvisoryDialog(
+            advisory = advisory,
+            onApplyMitigation = onApplyPreflightMitigation,
+            onProceedAnyway = onConfirmPreflightProceedAnyway,
+            onDismiss = onDismissPreflightAdvisory
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -440,7 +458,7 @@ fun QuickUpscaleSheet(
                     return@Column
                 }
 
-                // Error state inside sheet
+                // Error state inside sheet with one-tap recovery actions
                 if (engineState is EngineState.Failed) {
                     EditorialCard(
                         modifier = Modifier.fillMaxWidth(),
@@ -458,6 +476,26 @@ fun QuickUpscaleSheet(
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.body
                         )
+                        if (engineState.recoveryActions.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(Spacing.sm))
+                            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                                engineState.recoveryActions.forEachIndexed { idx, action ->
+                                    if (idx == 0) {
+                                        TerracottaPrimaryButton(
+                                            text = action.label,
+                                            onClick = { onApplyRecovery(action) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    } else {
+                                        QuietOutlineButton(
+                                            text = action.label,
+                                            onClick = { onApplyRecovery(action) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                     Spacer(modifier = Modifier.height(Spacing.sm))
                 }

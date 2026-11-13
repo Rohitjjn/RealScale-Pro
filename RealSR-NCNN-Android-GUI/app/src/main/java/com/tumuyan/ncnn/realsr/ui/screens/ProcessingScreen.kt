@@ -43,6 +43,7 @@ import coil3.compose.AsyncImage
 import com.tumuyan.ncnn.realsr.QuickUpscaleActivity
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
 import com.tumuyan.ncnn.realsr.core.engine.QueuedJobItem
+import com.tumuyan.ncnn.realsr.core.engine.RecoveryAction
 import com.tumuyan.ncnn.realsr.ui.components.EditorialCard
 import com.tumuyan.ncnn.realsr.ui.components.EditorialOverline
 import com.tumuyan.ncnn.realsr.ui.components.HairlineProgressBar
@@ -61,6 +62,7 @@ fun ProcessingScreen(
     queue: List<QueuedJobItem> = emptyList(),
     onCancel: () -> Unit,
     onCancelQueuedItem: (String) -> Unit = {},
+    onApplyRecovery: (RecoveryAction) -> Unit = {},
     onRunInBackground: () -> Unit = {},
     onBackToStudio: () -> Unit,
     onOpenSettings: () -> Unit
@@ -359,11 +361,34 @@ fun ProcessingScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
-                    TerracottaPrimaryButton(
-                        text = "Back to Studio",
-                        onClick = onBackToStudio,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    engineState.recoveryActions.forEachIndexed { idx, action ->
+                        if (idx == 0) {
+                            TerracottaPrimaryButton(
+                                text = action.label,
+                                onClick = { onApplyRecovery(action) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        } else {
+                            QuietOutlineButton(
+                                text = action.label,
+                                onClick = { onApplyRecovery(action) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                    if (engineState.recoveryActions.isEmpty()) {
+                        TerracottaPrimaryButton(
+                            text = "Back to Studio",
+                            onClick = onBackToStudio,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        QuietOutlineButton(
+                            text = "Back to Studio",
+                            onClick = onBackToStudio,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     QuietOutlineButton(
                         text = "Open Settings",
                         leadingIcon = RealScaleIcons.Settings,

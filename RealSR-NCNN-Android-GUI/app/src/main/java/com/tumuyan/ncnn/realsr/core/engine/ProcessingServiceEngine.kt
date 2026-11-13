@@ -276,6 +276,38 @@ class ProcessingServiceEngine(
         jobQueue.enableSessionCompletionNotification()
     }
 
+    override fun retryWithRecovery(action: RecoveryAction): Boolean {
+        val failed = _state.value as? EngineState.Failed ?: return false
+        val baseReq = failed.failedRequest ?: return false
+        return when (action) {
+            RecoveryAction.RETRY_ON_CPU -> {
+                updatePreferences { it.copy(backend = ExecutionBackend.CPU) }
+                startUpscale(baseReq)
+                true
+            }
+            RecoveryAction.SMALLER_TILE_SIZE -> {
+                updatePreferences { it.copy(tileSize = 64) }
+                startUpscale(baseReq)
+                true
+            }
+            RecoveryAction.TRY_INSTANT -> {
+                val instantScale = if (baseReq.scale in UpscalePreset.INSTANT.supportedScales) {
+                    baseReq.scale
+                } else {
+                    UpscalePreset.INSTANT.defaultScale
+                }
+                startUpscale(
+                    baseReq.copy(
+                        preset = UpscalePreset.INSTANT,
+                        scale = instantScale,
+                        modelSpec = null
+                    )
+                )
+                true
+            }
+        }
+    }
+
     override fun cancel() {
         jobQueue.clearAll()
         refreshQueueSnapshot()
@@ -320,7 +352,7 @@ class ProcessingServiceEngine(
         val sessionId = UUID.randomUUID().toString().take(8)
         val sessionStartMs = System.currentTimeMillis()
         val sessionCreations = mutableListOf<RecentCreationEntity>()
-        var lastError: Pair<String, String>? = null
+        var lastFailureState: EngineState.Failed? = null
 
         try {
             _state.value = EngineState.Preparing("Preparing photo…")
@@ -379,7 +411,12 @@ class ProcessingServiceEngine(
                         service = service
                     )
                 } catch (e: UnsupportedImageFormatException) {
-                    lastError = (e.message ?: "Unsupported image format.") to e.stackTraceToString()
+                    lastFailureState = EngineState.Failed(
+                        userMessage = e.message ?: "Unsupported image format.",
+                        technicalOutput = e.stackTraceToString(),
+                        recoveryActions = emptyList(),
+                        failedRequest = null
+                    )
                     jobQueue.markActiveFinished()
                     refreshQueueSnapshot()
                     continue
@@ -456,7 +493,8 @@ class ProcessingServiceEngine(
                         if (!prefs.hideProgramOutput) {
                             appendLog(line)
                         }
-                        val filePct = parsePercentage(line)
+                        val parsed = EngineProgressParser.parseLine(line)
+                        val filePct = parsed?.fraction
                         if (filePct != null && filePct > 0f) {
                             val now = System.currentTimeMillis()
                             val prevSample = lastPctSample
@@ -470,8 +508,14 @@ class ProcessingServiceEngine(
 
                             val overallFraction = (((pos - 1).toFloat() + filePct) / total.toFloat()).coerceIn(0f, 0.99f)
                             val remainingItemsFraction = (total - pos).toFloat() + (1f - filePct)
-                            val etaMs = smoothedRatePctPerMs?.takeIf { it > 1e-7 }?.let { rate ->
+                            val velocityEtaMs = smoothedRatePctPerMs?.takeIf { it > 1e-7 }?.let { rate ->
                                 (remainingItemsFraction / rate).toLong().coerceAtLeast(500L)
+                            }
+                            val etaMs = when {
+                                parsed.nativeEtaMillis != null && total == 1 -> parsed.nativeEtaMillis.coerceAtLeast(500L)
+                                parsed.nativeEtaMillis != null && velocityEtaMs != null ->
+                                    ((parsed.nativeEtaMillis + velocityEtaMs) / 2L).coerceAtLeast(500L)
+                                else -> velocityEtaMs
                             }
                             val pctInt = (overallFraction * 100f).roundToInt().coerceIn(1, 99)
 
@@ -508,7 +552,29 @@ class ProcessingServiceEngine(
                 if (!cmdResult.success || !outputFile.exists() || outputFile.length() == 0L) {
                     beforeFile.delete()
                     outputFile.delete()
-                    lastError = buildFriendlyFailureMessage(cmdResult.output, entry.preset) to cmdResult.output
+                    val retryReq = UpscaleRequest(
+                        inputUris = listOf(entry.uri),
+                        preset = entry.preset,
+                        scale = entry.scale,
+                        modelSpec = entry.modelSpec,
+                        autoSaveToGallery = entry.autoSaveToGallery,
+                        notifyOnCompletion = entry.notifyOnCompletion
+                    )
+                    val recovery = buildRecoveryActions(cmdResult.output, prefs, entry.preset)
+                    val techReport = buildString {
+                        appendLine("Command: $command")
+                        appendLine("Preset: ${entry.preset.id} (${entry.scale}x)")
+                        appendLine("Backend: ${prefs.backend} · TileSize: ${prefs.tileSize}")
+                        appendLine("Device ABIs: ${android.os.Build.SUPPORTED_ABIS.joinToString()}")
+                        appendLine("--- Native Output ---")
+                        append(cmdResult.output.ifBlank { _consoleLog.value.takeLast(2_000) })
+                    }
+                    lastFailureState = EngineState.Failed(
+                        userMessage = buildFriendlyFailureMessage(cmdResult.output, entry.preset),
+                        technicalOutput = techReport,
+                        recoveryActions = recovery,
+                        failedRequest = retryReq
+                    )
                     jobQueue.markActiveFinished()
                     refreshQueueSnapshot()
                     continue
@@ -594,11 +660,8 @@ class ProcessingServiceEngine(
                         totalDurationMs = totalDuration
                     )
                 )
-            } else if (lastError != null) {
-                _state.value = EngineState.Failed(
-                    userMessage = lastError.first,
-                    technicalOutput = lastError.second
-                )
+            } else if (lastFailureState != null) {
+                _state.value = lastFailureState!!
             } else {
                 _state.value = EngineState.Cancelled
             }
@@ -695,14 +758,38 @@ class ProcessingServiceEngine(
     private fun buildFriendlyFailureMessage(output: String, preset: UpscalePreset): String {
         val lower = output.lowercase(Locale.US)
         return when {
-            lower.contains("vkcreateinstance") || lower.contains("vulkan") || lower.contains("vkqueuesubmit") ->
-                "Your device GPU rejected Vulkan acceleration. Try switching to CPU or smaller tiles."
-            lower.contains("fopen") || (lower.contains("failed") && preset.requiresDownload) ->
-                "Model files for ${preset.title} were not found. Re-download the model in Model Hub."
-            lower.contains("out of memory") || lower.contains("oom") || lower.contains("alloc") ->
-                "Not enough graphics memory for this image size. Try smaller tiles (128 or 64) or CPU mode."
+            lower.contains("vkcreateinstance") || lower.contains("vulkan") || lower.contains("vkqueuesubmit") || lower.contains("device lost") ->
+                "Your device GPU rejected Vulkan acceleration. Retry on CPU or lower the tile size below."
+            lower.contains("fopen") || lower.contains("load_param") || (lower.contains("failed") && preset.requiresDownload) ->
+                "Model files for ${preset.title} could not be loaded cleanly. Try Instant below, or re-download the model in Model Hub."
+            lower.contains("out of memory") || lower.contains("oom") || lower.contains("alloc") || lower.contains("killed") || lower.contains("signal 9") ->
+                "Not enough graphics memory for this image at this tile size. Try a smaller tile size (64 px) or CPU mode."
+            lower.contains("no space left") || lower.contains("enospc") ->
+                "Device storage is full. Free some space and try again."
             else ->
-                "Could not enhance this image. You can retry on CPU or copy technical details below."
+                "Enhancement stopped before finishing. Try one of the recovery options below or copy technical details."
+        }
+    }
+
+    internal fun buildRecoveryActions(
+        output: String,
+        prefs: EnginePreferences,
+        preset: UpscalePreset
+    ): List<RecoveryAction> {
+        val lower = output.lowercase(Locale.US)
+        if (lower.contains("no space left") || lower.contains("enospc")) {
+            return emptyList()
+        }
+        return buildList {
+            if (prefs.backend != ExecutionBackend.CPU) {
+                add(RecoveryAction.RETRY_ON_CPU)
+            }
+            if (preset.id != PresetId.INSTANT && (prefs.tileSize == 0 || prefs.tileSize > 64)) {
+                add(RecoveryAction.SMALLER_TILE_SIZE)
+            }
+            if (preset.id != PresetId.INSTANT) {
+                add(RecoveryAction.TRY_INSTANT)
+            }
         }
     }
 

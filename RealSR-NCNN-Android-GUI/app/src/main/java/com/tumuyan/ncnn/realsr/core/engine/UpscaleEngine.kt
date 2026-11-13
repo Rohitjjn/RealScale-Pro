@@ -26,6 +26,8 @@ interface UpscaleEngine {
 
     fun runAdvancedCommand(rawCommand: String)
 
+    fun retryWithRecovery(action: RecoveryAction): Boolean = false
+
     fun cancelQueuedItem(itemId: String) {}
 
     fun requestCompletionNotificationForActiveSession() {}

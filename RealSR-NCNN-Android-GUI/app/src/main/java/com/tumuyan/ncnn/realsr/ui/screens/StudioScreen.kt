@@ -49,12 +49,14 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
+import com.tumuyan.ncnn.realsr.core.engine.PreflightMitigation
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.ui.RealScaleUiState
 import com.tumuyan.ncnn.realsr.ui.components.AccessibleIconButton
 import com.tumuyan.ncnn.realsr.ui.components.BrandLogoMedallion
 import com.tumuyan.ncnn.realsr.ui.components.EditorialCard
 import com.tumuyan.ncnn.realsr.ui.components.HairlineProgressBar
+import com.tumuyan.ncnn.realsr.ui.components.PreflightAdvisoryDialog
 import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
 import com.tumuyan.ncnn.realsr.ui.components.TerracottaPrimaryButton
 import com.tumuyan.ncnn.realsr.ui.components.rememberReduceMotion
@@ -74,6 +76,9 @@ fun StudioScreen(
     onScaleSelected: (Int) -> Unit,
     onModelOverrideSelected: (String?) -> Unit,
     onStartUpscale: () -> Unit,
+    onApplyPreflightMitigation: (PreflightMitigation) -> Unit = {},
+    onConfirmPreflightProceedAnyway: () -> Unit = {},
+    onDismissPreflightAdvisory: () -> Unit = {},
     onQuickDownloadModel: (String) -> Unit,
     onOpenModelHub: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -121,6 +126,15 @@ fun StudioScreen(
     val defaultCatalogForPreset = state.defaultCatalogStateFor(selectedPreset)
     val installedCategoryModels = state.catalogModels.filter {
         it.isInstalled && it.catalog.category == selectedPreset.id.name
+    }
+
+    state.selection.preflightAdvisory?.let { advisory ->
+        PreflightAdvisoryDialog(
+            advisory = advisory,
+            onApplyMitigation = onApplyPreflightMitigation,
+            onProceedAnyway = onConfirmPreflightProceedAnyway,
+            onDismiss = onDismissPreflightAdvisory
+        )
     }
 
     Column(

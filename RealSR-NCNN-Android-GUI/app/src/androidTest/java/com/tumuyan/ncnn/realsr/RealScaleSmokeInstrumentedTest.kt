@@ -156,7 +156,7 @@ class RealScaleSmokeInstrumentedTest {
             } else {
                 // Host CI emulator kernel is x86_64 without binfmt_misc for standalone arm64 ELF execve;
                 // return cleanly to Studio, seed a real 4x creation, and verify Result & Before/After view.
-                composeRule.onNodeWithText("Back to Studio").performClick()
+                composeRule.onNodeWithText("Back to Studio").performScrollTo().performClick()
                 val creationsDir = File(context.filesDir, "creations").apply { mkdirs() }
                 val beforeCopy = createSolidPng(File(creationsDir, "smoke_before.png"), 24, 18, Color.rgb(204, 120, 92))
                 val afterCopy = createSolidPng(File(creationsDir, "smoke_after.png"), 96, 72, Color.rgb(93, 184, 166))

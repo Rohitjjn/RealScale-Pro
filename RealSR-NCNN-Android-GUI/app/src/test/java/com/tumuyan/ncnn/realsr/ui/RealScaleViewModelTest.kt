@@ -4,6 +4,7 @@ import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.Configuration
@@ -19,6 +20,7 @@ import com.tumuyan.ncnn.realsr.core.engine.ModelExecutionSpec
 import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
 import com.tumuyan.ncnn.realsr.core.engine.PresetId
 import com.tumuyan.ncnn.realsr.core.engine.QueuedJobItem
+import com.tumuyan.ncnn.realsr.core.engine.RecoveryAction
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleEngine
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest
@@ -200,6 +202,53 @@ class RealScaleViewModelTest {
         assertEquals(UpscalePreset.ANIME, restored.selection.selectedPreset)
     }
 
+    @Test
+    fun savedStateHandleRestoresSelectionAndResultAcrossProcessDeathAndRecoveryRetries() = runBlocking {
+        val sampleFile = createSamplePng("process_death_input.png")
+        val savedHandle = SavedStateHandle()
+        val vm1 = RealScaleViewModel(app, container, savedHandle)
+        vm1.onPhotosSelected(listOf(Uri.fromFile(sampleFile)))
+        vm1.selectPreset(UpscalePreset.ANIME)
+        vm1.selectScale(2)
+
+        val recId = db.recentCreationDao().insert(
+            RecentCreationEntity(
+                sourceUri = Uri.fromFile(sampleFile).toString(),
+                beforeImagePath = sampleFile.absolutePath,
+                outputPath = sampleFile.absolutePath,
+                presetId = "ANIME",
+                presetLabel = "Anime & Art · 2×",
+                modelId = "models-upconv_7_anime_style_art_rgb",
+                scale = 2,
+                inputWidth = 16,
+                inputHeight = 12,
+                outputWidth = 32,
+                outputHeight = 24,
+                durationMs = 250L,
+                createdAtEpochMs = 1_700_000_005_000L
+            )
+        )
+        val savedEntity = db.recentCreationDao().getById(recId)!!
+        vm1.openRecentCreation(savedEntity)
+
+        // Simulate Activity/ViewModel recreation from persisted SavedStateHandle
+        val vm2 = RealScaleViewModel(app, container, savedHandle)
+        val restored = withTimeout(5_000) {
+            vm2.uiState.first { it.selection.resultCreations.isNotEmpty() }
+        }
+        assertEquals(1, restored.selection.selectedUris.size)
+        assertEquals(UpscalePreset.ANIME, restored.selection.selectedPreset)
+        assertEquals(2, restored.selection.selectedScale)
+        assertEquals(recId, restored.selection.resultCreations.first().id)
+
+        // Simulate error recovery action (Retry on CPU)
+        fakeEngine.simulateFailure(
+            UpscaleRequest(inputUris = listOf(Uri.fromFile(sampleFile)), preset = UpscalePreset.INSTANT, scale = 2)
+        )
+        assertTrue(vm2.applyErrorRecovery(RecoveryAction.RETRY_ON_CPU))
+        assertEquals(ExecutionBackend.CPU, fakeEngine.preferences.value.backend)
+    }
+
     private fun createSamplePng(name: String): File {
         val file = File(app.cacheDir, name)
         val bmp = Bitmap.createBitmap(16, 12, Bitmap.Config.ARGB_8888)
@@ -256,6 +305,25 @@ class RealScaleViewModelTest {
         ) = Unit
 
         override fun runAdvancedCommand(rawCommand: String) = Unit
+
+        fun simulateFailure(req: UpscaleRequest) {
+            _state.value = EngineState.Failed(
+                userMessage = "GPU error",
+                technicalOutput = "vkQueueSubmit failed",
+                recoveryActions = listOf(RecoveryAction.RETRY_ON_CPU),
+                failedRequest = req
+            )
+        }
+
+        override fun retryWithRecovery(action: RecoveryAction): Boolean {
+            val failed = _state.value as? EngineState.Failed ?: return false
+            val req = failed.failedRequest ?: return false
+            if (action == RecoveryAction.RETRY_ON_CPU) {
+                updatePreferences { it.copy(backend = ExecutionBackend.CPU) }
+            }
+            startUpscale(req)
+            return true
+        }
 
         override fun cancel() {
             _state.value = EngineState.Cancelled

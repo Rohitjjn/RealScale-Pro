@@ -24,6 +24,9 @@ import com.tumuyan.ncnn.realsr.core.engine.EngineState
 import com.tumuyan.ncnn.realsr.core.engine.ExternalOpenMode
 import com.tumuyan.ncnn.realsr.core.engine.ImageIntakeManager
 import com.tumuyan.ncnn.realsr.core.engine.OutputNameFormatter
+import com.tumuyan.ncnn.realsr.core.engine.PreflightAnalyzer
+import com.tumuyan.ncnn.realsr.core.engine.PreflightMitigation
+import com.tumuyan.ncnn.realsr.core.engine.PreflightVerdict
 import com.tumuyan.ncnn.realsr.core.engine.PresetId
 import com.tumuyan.ncnn.realsr.core.engine.StagedInputPhoto
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
@@ -54,6 +57,7 @@ class QuickUpscaleActivity : ComponentActivity() {
     private var completedCreationState by mutableStateOf<RecentCreationEntity?>(null)
     private var savedMessageState by mutableStateOf<String?>(null)
     private var showNotifRationaleState by mutableStateOf(false)
+    private var preflightAdvisoryState by mutableStateOf<PreflightVerdict.Advisory?>(null)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -126,14 +130,17 @@ class QuickUpscaleActivity : ComponentActivity() {
                     completedCreation = completedCreationState,
                     savedConfirmationMessage = savedMessageState,
                     showNotificationRationale = showNotifRationaleState,
+                    preflightAdvisory = preflightAdvisoryState,
                     onSelectPreset = { preset ->
                         selectedPresetState = preset
+                        preflightAdvisoryState = null
                         if (selectedScaleState !in preset.supportedScales) {
                             selectedScaleState = preset.defaultScale
                         }
                     },
                     onSelectScale = { scale ->
                         selectedScaleState = scale
+                        preflightAdvisoryState = null
                     },
                     onDownloadModel = { modelId ->
                         lifecycleScope.launch {
@@ -141,7 +148,29 @@ class QuickUpscaleActivity : ComponentActivity() {
                         }
                     },
                     onEnhance = {
+                        requestSheetEnhance(catalogModels)
+                    },
+                    onApplyPreflightMitigation = { mitigation ->
+                        when (mitigation) {
+                            PreflightMitigation.LowerScaleTo2x -> selectedScaleState = 2
+                            is PreflightMitigation.ProcessInTiles ->
+                                container.engine.updatePreferences { it.copy(tileSize = mitigation.tileSize) }
+                            is PreflightMitigation.SmallerTileSize ->
+                                container.engine.updatePreferences { it.copy(tileSize = mitigation.tileSize) }
+                        }
+                        preflightAdvisoryState = null
                         startSheetEnhance(catalogModels)
+                    },
+                    onConfirmPreflightProceedAnyway = {
+                        preflightAdvisoryState = null
+                        startSheetEnhance(catalogModels)
+                    },
+                    onDismissPreflightAdvisory = {
+                        preflightAdvisoryState = null
+                    },
+                    onApplyRecovery = { action ->
+                        startedFromThisSheet = true
+                        container.engine.retryWithRecovery(action)
                     },
                     onRunInBackground = {
                         handleRunInBackgroundTap()
@@ -211,6 +240,23 @@ class QuickUpscaleActivity : ComponentActivity() {
                     intakeErrorState = err.message ?: "Unable to read the selected image."
                 }
             )
+        }
+    }
+
+    private fun requestSheetEnhance(catalogModels: List<CatalogModelState>) {
+        val staged = stagedPhotoState ?: return
+        lifecycleScope.launch {
+            val verdict = PreflightAnalyzer.inspectAndEvaluate(
+                context = applicationContext,
+                uris = listOf(staged.stagedUri),
+                scale = selectedScaleState,
+                preset = selectedPresetState,
+                preferences = container.engine.preferences.value
+            )
+            when (verdict) {
+                PreflightVerdict.Safe -> startSheetEnhance(catalogModels)
+                is PreflightVerdict.Advisory -> preflightAdvisoryState = verdict
+            }
         }
     }
 

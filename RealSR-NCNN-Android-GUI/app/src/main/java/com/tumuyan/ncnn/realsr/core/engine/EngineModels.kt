@@ -25,6 +25,12 @@ enum class ProcessingStage(val humanLabel: String) {
     SAVING("Saving")
 }
 
+enum class RecoveryAction(val label: String) {
+    RETRY_ON_CPU("Retry on CPU"),
+    SMALLER_TILE_SIZE("Smaller tile size (64 px)"),
+    TRY_INSTANT("Try Instant")
+}
+
 data class EnginePreferences(
     val backend: ExecutionBackend = ExecutionBackend.AUTO_GPU,
     val tileSize: Int = 0,
@@ -105,6 +111,8 @@ sealed interface EngineState {
 
     data class Failed(
         val userMessage: String,
-        val technicalOutput: String
+        val technicalOutput: String,
+        val recoveryActions: List<RecoveryAction> = emptyList(),
+        val failedRequest: UpscaleRequest? = null
     ) : EngineState
 }
