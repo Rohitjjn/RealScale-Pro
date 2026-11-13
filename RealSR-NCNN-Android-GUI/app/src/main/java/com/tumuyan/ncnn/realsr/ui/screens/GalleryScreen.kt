@@ -160,7 +160,7 @@ fun GalleryScreen(viewModel: AppViewModel, navController: NavHostController) {
                     }
                 } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(96.dp),
+                        columns = GridCells.Adaptive(96.dp),
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),

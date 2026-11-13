@@ -31,6 +31,7 @@ import com.tumuyan.ncnn.realsr.ui.Routes
 import com.tumuyan.ncnn.realsr.ui.components.IconButtonVariant
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleDivider
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleIconButton
+import com.tumuyan.ncnn.realsr.ui.components.RealScaleGroup
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleRow
 import com.tumuyan.ncnn.realsr.ui.state.AppViewModel
 import com.tumuyan.ncnn.realsr.ui.theme.LocalRealScaleColors
@@ -84,7 +85,7 @@ fun HelpScreen(viewModel: AppViewModel, navController: NavHostController) {
 
         Column(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxHeight()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp),
         ) {
@@ -97,7 +98,7 @@ fun HelpScreen(viewModel: AppViewModel, navController: NavHostController) {
                         modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp).clickable { },
                         verticalAlignment = Alignment.Top,
                     ) {
-                        Text("Q", style = RealScaleType.Body13Strong, color = c.ink, modifier = Modifier.widthIn(min = 16.dp))
+                        Text("Q", style = RealScaleType.Body13Strong, color = c.ink, modifier = Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {
                             Text(question, style = RealScaleType.Body15Medium, color = c.ink)
                             Text(answer, style = RealScaleType.Body14, color = c.body, modifier = Modifier.padding(top = 6.dp))
@@ -115,7 +116,7 @@ fun HelpScreen(viewModel: AppViewModel, navController: NavHostController) {
                     sub = "Opens your email app with a feedback subject.",
                     icon = null,
                     chevron = true,
-                    onClick = mailFeedback,
+                    onClick = { mailFeedback() },
                 )
                 RealScaleDivider()
                 RealScaleRow(
@@ -123,7 +124,7 @@ fun HelpScreen(viewModel: AppViewModel, navController: NavHostController) {
                     sub = "Report bugs or request features on GitHub.",
                     icon = null,
                     chevron = true,
-                    onClick = openIssues,
+                    onClick = { openIssues() },
                 )
             }
             Spacer(Modifier.height(24.dp))

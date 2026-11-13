@@ -398,7 +398,7 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
                             if (!scaleSupported || scale > (chosenModel?.supportedScales ?: preset.supportedScales).maxOrNull() ?: 4) {
                                 scale = p.defaultScale
                             }
-                            if (modelId != "auto" && chosenModel?.category.uppercase() != p.id.name.uppercase()) {
+                            if (modelId != "auto" && chosenModel?.category?.uppercase() != p.id.name.uppercase()) {
                                 modelId = "auto"
                             }
                             persist()
@@ -718,12 +718,13 @@ fun ConfigScreen(viewModel: AppViewModel, navController: NavHostController) {
 }
 
 /** TilePreset pixel size for the rule above. */
-private val TilePreset.px: Int = when (this) {
-    TilePreset.SAFE -> 128
-    TilePreset.BALANCED -> 256
-    TilePreset.FAST -> 384
-    TilePreset.MAX -> 0
-    TilePreset.CUSTOM -> 320
-}
+private val TilePreset.px: Int
+    get() = when (this) {
+        TilePreset.SAFE -> 128
+        TilePreset.BALANCED -> 256
+        TilePreset.FAST -> 384
+        TilePreset.MAX -> 0
+        TilePreset.CUSTOM -> 320
+    }
 
 private fun String.capitalize(): String = if (isEmpty()) this else this.substring(0, 1).uppercase() + this.substring(1)
