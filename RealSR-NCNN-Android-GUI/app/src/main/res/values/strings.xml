@@ -282,4 +282,20 @@ Even if this feature is disabled, you can still select multiple images from othe
     <string name="command_warn">⚠️Commands entered here will be executed directly with shell permissions. Please ensure you understand the command\'s purpose. You are fully responsible for your actions.</string>
     <string name="widget_enhance_desc">Quickly pick and enhance a photo offline in RealScale-Pro.</string>
     <string name="widget_recent_desc">Browse and open your latest enhanced creations from RealScale-Pro.</string>
+    <string name="ui_nav_studio">Studio</string>
+    <string name="ui_nav_library">Library</string>
+    <string name="ui_nav_models">Models</string>
+    <string name="ui_choose_photo">Choose a photo</string>
+    <string name="ui_change_photo">Change photo</string>
+    <string name="ui_enhance">Enhance</string>
+    <string name="ui_preview_crop">Preview crop</string>
+    <string name="ui_enhancement_style">Enhancement style</string>
+    <string name="ui_output_scale">Output scale</string>
+    <string name="ui_recent_creations">Recent creations</string>
+    <string name="ui_save">Save</string>
+    <string name="ui_share">Share</string>
+    <string name="ui_try_another_preset">Try another preset</string>
+    <string name="ui_open_in_gallery">Open in gallery</string>
+    <string name="ui_model_hub">Model Hub</string>
+    <string name="ui_settings">Settings</string>
 </resources>

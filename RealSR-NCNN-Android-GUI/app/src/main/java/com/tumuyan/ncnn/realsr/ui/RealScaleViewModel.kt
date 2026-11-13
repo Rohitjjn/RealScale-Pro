@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
+import com.tumuyan.ncnn.realsr.core.engine.CropPreviewEngine
 import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
 import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
@@ -29,6 +30,7 @@ import com.tumuyan.ncnn.realsr.core.engine.RecoveryAction
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
+import com.tumuyan.ncnn.realsr.ui.components.CropPreviewUiState
 import com.tumuyan.ncnn.realsr.ui.components.formatBytesHuman
 import com.tumuyan.ncnn.realsr.ui.theme.ThemeMode
 import com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater
@@ -60,7 +62,8 @@ data class StudioSelectionState(
     val hasPlayedLaunchFade: Boolean = false,
     val pendingOpenResultNavigation: Boolean = false,
     val pendingOpenPhotoPicker: Boolean = false,
-    val preflightAdvisory: PreflightVerdict.Advisory? = null
+    val preflightAdvisory: PreflightVerdict.Advisory? = null,
+    val cropPreview: CropPreviewUiState = CropPreviewUiState.Hidden
 )
 
 data class RealScaleUiState(
@@ -349,6 +352,56 @@ class RealScaleViewModel(
 
     fun dismissPreflightAdvisory() {
         selectionFlow.update { it.copy(preflightAdvisory = null) }
+    }
+
+    fun requestCropPreview(scaleOverride: Int? = null) {
+        val current = uiState.value
+        val primaryUri = current.selection.selectedUris.firstOrNull() ?: return
+        val preset = current.selection.selectedPreset
+        val targetScale = scaleOverride?.takeIf { it in preset.supportedScales } ?: current.selection.selectedScale
+        if (scaleOverride != null && targetScale != current.selection.selectedScale) {
+            selectScale(targetScale)
+        }
+        val spec = container.modelRepository.resolveExecutionSpec(
+            preset = preset,
+            scale = targetScale,
+            catalogStates = current.catalogModels,
+            overrideModelId = current.selection.selectedModelOverrideId
+        )
+        if (preset.requiresDownload && spec == null) return
+
+        val effectiveScale = spec?.scale ?: targetScale
+        selectionFlow.update {
+            it.copy(cropPreview = CropPreviewUiState.Loading(preset.title, effectiveScale))
+        }
+        viewModelScope.launch {
+            val res = CropPreviewEngine.generateCropPreview(
+                context = getApplication(),
+                sourceUri = primaryUri,
+                preset = preset,
+                scale = effectiveScale,
+                preferences = current.enginePreferences,
+                modelSpec = if (preset.id == PresetId.INSTANT && current.selection.selectedModelOverrideId == null) null else spec,
+                modelsRootDir = container.modelRepository.modelsRootDir
+            )
+            selectionFlow.update { prev ->
+                // Ignore stale result if user dismissed sheet while rendering
+                if (prev.cropPreview is CropPreviewUiState.Hidden) {
+                    prev
+                } else {
+                    res.fold(
+                        onSuccess = { preview -> prev.copy(cropPreview = CropPreviewUiState.Ready(preview)) },
+                        onFailure = { err ->
+                            prev.copy(cropPreview = CropPreviewUiState.Error(err.message ?: "Could not render crop preview."))
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissCropPreview() {
+        selectionFlow.update { it.copy(cropPreview = CropPreviewUiState.Hidden) }
     }
 
     fun startPrimaryUpscale(): Boolean {

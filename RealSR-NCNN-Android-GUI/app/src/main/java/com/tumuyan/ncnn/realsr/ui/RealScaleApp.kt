@@ -11,12 +11,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -27,6 +30,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +50,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
+import com.tumuyan.ncnn.realsr.ui.components.rememberIsExpandedWidth
 import com.tumuyan.ncnn.realsr.ui.screens.ActiveModelDownloadsCard
 import com.tumuyan.ncnn.realsr.ui.screens.LibraryScreen
 import com.tumuyan.ncnn.realsr.ui.screens.ModelHubScreen
@@ -164,6 +169,7 @@ fun RealScaleApp(
 
     RealScaleTheme(themeMode = state.selection.themeMode) {
         val colors = RealScaleThemeTokens.colors
+        val isExpandedWidth = rememberIsExpandedWidth()
         val activeDownloadStates = remember(state.catalogModels) {
             state.catalogModels.filter {
                 it.status == ModelInstallStatus.DOWNLOADING ||
@@ -176,7 +182,7 @@ fun RealScaleApp(
             containerColor = colors.canvas,
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             bottomBar = {
-                if (showBottomBar) {
+                if (showBottomBar && !isExpandedWidth) {
                     EditorialBottomBar(
                         currentRoute = currentRoute,
                         activeDownloadsCount = activeDownloadStates.size,
@@ -186,38 +192,53 @@ fun RealScaleApp(
             }
         ) { innerPadding ->
             SharedTransitionLayout {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
                 ) {
-                    if (activeDownloadStates.isNotEmpty() && currentRoute != Routes.MODEL_HUB) {
-                        ActiveModelDownloadsCard(
-                            activeModels = activeDownloadStates,
-                            wifiOnly = state.enginePreferences.wifiOnlyDownloads,
-                            onOpenHub = { navigateTopTab(Routes.MODEL_HUB) },
-                            modifier = Modifier.padding(
-                                horizontal = Spacing.lg,
-                                vertical = Spacing.xs
-                            )
+                    if (showBottomBar && isExpandedWidth) {
+                        EditorialSideRail(
+                            currentRoute = currentRoute,
+                            activeDownloadsCount = activeDownloadStates.size,
+                            onSelectRoute = navigateTopTab
                         )
                     }
 
-                    NavHost(
-                        navController = navController,
-                        startDestination = Routes.STUDIO,
-                        modifier = Modifier.weight(1f)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     ) {
-                        composable(Routes.STUDIO) {
-                            StudioScreen(
-                                state = state,
-                                onPhotosPicked = viewModel::onPhotosSelected,
-                                onClearPhotos = viewModel::clearSelectedPhotos,
-                                onPresetSelected = viewModel::selectPreset,
-                                onScaleSelected = viewModel::selectScale,
-                                onModelOverrideSelected = viewModel::selectModelOverride,
-                                onStartUpscale = viewModel::requestPrimaryUpscale,
-                                onApplyPreflightMitigation = viewModel::applyPreflightMitigation,
+                        if (activeDownloadStates.isNotEmpty() && currentRoute != Routes.MODEL_HUB) {
+                            ActiveModelDownloadsCard(
+                                activeModels = activeDownloadStates,
+                                wifiOnly = state.enginePreferences.wifiOnlyDownloads,
+                                onOpenHub = { navigateTopTab(Routes.MODEL_HUB) },
+                                modifier = Modifier.padding(
+                                    horizontal = Spacing.lg,
+                                    vertical = Spacing.xs
+                                )
+                            )
+                        }
+
+                        NavHost(
+                            navController = navController,
+                            startDestination = Routes.STUDIO,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            composable(Routes.STUDIO) {
+                                StudioScreen(
+                                    state = state,
+                                    onPhotosPicked = viewModel::onPhotosSelected,
+                                    onClearPhotos = viewModel::clearSelectedPhotos,
+                                    onPresetSelected = viewModel::selectPreset,
+                                    onScaleSelected = viewModel::selectScale,
+                                    onModelOverrideSelected = viewModel::selectModelOverride,
+                                    onStartUpscale = viewModel::requestPrimaryUpscale,
+                                    onRequestCropPreview = viewModel::requestCropPreview,
+                                    onDismissCropPreview = viewModel::dismissCropPreview,
+                                    onApplyPreflightMitigation = viewModel::applyPreflightMitigation,
                                 onConfirmPreflightProceedAnyway = viewModel::confirmPreflightProceedAnyway,
                                 onDismissPreflightAdvisory = viewModel::dismissPreflightAdvisory,
                                 onQuickDownloadModel = viewModel::downloadOrResumeModel,
@@ -368,8 +389,84 @@ fun RealScaleApp(
                         }
                     }
                 }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun EditorialSideRail(
+    currentRoute: String?,
+    activeDownloadsCount: Int,
+    onSelectRoute: (String) -> Unit
+) {
+    val colors = RealScaleThemeTokens.colors
+    val tabs = remember {
+        listOf(
+            BottomTabItem(Routes.STUDIO, "Studio", RealScaleIcons.Sparkle),
+            BottomTabItem(Routes.LIBRARY, "Library", RealScaleIcons.LibraryGrid),
+            BottomTabItem(Routes.MODEL_HUB, "Models", RealScaleIcons.ModelHub)
+        )
+    }
+
+    Row(modifier = Modifier.fillMaxHeight()) {
+        Column(
+            modifier = Modifier
+                .width(84.dp)
+                .fillMaxHeight()
+                .background(colors.canvas)
+                .statusBarsPadding()
+                .padding(vertical = Spacing.lg, horizontal = Spacing.xs),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            tabs.forEach { tab ->
+                val selected = currentRoute == tab.route
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = 56.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable(role = Role.Tab) { onSelectRoute(tab.route) }
+                        .padding(vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (selected) colors.terracottaTint else colors.canvas
+                        ) {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = null,
+                                tint = if (selected) colors.terracotta else colors.muted,
+                                modifier = Modifier
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .size(20.dp)
+                            )
+                        }
+                        if (tab.route == Routes.MODEL_HUB && activeDownloadsCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.terracotta)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = tab.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) colors.ink else colors.muted
+                    )
+                }
+            }
+        }
+        VerticalDivider(thickness = 1.dp, color = colors.hairline)
     }
 }
 
