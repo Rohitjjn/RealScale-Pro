@@ -2,6 +2,12 @@ package com.tumuyan.ncnn.realsr.ui.components
 
 import android.animation.ValueAnimator
 import android.provider.Settings
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -306,6 +312,47 @@ fun HairlineProgressBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth(clamped)
+                .height(6.dp)
+                .clip(CircleShape)
+                .background(colors.terracotta)
+        )
+    }
+}
+
+@Composable
+fun IndeterminateHairlineBar(
+    modifier: Modifier = Modifier
+) {
+    val colors = RealScaleThemeTokens.colors
+    val reduceMotion = rememberReduceMotion()
+    if (reduceMotion) {
+        HairlineProgressBar(fraction = 0.38f, modifier = modifier)
+        return
+    }
+    val transition = rememberInfiniteTransition(label = "indeterminate_bar")
+    val phase = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1350, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bar_phase"
+    )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .clip(CircleShape)
+            .background(colors.hairline)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = (phase.value * 140f).dp.coerceAtMost(140.dp),
+                    end = ((1f - phase.value) * 140f).dp.coerceAtMost(140.dp)
+                )
                 .height(6.dp)
                 .clip(CircleShape)
                 .background(colors.terracotta)

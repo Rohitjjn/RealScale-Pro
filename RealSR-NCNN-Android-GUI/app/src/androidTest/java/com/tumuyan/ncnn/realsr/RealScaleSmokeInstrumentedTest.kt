@@ -1,11 +1,13 @@
 package com.tumuyan.ncnn.realsr
 
 import android.Manifest
+import android.content.ClipData
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import androidx.core.content.FileProvider
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
@@ -193,6 +195,62 @@ class RealScaleSmokeInstrumentedTest {
             runCatching {
                 scenario.onActivity { it.finish() }
                 context.stopService(Intent(context, ProcessingService::class.java))
+            }
+        }
+    }
+
+    @Test
+    fun actionViewOpensQuickUpscaleSheetWithResolutionAndControls() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val sampleFile = createSolidPng(
+            File(context.cacheDir, "open_with_sample.png"),
+            32,
+            24,
+            Color.rgb(189, 71, 7)
+        )
+        val contentUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            sampleFile
+        )
+
+        // Verify Android PackageManager resolves implicit ACTION_VIEW image/* to QuickUpscaleActivity
+        val probeIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(contentUri, "image/png")
+        }
+        val matches = context.packageManager.queryIntentActivities(probeIntent, 0)
+        assertTrue(
+            "Expected QuickUpscaleActivity to handle implicit ACTION_VIEW for image/png",
+            matches.any { it.activityInfo.name == QuickUpscaleActivity::class.java.name }
+        )
+
+        // Launch QuickUpscaleActivity with explicit ACTION_VIEW + content:// URI
+        val launchIntent = Intent(context, QuickUpscaleActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            setDataAndType(contentUri, "image/png")
+            clipData = ClipData.newRawUri("Sample", contentUri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val scenario = ActivityScenario.launch<QuickUpscaleActivity>(launchIntent)
+        try {
+            composeRule.waitUntil(timeoutMillis = 10_000L) {
+                composeRule.onAllNodesWithText("Quick Upscale").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("Quick Upscale").assertIsDisplayed()
+
+            composeRule.waitUntil(timeoutMillis = 5_000L) {
+                composeRule.onAllNodesWithText("32 × 24 · PNG").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("32 × 24 · PNG").assertIsDisplayed()
+            composeRule.onNodeWithText("Instant").assertIsDisplayed()
+            composeRule.onAllNodesWithText("Get model")[0].assertIsDisplayed()
+            composeRule.onNodeWithText("4×").performClick()
+            composeRule.onNode(hasText("128 × 96", substring = true)).assertIsDisplayed()
+            composeRule.onNodeWithText("Enhance").assertIsDisplayed()
+            composeRule.onNodeWithText("Open in RealScale-Pro").assertIsDisplayed()
+        } finally {
+            runCatching {
+                scenario.onActivity { it.finish() }
             }
         }
     }

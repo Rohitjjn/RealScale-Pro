@@ -1,5 +1,6 @@
 package com.tumuyan.ncnn.realsr.ui
 
+import android.app.Activity
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -9,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -40,6 +42,7 @@ fun RealScaleApp(
     val snackbarHostState = remember { SnackbarHostState() }
     val currentEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentEntry?.destination?.route
+    val context = LocalContext.current
 
     // Show toast/banner notifications cleanly
     LaunchedEffect(state.selection.bannerMessage) {
@@ -47,6 +50,17 @@ fun RealScaleApp(
         if (!msg.isNullOrBlank()) {
             snackbarHostState.showSnackbar(msg)
             viewModel.dismissBanner()
+        }
+    }
+
+    // Deep-link navigation from completion notification or Quick Sheet "Open"
+    LaunchedEffect(state.selection.pendingOpenResultNavigation) {
+        if (state.selection.pendingOpenResultNavigation) {
+            viewModel.consumePendingResultNavigation()
+            navController.navigate(Routes.RESULT) {
+                popUpTo(Routes.STUDIO) { inclusive = false }
+                launchSingleTop = true
+            }
         }
     }
 
@@ -121,7 +135,13 @@ fun RealScaleApp(
                 composable(Routes.PROCESSING) {
                     ProcessingScreen(
                         engineState = state.engineState,
+                        queue = state.queue,
                         onCancel = viewModel::cancelProcessing,
+                        onCancelQueuedItem = viewModel::cancelQueuedItem,
+                        onRunInBackground = {
+                            viewModel.enableBackgroundCompletionNotification()
+                            (context as? Activity)?.moveTaskToBack(true)
+                        },
                         onBackToStudio = {
                             viewModel.acknowledgeEngineState()
                             navController.popBackStack(Routes.STUDIO, inclusive = false)
@@ -173,6 +193,7 @@ fun RealScaleApp(
                         consoleLog = state.consoleLog,
                         discoveredCommandsProvider = viewModel::discoverAdvancedCommands,
                         onThemeModeChanged = viewModel::setThemeMode,
+                        onExternalOpenModeChanged = viewModel::setExternalOpenMode,
                         onBackendChanged = viewModel::setExecutionBackend,
                         onTileSizeChanged = viewModel::setTileSize,
                         onOutputFormatChanged = viewModel::setOutputFormat,

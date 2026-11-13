@@ -1,6 +1,7 @@
 package com.tumuyan.ncnn.realsr.core.engine
 
 import android.net.Uri
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 
@@ -12,6 +13,8 @@ interface UpscaleEngine {
     val state: StateFlow<EngineState>
     val consoleLog: StateFlow<String>
     val preferences: StateFlow<EnginePreferences>
+    val queue: StateFlow<List<QueuedJobItem>>
+        get() = MutableStateFlow(emptyList())
 
     suspend fun ensureInitialized(forceReset: Boolean = false): Result<File>
 
@@ -22,6 +25,10 @@ interface UpscaleEngine {
     fun startDirectoryUpscale(directoryUri: Uri, preset: UpscalePreset, scale: Int, modelSpec: ModelExecutionSpec? = null)
 
     fun runAdvancedCommand(rawCommand: String)
+
+    fun cancelQueuedItem(itemId: String) {}
+
+    fun requestCompletionNotificationForActiveSession() {}
 
     fun cancel()
 

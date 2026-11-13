@@ -14,13 +14,27 @@ enum class OutputFormat(val extension: String, val cliFormat: String) {
     JPG("jpg", "jpg")
 }
 
+enum class ExternalOpenMode {
+    QUICK_SHEET,
+    FULL_APP
+}
+
+enum class ProcessingStage(val humanLabel: String) {
+    PREPARING("Preparing"),
+    ENHANCING("Enhancing"),
+    SAVING("Saving")
+}
+
 data class EnginePreferences(
     val backend: ExecutionBackend = ExecutionBackend.AUTO_GPU,
     val tileSize: Int = 0,
     val threadCount: String = "",
     val outputFormat: OutputFormat = OutputFormat.PNG,
     val outputTreeUri: String? = null,
-    val hideProgramOutput: Boolean = false
+    val hideProgramOutput: Boolean = false,
+    val externalOpenMode: ExternalOpenMode = ExternalOpenMode.QUICK_SHEET,
+    val lastUsedPresetId: PresetId = PresetId.INSTANT,
+    val lastUsedScale: Int = 2
 )
 
 data class ModelExecutionSpec(
@@ -36,7 +50,20 @@ data class UpscaleRequest(
     val inputUris: List<Uri>,
     val preset: UpscalePreset,
     val scale: Int = preset.defaultScale,
-    val modelSpec: ModelExecutionSpec? = null
+    val modelSpec: ModelExecutionSpec? = null,
+    val autoSaveToGallery: Boolean = true,
+    val notifyOnCompletion: Boolean = false
+)
+
+data class QueuedJobItem(
+    val id: String,
+    val sourceUri: String,
+    val fileName: String,
+    val presetTitle: String,
+    val scale: Int,
+    val isRunning: Boolean,
+    val positionInBatch: Int,
+    val totalInBatch: Int
 )
 
 data class UpscaleResult(
@@ -63,7 +90,11 @@ sealed interface EngineState {
         val currentFileName: String,
         val etaMillis: Long?,
         val previewUri: String?,
-        val latestStatusLine: String
+        val latestStatusLine: String,
+        val stage: ProcessingStage = ProcessingStage.ENHANCING,
+        val hasDeterminateProgress: Boolean = false,
+        val elapsedMillis: Long = 0L,
+        val currentItemId: String = jobId
     ) : EngineState
 
     data class Completed(

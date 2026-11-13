@@ -10,11 +10,14 @@ import androidx.work.Configuration
 import androidx.work.testing.SynchronousExecutor
 import androidx.work.testing.WorkManagerTestInitHelper
 import com.tumuyan.ncnn.realsr.core.database.RealScaleDatabase
+import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
 import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
+import com.tumuyan.ncnn.realsr.core.engine.ExternalOpenMode
 import com.tumuyan.ncnn.realsr.core.engine.ModelExecutionSpec
 import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
+import com.tumuyan.ncnn.realsr.core.engine.QueuedJobItem
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleEngine
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest
@@ -136,9 +139,10 @@ class RealScaleViewModelTest {
     }
 
     @Test
-    fun settingsChangesUpdateUiStateAndPersistTheme() = runBlocking {
+    fun settingsExternalOpenModeAndDeepLinkCreationOpenWorkCleanly() = runBlocking {
         val viewModel = RealScaleViewModel(app, container)
         viewModel.setThemeMode(ThemeMode.DARK)
+        viewModel.setExternalOpenMode(ExternalOpenMode.FULL_APP)
         viewModel.setExecutionBackend(ExecutionBackend.CPU)
         viewModel.setTileSize(128)
         viewModel.setOutputFormat(OutputFormat.WEBP)
@@ -146,20 +150,53 @@ class RealScaleViewModelTest {
         val updated = withTimeout(5_000) {
             viewModel.uiState.first {
                 it.selection.themeMode == ThemeMode.DARK &&
+                    it.enginePreferences.externalOpenMode == ExternalOpenMode.FULL_APP &&
                     it.enginePreferences.backend == ExecutionBackend.CPU &&
                     it.enginePreferences.tileSize == 128 &&
                     it.enginePreferences.outputFormat == OutputFormat.WEBP
             }
         }
         assertEquals(ThemeMode.DARK, updated.selection.themeMode)
+        assertEquals(ExternalOpenMode.FULL_APP, updated.enginePreferences.externalOpenMode)
         assertEquals(128, updated.enginePreferences.tileSize)
 
-        // Recreated ViewModel restores persisted theme mode
+        // Insert a recent creation and trigger notification/QuickSheet deep-link open
+        val insertedId = db.recentCreationDao().insert(
+            RecentCreationEntity(
+                sourceUri = "file:///tmp/in.png",
+                beforeImagePath = "/tmp/in.png",
+                outputPath = "/tmp/out_x4.png",
+                presetId = "INSTANT",
+                presetLabel = "Instant · 4×",
+                modelId = "resize-ncnn",
+                scale = 4,
+                inputWidth = 32,
+                inputHeight = 24,
+                outputWidth = 128,
+                outputHeight = 96,
+                durationMs = 310L,
+                createdAtEpochMs = 1_700_000_000_000L
+            )
+        )
+        viewModel.openCreationById(insertedId)
+        val deepLinked = withTimeout(5_000) {
+            viewModel.uiState.first { it.selection.pendingOpenResultNavigation }
+        }
+        assertEquals(insertedId, deepLinked.selection.resultCreations.first().id)
+        viewModel.consumePendingResultNavigation()
+
+        // Recreated ViewModel restores persisted theme mode & last-used preset
+        fakeEngine.updatePreferences { it.copy(lastUsedPresetId = "ANIME", lastUsedScale = 4) }
         val recreated = RealScaleViewModel(app, container)
         val restored = withTimeout(5_000) {
-            recreated.uiState.first { it.selection.themeMode == ThemeMode.DARK }
+            recreated.uiState.first {
+                it.selection.themeMode == ThemeMode.DARK &&
+                    it.selection.selectedPreset == UpscalePreset.ANIME &&
+                    it.selection.selectedScale == 4
+            }
         }
         assertEquals(ThemeMode.DARK, restored.selection.themeMode)
+        assertEquals(UpscalePreset.ANIME, restored.selection.selectedPreset)
     }
 
     private fun createSamplePng(name: String): File {
@@ -181,7 +218,11 @@ class RealScaleViewModelTest {
         private val _preferences = MutableStateFlow(EnginePreferences())
         override val preferences: StateFlow<EnginePreferences> = _preferences
 
+        private val _queue = MutableStateFlow<List<QueuedJobItem>>(emptyList())
+        override val queue: StateFlow<List<QueuedJobItem>> = _queue
+
         var lastRequest: UpscaleRequest? = null
+        var notifyRequested: Boolean = false
 
         override suspend fun ensureInitialized(forceReset: Boolean): Result<File> =
             Result.success(File("/tmp/realsr"))
@@ -196,6 +237,7 @@ class RealScaleViewModelTest {
                 jobId = "job-1",
                 presetTitle = request.preset.title,
                 progressFraction = 0.42f,
+                hasDeterminateProgress = true,
                 currentFileIndex = 1,
                 totalFiles = request.inputUris.size,
                 currentFileName = "sample_input.png",
@@ -216,6 +258,14 @@ class RealScaleViewModelTest {
 
         override fun cancel() {
             _state.value = EngineState.Cancelled
+        }
+
+        override fun cancelQueuedItem(itemId: String) {
+            _queue.update { list -> list.filterNot { it.id == itemId } }
+        }
+
+        override fun requestCompletionNotificationForActiveSession() {
+            notifyRequested = true
         }
 
         override fun acknowledgeTerminalState() {

@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import com.tumuyan.ncnn.realsr.BuildConfig
 import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
 import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
+import com.tumuyan.ncnn.realsr.core.engine.ExternalOpenMode
 import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
 import com.tumuyan.ncnn.realsr.core.engine.PresetCommandResolver
 import com.tumuyan.ncnn.realsr.ui.components.BrandLogoMedallion
@@ -72,6 +73,7 @@ fun SettingsScreen(
     consoleLog: String,
     discoveredCommandsProvider: () -> List<PresetCommandResolver.DiscoveredCommand>,
     onThemeModeChanged: (ThemeMode) -> Unit,
+    onExternalOpenModeChanged: (ExternalOpenMode) -> Unit = {},
     onBackendChanged: (ExecutionBackend) -> Unit,
     onTileSizeChanged: (Int) -> Unit,
     onOutputFormatChanged: (OutputFormat) -> Unit,
@@ -155,6 +157,37 @@ fun SettingsScreen(
                             label = label,
                             selected = themeMode == mode,
                             onClick = { onThemeModeChanged(mode) }
+                        )
+                    }
+                }
+            }
+
+            // Quick Sheet / External Open Behaviour
+            EditorialCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "When opened from other apps",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.ink
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Choose how RealScale-Pro responds when you tap Open with on an image in Gallery, Files, or chat apps.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted
+                )
+                Spacer(modifier = Modifier.height(Spacing.sm))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+                ) {
+                    listOf(
+                        ExternalOpenMode.QUICK_SHEET to "Quick sheet",
+                        ExternalOpenMode.FULL_APP to "Full app"
+                    ).forEach { (mode, label) ->
+                        ChoiceChipItem(
+                            label = label,
+                            selected = preferences.externalOpenMode == mode,
+                            onClick = { onExternalOpenModeChanged(mode) }
                         )
                     }
                 }
