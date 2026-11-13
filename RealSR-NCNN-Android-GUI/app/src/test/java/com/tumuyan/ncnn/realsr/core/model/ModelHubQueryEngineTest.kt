@@ -87,12 +87,12 @@ class ModelHubQueryEngineTest {
 
         val searched = ModelHubQueryEngine.buildSections(
             allModels = states,
-            searchQuery = "anime4k",
+            searchQuery = "mnnsr-ncnn",
             selectedFilter = HubFilterChip.ALL,
             sortOption = HubSortOption.RECOMMENDED
         ).flatFiltered
         assertEquals(1, searched.size)
-        assertEquals("Anime4k", searched.first().catalog.engineTool)
+        assertEquals("mnnsr-ncnn", searched.first().catalog.engineTool)
 
         // 5 MB remaining at 1 MB/s -> ~5000 ms ETA
         val eta = ModelHubQueryEngine.estimateDownloadEtaMillis(

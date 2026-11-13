@@ -76,7 +76,8 @@ object ModelHubQueryEngine {
         val q = rawQuery.trim().lowercase(Locale.US)
         if (q.isEmpty()) return true
         val c = state.catalog
-        return c.displayName.lowercase(Locale.US).contains(q) ||
+        return c.id.lowercase(Locale.US).contains(q) ||
+            c.displayName.lowercase(Locale.US).contains(q) ||
             c.description.lowercase(Locale.US).contains(q) ||
             c.engineTool.lowercase(Locale.US).contains(q) ||
             c.category.lowercase(Locale.US).contains(q) ||
