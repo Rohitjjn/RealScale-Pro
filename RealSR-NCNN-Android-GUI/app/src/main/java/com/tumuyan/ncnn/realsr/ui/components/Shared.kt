@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -202,7 +201,7 @@ fun ModelRow(
     val fit = fitOf(state, deviceTierLevel)
 
     val info: @Composable () -> Unit = {
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.fillMaxWidth()) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     m.displayName,
@@ -528,19 +527,6 @@ fun readClipboardImage(context: android.content.Context): Uri? {
                 }
                 Uri.fromFile(out)
             }.getOrNull() ?: uri
-        }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            val bitmap = item.getBitmap()
-            if (bitmap != null) {
-                return runCatching {
-                    val dir = java.io.File(context.cacheDir, "clipboard").apply { mkdirs() }
-                    val out = java.io.File(dir, "clip_${System.currentTimeMillis()}.png")
-                    java.io.FileOutputStream(out).use { output ->
-                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)
-                    }
-                    Uri.fromFile(out)
-                }.getOrNull()
-            }
         }
     }
     return null

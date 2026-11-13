@@ -238,11 +238,10 @@ fun RealScaleRange(
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .weight(1f)
+                .fillMaxWidth()
                 .height(44.dp)
                 .onGloballyPositioned { trackWidthPx.value = it.size.width.toFloat() }
                 .clearAndSetSemantics {
-                    role = Role.Slider
                     stateDescription = "$value$suffix"
                 }
                 .pointerInput(min, max, step) {
