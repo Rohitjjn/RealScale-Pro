@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,7 +30,7 @@ import com.tumuyan.ncnn.realsr.core.engine.planner.ImageType
 import com.tumuyan.ncnn.realsr.core.engine.planner.ModeId
 import com.tumuyan.ncnn.realsr.core.engine.planner.STARTER_IDS
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
-import com.tumuyan.ncnn.realsr.core.model.ModelInstallStatus
+import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.ui.Routes
 import com.tumuyan.ncnn.realsr.ui.components.ButtonSize
 import com.tumuyan.ncnn.realsr.ui.components.ButtonVariant
@@ -40,6 +41,7 @@ import com.tumuyan.ncnn.realsr.ui.components.RealScaleBadge
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleButton
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleDivider
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleIconButton
+import com.tumuyan.ncnn.realsr.ui.components.RealScaleMark
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleRing
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleRow
 import com.tumuyan.ncnn.realsr.ui.state.AppViewModel
@@ -59,8 +61,20 @@ private const val PAGE_COUNT = 4
 @Composable
 fun OnboardingFlow(viewModel: AppViewModel) {
     val c = LocalRealScaleColors.current
+
+    @Composable
+    fun deviceRow(label: String, value: String, icon: androidx.compose.ui.graphics.Painter) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, style = RealScaleType.Body13, color = c.muted)
+            Spacer(Modifier.weight(1f))
+            Text(value, style = RealScaleType.Body15Medium, color = c.ink)
+        }
+    }
     val scope = rememberCoroutineScope()
-    val page by remember { mutableStateOf(PAGE_WELCOME) }
+    var page by remember { mutableStateOf(PAGE_WELCOME) }
     val catalog by viewModel.modelCatalog.collectAsState()
     val deviceProfile by viewModel.deviceProfile.collectAsState()
     val tierLevel = deviceProfile?.tier?.level ?: 1
@@ -103,7 +117,7 @@ fun OnboardingFlow(viewModel: AppViewModel) {
                 ) {
                     if (page > PAGE_WELCOME) {
                         RealScaleIconButton(
-                            onClick = back,
+                            onClick = { back() },
                             variant = IconButtonVariant.Dark,
                             contentDescription = "Back",
                             icon = androidx.compose.ui.res.painterResource(com.tumuyan.ncnn.realsr.R.drawable.ic_lucide_chevron_left),
@@ -235,7 +249,7 @@ fun OnboardingFlow(viewModel: AppViewModel) {
         ) {
             if (page > PAGE_WELCOME) {
                 RealScaleButton(
-                    onClick = back,
+                    onClick = { back() },
                     variant = ButtonVariant.Secondary,
                     size = ButtonSize.Sm,
                     text = "Back",
@@ -244,7 +258,7 @@ fun OnboardingFlow(viewModel: AppViewModel) {
             Spacer(Modifier.weight(1f))
             if (page == PAGE_MODELS && !starterStates.all { it.isInstalled }) {
                 RealScaleButton(
-                    onClick = next,
+                    onClick = { next() },
                     variant = ButtonVariant.Secondary,
                     size = ButtonSize.Lg,
                     text = "Skip",
@@ -252,7 +266,7 @@ fun OnboardingFlow(viewModel: AppViewModel) {
                 )
             }
             RealScaleButton(
-                onClick = next,
+                onClick = { next() },
                 variant = ButtonVariant.Primary,
                 size = ButtonSize.Lg,
                 text = when (page) {
