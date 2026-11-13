@@ -39,7 +39,7 @@ import java.io.File
 
 /**
  * Compact translucent bottom-sheet activity launched when opening an image from any external
- * Android app (`ACTION_VIEW`, `image/*`). Runs in its own task affinity excluded from Recents.
+ * Android app (`ACTION_VIEW` for image MIME types). Runs in its own task affinity excluded from Recents.
  */
 class QuickUpscaleActivity : ComponentActivity() {
 
