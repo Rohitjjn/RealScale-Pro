@@ -17,6 +17,7 @@ import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
 import com.tumuyan.ncnn.realsr.core.engine.ExternalOpenMode
 import com.tumuyan.ncnn.realsr.core.engine.ModelExecutionSpec
 import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
+import com.tumuyan.ncnn.realsr.core.engine.PresetId
 import com.tumuyan.ncnn.realsr.core.engine.QueuedJobItem
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleEngine
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
@@ -186,7 +187,7 @@ class RealScaleViewModelTest {
         viewModel.consumePendingResultNavigation()
 
         // Recreated ViewModel restores persisted theme mode & last-used preset
-        fakeEngine.updatePreferences { it.copy(lastUsedPresetId = "ANIME", lastUsedScale = 4) }
+        fakeEngine.updatePreferences { it.copy(lastUsedPresetId = PresetId.ANIME, lastUsedScale = 4) }
         val recreated = RealScaleViewModel(app, container)
         val restored = withTimeout(5_000) {
             recreated.uiState.first {
