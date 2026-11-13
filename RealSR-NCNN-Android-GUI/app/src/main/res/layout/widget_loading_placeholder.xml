@@ -2,7 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/splash_canvas"
+    android:background="@color/canvas_light"
     android:padding="12dp">
 
     <TextView
