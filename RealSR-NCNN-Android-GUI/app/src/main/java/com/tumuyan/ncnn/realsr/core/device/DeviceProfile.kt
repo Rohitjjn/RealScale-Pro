@@ -190,9 +190,7 @@ class Haptics(context: Context) {
                 vibrator.vibrate(effect)
             } else {
                 @Suppress("DEPRECATION")
-                vibrator.vibrate(
-                    (longArrayOf(0, 14, 70, 24))
-                )
+                vibrator.vibrate(longArrayOf(0, 14, 70, 24), -1)
             }
         }
     }

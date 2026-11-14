@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -297,11 +298,11 @@ fun RsSlider(
     suffix: String = "",
 ) {
     val c = LocalRsColors.current
-    var widthPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    var widthPx by remember { mutableIntStateOf(0) }
     fun valueAt(x: Float): Int {
         if (widthPx <= 0) return value
-        val fraction = (x / widthPx).coerceIn(0f, 1f)
-        val raw = min + fraction * (max - min)
+        val fraction = (x / widthPx.toFloat()).coerceIn(0f, 1f)
+        val raw = min.toFloat() + fraction * (max - min).toFloat()
         val stepped = (Math.round(raw.toDouble() / step) * step).toInt()
         return stepped.coerceIn(min, max)
     }
