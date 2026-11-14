@@ -28,6 +28,7 @@ import com.tumuyan.ncnn.realsr.ui.screens.HomeScreen
 import com.tumuyan.ncnn.realsr.ui.screens.ModelsScreen
 import com.tumuyan.ncnn.realsr.ui.screens.Onboarding
 import com.tumuyan.ncnn.realsr.ui.screens.ProcessingScreen
+import com.tumuyan.ncnn.realsr.ui.screens.ResultFullscreen
 import com.tumuyan.ncnn.realsr.ui.screens.ResultScreen
 import com.tumuyan.ncnn.realsr.ui.screens.SettingsScreen
 import com.tumuyan.ncnn.realsr.ui.screens.UpscalesScreen
@@ -101,6 +102,7 @@ private fun Journey(store: AppStore, state: AppUiState) {
             is Route.Config -> ConfigScreen(store, target.photoId)
             Route.Processing -> ProcessingScreen(store)
             is Route.Result -> ResultScreen(store, target.resultId)
+            is Route.ResultFull -> ResultFullscreen(store, target.resultId)
             Route.Upscales -> UpscalesScreen(store)
             Route.Gallery -> GalleryScreen(store)
             Route.Models -> ModelsScreen(store)
@@ -120,4 +122,5 @@ private fun Route.depth(): Int = when (this) {
     is Route.Config -> 4
     Route.Processing -> 5
     is Route.Result -> 6
+    is Route.ResultFull -> 7
 }

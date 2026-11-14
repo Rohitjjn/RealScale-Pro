@@ -113,6 +113,14 @@ class MediaIntentsHost(
         if (granted) store.finishNotifications(accepted = true) else notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
+    override fun pickFromFiles() {
+        // `OpenDocument` is the full DocumentsUI browser: internal storage, SD cards, Drive, and it
+        // needs no permission because the user hands us a single URI.
+        runCatching { pickDocument.launch(arrayOf("image/*")) }.onFailure {
+            store.toast("No file browser on this device")
+        }
+    }
+
     override fun pickDocument() {
         // The photo picker needs no permission; the document picker keeps SD cards and cloud files.
         if (Build.VERSION.SDK_INT >= 33) {
@@ -138,6 +146,31 @@ class MediaIntentsHost(
             cameraUri = null
             store.toast("The camera is not available")
         }
+    }
+
+    /**
+     * Feedback: opens the mail app with the user's text already in the body. `ACTION_SENDTO` +
+     * `mailto:` is the only form every mail client (Gmail, Outlook, Samsung Mail) accepts; the
+     * `EXTRA_SUBJECT` / `EXTRA_TEXT` extras prefill the compose screen.
+     */
+    override fun sendFeedbackMail(subject: String, body: String): Boolean {
+        val address = AppStore.FEEDBACK_EMAIL
+        val sendTo = Intent(Intent.ACTION_SENDTO, Uri.fromParts("mailto", address, null)).apply {
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, body)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val opened = runCatching { activity.startActivity(Intent.createChooser(sendTo, "Send feedback")) }.isSuccess
+        if (opened) return true
+        // Some tablets ship without a mailto handler; fall back to a plain text share.
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_EMAIL, arrayOf(address))
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, body)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        return runCatching { activity.startActivity(Intent.createChooser(share, "Send feedback")) }.isSuccess
     }
 
     override fun share(uri: Uri, name: String, mime: String): Boolean {

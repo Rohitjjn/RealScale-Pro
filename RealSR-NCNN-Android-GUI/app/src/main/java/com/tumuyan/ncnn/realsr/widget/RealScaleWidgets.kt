@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.LocalSize
 import androidx.glance.Image
 import androidx.glance.ImageProvider
 import androidx.glance.action.clickable
@@ -78,52 +79,112 @@ class RealScaleEnhanceWidget : GlanceAppWidget() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
+        // One tap on a factor chip picks an image *and* starts the job at that factor.
+        fun quickIntent(scale: Int) = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data = Uri.parse("realscale://widget/quick/$scale")
+            putExtra(MainActivity.EXTRA_OPEN_PHOTO_PICKER, true)
+            putExtra(MainActivity.EXTRA_AUTO_SCALE, scale)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+
         provideContent {
             GlanceTheme {
+                // A 2x1 cell is only ~110 dp tall: drop the factor row there instead of clipping it,
+                // and keep the CTA as long as there is room for it.
+                val height = LocalSize.current.height
+                val showCta = height >= 96.dp
+                val showFactors = height >= 150.dp
                 Column(
                     modifier = GlanceModifier
                         .fillMaxSize()
-                        .cornerRadius(22.dp)
+                        .cornerRadius(24.dp)
                         .background(WidgetCanvasColor)
-                        .clickable(actionStartActivity(enhanceIntent))
                         .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Image(
                             provider = ImageProvider(R.drawable.brand_logo_medallion),
                             contentDescription = "RealScale-Pro",
-                            modifier = GlanceModifier.size(32.dp)
+                            modifier = GlanceModifier.size(24.dp)
                         )
                         Spacer(modifier = GlanceModifier.width(8.dp))
                         Text(
                             text = "RealScale-Pro",
                             style = TextStyle(
-                                color = WidgetMutedColor,
+                                color = WidgetInkColor,
                                 fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            modifier = GlanceModifier.defaultWeight(),
+                            maxLines = 1
+                        )
+                        Text(
+                            text = "offline",
+                            style = TextStyle(
+                                color = WidgetMutedColor,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Medium
                             ),
                             maxLines = 1
                         )
                     }
-                    Spacer(modifier = GlanceModifier.height(10.dp))
-                    Box(
+
+                    if (showCta) Spacer(modifier = GlanceModifier.height(12.dp))
+
+                    if (showCta) Box(
                         modifier = GlanceModifier
                             .fillMaxWidth()
-                            .cornerRadius(14.dp)
+                            .cornerRadius(16.dp)
                             .background(WidgetTerracottaColor)
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                            .clickable(actionStartActivity(enhanceIntent))
+                            .padding(horizontal = 14.dp, vertical = 13.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = context.getString(R.string.widget_enhance_cta),
                             style = TextStyle(
                                 color = WidgetOnTerracottaColor,
-                                fontSize = 13.sp,
+                                fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
                             ),
                             maxLines = 1
                         )
+                    }
+
+                    if (showFactors) Spacer(modifier = GlanceModifier.height(10.dp))
+
+                    if (showFactors) Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        listOf(2, 3, 5).forEachIndexed { index, scale ->
+                            if (index > 0) Spacer(modifier = GlanceModifier.width(8.dp))
+                            Box(
+                                modifier = GlanceModifier
+                                    .defaultWeight()
+                                    .height(34.dp)
+                                    .cornerRadius(12.dp)
+                                    .background(WidgetSurfaceColor)
+                                    .clickable(actionStartActivity(quickIntent(scale)))
+                                    .padding(horizontal = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "$scale×",
+                                    style = TextStyle(
+                                        color = WidgetInkColor,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    maxLines = 1
+                                )
+                            }
+                        }
                     }
                 }
             }

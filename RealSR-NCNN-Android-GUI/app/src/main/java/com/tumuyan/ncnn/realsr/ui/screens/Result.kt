@@ -3,6 +3,7 @@ package com.tumuyan.ncnn.realsr.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +19,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +42,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +65,7 @@ import com.tumuyan.ncnn.realsr.design.RsConfirmSheet
 import com.tumuyan.ncnn.realsr.design.RsGroup
 import com.tumuyan.ncnn.realsr.design.RsIconButton
 import com.tumuyan.ncnn.realsr.design.RsRadius
+import com.tumuyan.ncnn.realsr.design.RsIconButtonVariant
 import com.tumuyan.ncnn.realsr.design.RsRow
 import com.tumuyan.ncnn.realsr.design.RsSheet
 import com.tumuyan.ncnn.realsr.design.RsTopBar
@@ -175,12 +185,139 @@ private fun LabelPill(text: String) {
     )
 }
 
+/**
+ * The finished upscale, full screen: pinch or double-tap to zoom, drag to pan, tap to hide the
+ * chrome. This is what the "Full screen" button on the result opens — the old button pushed the
+ * *original* photo's viewer instead, so the user never actually saw the upscaled file.
+ */
+@Composable
+fun ResultFullscreen(store: AppStore, resultId: String) {
+    val c = LocalRsColors.current
+    val state = store.rememberState()
+    val result = state.results.firstOrNull { it.id == resultId }
+    var chrome by remember { mutableStateOf(true) }
+
+    if (result == null) {
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            Text(
+                "This result is no longer available",
+                style = RsType.body(16f),
+                color = c.onDark,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+        return
+    }
+
+    var scale by remember(result.id) { mutableFloatStateOf(1f) }
+    var offset by remember(result.id) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(result.id) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    scale = (scale * zoom).coerceIn(1f, 5f)
+                    offset = if (scale <= 1f) {
+                        androidx.compose.ui.geometry.Offset.Zero
+                    } else {
+                        androidx.compose.ui.geometry.Offset(
+                            x = (offset.x + pan.x).coerceIn(-size.width.toFloat(), size.width.toFloat()),
+                            y = (offset.y + pan.y).coerceIn(-size.height.toFloat(), size.height.toFloat()),
+                        )
+                    }
+                }
+            }
+            .pointerInput(result.id) {
+                detectTapGestures(
+                    onTap = { chrome = !chrome },
+                    onDoubleTap = {
+                        scale = if (scale > 1.05f) 1f else 2.5f
+                        if (scale == 1f) offset = androidx.compose.ui.geometry.Offset.Zero
+                    },
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        AsyncImage(
+            model = "file://${result.outputPath}",
+            contentDescription = "Upscaled ${result.fileName}, full screen",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offset.x,
+                    translationY = offset.y,
+                ),
+        )
+
+        AnimatedVisibility(
+            visible = chrome,
+            enter = fadeIn(tween(180)),
+            exit = fadeOut(tween(180)),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color(0xCC000000), Color.Transparent)))
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                RsIconButton(
+                    icon = LucideIcons.ChevronLeft,
+                    label = "Back",
+                    variant = RsIconButtonVariant.Dark,
+                    onClick = { store.pop() },
+                )
+                Column(Modifier.weight(1f)) {
+                    Text(result.fileName, style = RsType.mono(13f), color = c.onDark, maxLines = 1)
+                    Text(
+                        "${fmtDims(result.outW, result.outH)} · ${fmtMB(result.sizeMB)} · ${result.scale}×",
+                        style = RsType.body(12f),
+                        color = c.onDarkSoft,
+                        maxLines = 1,
+                    )
+                }
+                RsIconButton(
+                    icon = LucideIcons.Share2,
+                    label = "Share",
+                    variant = RsIconButtonVariant.Dark,
+                    onClick = { store.shareResult(result) },
+                )
+            }
+        }
+
+        if (chrome) {
+            Column(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    "Pinch or double-tap to zoom · tap to hide these controls",
+                    style = RsType.body(12f),
+                    color = c.onDarkSoft,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun ResultScreen(store: AppStore, resultId: String) {
     val c = LocalRsColors.current
     val state = store.rememberState()
     val result = state.results.firstOrNull { it.id == resultId }
-    var hold by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<String?>(null) }
     val scroll = rememberScrollState()
 
@@ -224,39 +361,31 @@ fun ResultScreen(store: AppStore, resultId: String) {
                 beforeUri = photo?.uri ?: result.sourceUri,
                 afterUri = "file://${result.outputPath}",
                 contentDescription = "Upscaled ${result.fileName}",
-                showOriginal = hold,
-                modifier = Modifier.fillMaxWidth(0.92f).aspectRatio(aspect),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(aspect)
+                    .padding(top = 4.dp),
             )
 
-            Row(Modifier.padding(top = 12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Row(
-                    Modifier
-                        .heightIn(min = 44.dp)
-                        .clip(RoundedCornerShape(RsRadius.md.dp))
-                        .background(c.card)
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onPress = {
-                                    hold = true
-                                    tryAwaitRelease()
-                                    hold = false
-                                },
-                            )
-                        }
-                        .padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(LucideIcons.Eye, contentDescription = null, tint = c.ink, modifier = Modifier.size(18.dp))
-                    Text("Hold to see original", style = RsType.body(14f, FontWeight.Medium), color = c.ink)
-                }
-                Spacer(Modifier.weight(1f))
-                RsIconButton(
-                    icon = LucideIcons.Expand,
-                    label = "Open full screen",
-                    onClick = {
-                        val id = photo?.id
-                        if (id != null) store.push(Route.Viewer(id, single = true))
+            /*
+             * Compare block, organised top to bottom: the slider, then one row that explains the
+             * gesture on the left and offers the full-screen view of the finished file on the right.
+             * "Hold to see original" is gone — the slider already does that, and holding a button was
+             * a second, hidden gesture for the same thing.
+             */
+            RsGroup(Modifier.padding(top = 14.dp)) {
+                RsRow(
+                    title = "Compare",
+                    sub = "Drag the handle, or tap anywhere on the photo",
+                    icon = LucideIcons.ArrowLeftRight,
+                    topDivider = false,
+                    trailing = {
+                        RsButton(
+                            onClick = { store.push(Route.ResultFull(result.id)) },
+                            size = RsButtonSize.Sm,
+                            icon = LucideIcons.Expand,
+                            label = "Full screen",
+                        )
                     },
                 )
             }

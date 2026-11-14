@@ -558,7 +558,12 @@ private fun ManualSections(
         RsField(
             label = "Scale",
             hint = "Output ${fmtDims(plan.outW, plan.outH)} · ${fmtMP(plan.outMP)} · about ${fmtEta(plan.etaSec)}" +
-                if (plan.extraResize) "\n5× uses an extra resize step." else "",
+                if (plan.scale !in plan.model.scales) {
+                    "\n${plan.model.name} works at ${plan.model.scales.joinToString("/") { "$it×" }}; " +
+                        "the exact ${plan.scale}× size is reached with one resize pass."
+                } else {
+                    ""
+                },
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(2, 3, 4, 5).forEach { scale ->

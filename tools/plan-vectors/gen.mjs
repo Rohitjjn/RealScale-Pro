@@ -173,7 +173,7 @@ function push(photo, mode, p, installedSet, opts) {
       overLimit: plan.overLimit, optimized: plan.optimized, outW: plan.outW, outH: plan.outH,
       outMP: plan.outMP, inputNote: plan.inputNote, format: plan.format, ext: plan.ext,
       etaSec: plan.etaSec, sizeMB: plan.sizeMB, cols: plan.cols, rows: plan.rows, tiles: plan.tiles,
-      extraResize: plan.extraResize, check: plan.check,
+      check: plan.check,
     },
   });
 }

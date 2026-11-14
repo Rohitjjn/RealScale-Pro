@@ -70,6 +70,7 @@ fun ModelsScreen(store: AppStore) {
     val device = store.device
     var filter by remember { mutableStateOf("all") }
     var pendingDelete by remember { mutableStateOf<ModelEntry?>(null) }
+    var details by remember { mutableStateOf<ModelEntry?>(null) }
     var checking by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
 
@@ -147,9 +148,49 @@ fun ModelsScreen(store: AppStore) {
                 }
             }
 
+            /*
+             * Starter pack first, always, whatever the filter says. It is the two models the app
+             * installs by itself on first run, so it belongs in its own section and is never mixed
+             * into the All / Photo / Anime lists below.
+             */
+            Text(
+                "Starter models",
+                style = RsType.display(26f),
+                color = c.ink,
+                modifier = Modifier.padding(top = 32.dp),
+            )
+            Text(
+                "Installed automatically during setup. One photo model, one anime model.",
+                style = RsType.body(13f, lineHeightRatio = 1.35f),
+                color = c.muted,
+                modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ModelCatalog.starterModels().forEach { model ->
+                    ModelCard(
+                        store = store,
+                        model = model,
+                        onDetails = { details = model },
+                        onDelete = { pendingDelete = model },
+                    )
+                }
+            }
+
+            Text(
+                "All models",
+                style = RsType.display(26f),
+                color = c.ink,
+                modifier = Modifier.padding(top = 36.dp),
+            )
+            Text(
+                "Everything the bundled ncnn and MNN engine can run.",
+                style = RsType.body(13f, lineHeightRatio = 1.35f),
+                color = c.muted,
+                modifier = Modifier.padding(top = 4.dp),
+            )
             Row(
                 Modifier
-                    .padding(top = 20.dp)
+                    .padding(top = 14.dp)
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -162,48 +203,54 @@ fun ModelsScreen(store: AppStore) {
                 }
             }
 
-            ModelCatalog.PACKS.forEach { pack ->
-                val models = ModelCatalog.MODELS.filter { model ->
-                    model.pack == pack.id && when (filter) {
-                        "photo" -> model.kind == ImageType.Photo
-                        "anime" -> model.kind == ImageType.Anime
-                        else -> true
+            val listed = ModelCatalog.catalogModels(
+                when (filter) {
+                    "photo" -> ImageType.Photo
+                    "anime" -> ImageType.Anime
+                    else -> null
+                },
+            )
+            val pending = listed.filter {
+                it.id !in state.installed &&
+                    state.downloads[it.id] == null &&
+                    ModelCatalog.fit(it, device.tier).tone != "no"
+            }
+            if (pending.size > 1) {
+                Row(
+                    Modifier
+                        .padding(top = 12.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Spacer(Modifier.weight(1f))
+                    Column(
+                        Modifier
+                            .clip(RoundedCornerShape(RsRadius.md.dp))
+                            .clickable { pending.forEach { store.downloadModel(it.id) } }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.End,
+                    ) {
+                        Text("Download all", style = RsType.body(14f, FontWeight.Medium, 1.2f), color = c.link)
+                        Text(
+                            "${pending.size} models · ${fmtMB(pending.sumOf { it.sizeMB })}",
+                            style = RsType.body(12f),
+                            color = c.muted,
+                        )
                     }
                 }
-                if (models.isEmpty()) return@forEach
-                val pending = models.filter {
-                    it.id !in state.installed && state.downloads[it.id] == null && ModelCatalog.fit(it, device.tier).tone != "no"
-                }
-                Column(Modifier.padding(top = 32.dp)) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Column(Modifier.weight(1f)) {
-                            Text(pack.name, style = RsType.display(26f), color = c.ink)
-                            Text(pack.note, style = RsType.body(13f, lineHeightRatio = 1.35f), color = c.muted, modifier = Modifier.padding(top = 4.dp))
-                        }
-                        if (pending.size > 1) {
-                            Column(
-                                Modifier
-                                    .clickable { pending.forEach { store.downloadModel(it.id) } }
-                                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                                horizontalAlignment = Alignment.End,
-                            ) {
-                                Text("Download all", style = RsType.body(14f, FontWeight.Medium, 1.2f), color = c.link)
-                                Text(fmtMB(pending.sumOf { it.sizeMB }), style = RsType.body(12f), color = c.muted)
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-                    RsGroup {
-                        models.forEachIndexed { index, model ->
-                            ModelRow(
-                                store = store,
-                                model = model,
-                                variant = "manage",
-                                topDivider = index > 0,
-                                onDelete = { pendingDelete = model },
-                            )
-                        }
-                    }
+            }
+
+            Column(
+                Modifier.padding(top = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                listed.forEach { model ->
+                    ModelCard(
+                        store = store,
+                        model = model,
+                        onDetails = { details = model },
+                        onDelete = { pendingDelete = model },
+                    )
                 }
             }
 
@@ -216,6 +263,19 @@ fun ModelsScreen(store: AppStore) {
                 label = if (checking) "Checking…" else "Check for updates",
             )
         }
+    }
+
+    val open = details
+    if (open != null) {
+        ModelDetailsSheet(
+            store = store,
+            model = open,
+            onClose = { details = null },
+            onDelete = {
+                details = null
+                pendingDelete = open
+            },
+        )
     }
 
     val deleting = pendingDelete
@@ -258,6 +318,294 @@ private fun LegendRing(label: String) {
                 .border(1.dp, c.mutedSoft, CircleShape),
         )
         Text(label, style = RsType.body(12f), color = c.body)
+    }
+}
+
+/**
+ * One row of the Model Manager: name on top, description under it, a chevron that opens the details
+ * sheet, and the action on the right — a download button with the size below it, a round 0–100 %
+ * progress while it transfers, or a green check disc once the model is on the device.
+ */
+@Composable
+fun ModelCard(
+    store: AppStore,
+    model: ModelEntry,
+    onDetails: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val c = LocalRsColors.current
+    val state = store.rememberState()
+    val installed = model.id in state.installed
+    val download = state.downloads[model.id]
+    val fit = ModelCatalog.fit(model, store.device.tier)
+    val unavailable = fit.tone == "no" && !installed
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(RsRadius.md.dp))
+            .background(c.card)
+            .padding(16.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        model.name,
+                        style = RsType.body(16f, FontWeight.SemiBold, 1.25f),
+                        color = if (unavailable) c.muted else c.ink,
+                    )
+                    if (model.required) RsBadge("Starter", tone = RsBadgeTone.Amber)
+                }
+                Text(
+                    model.desc,
+                    style = RsType.body(13f, lineHeightRatio = 1.4f),
+                    color = c.body,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                Row(
+                    Modifier
+                        .padding(top = 10.dp)
+                        .heightIn(min = 32.dp)
+                        .clip(RoundedCornerShape(RsRadius.sm.dp))
+                        .clickable { onDetails() },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text("Details", style = RsType.body(13f, FontWeight.Medium), color = c.link)
+                    Icon(LucideIcons.ChevronRight, contentDescription = null, tint = c.link, modifier = Modifier.size(16.dp))
+                }
+            }
+
+            Column(
+                Modifier.width(76.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                when {
+                    download != null -> {
+                        ModelProgressDisc(
+                            progress = download.progress,
+                            label = when (download.state) {
+                                "queued" -> "Queued"
+                                "paused" -> "Paused"
+                                "failed" -> "Retry"
+                                else -> "${(download.progress * 100).toInt()}%"
+                            },
+                            onClick = {
+                                if (download.state == "failed") store.downloadModel(model.id)
+                                else store.cancelDownload(model.id)
+                            },
+                        )
+                        Text(
+                            when (download.state) {
+                                "failed" -> "Tap to retry"
+                                else -> "Tap to cancel"
+                            },
+                            style = RsType.body(10f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                    installed -> {
+                        Box(
+                            Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(c.success.copy(alpha = 0.16f))
+                                .clickable { onDetails() },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                LucideIcons.Check,
+                                contentDescription = "${model.name} is installed",
+                                tint = c.success,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                        Text(
+                            "Installed",
+                            style = RsType.body(10f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                    unavailable -> {
+                        Box(
+                            Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(c.canvas),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                LucideIcons.Lock,
+                                contentDescription = "Not available on this device",
+                                tint = c.mutedSoft,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Text(
+                            "Too heavy",
+                            style = RsType.body(10f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                    else -> {
+                        Box(
+                            Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(c.ink)
+                                .clickable { store.downloadModel(model.id) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                LucideIcons.Download,
+                                contentDescription = "Download ${model.name}",
+                                tint = c.canvas,
+                                modifier = Modifier.size(21.dp),
+                            )
+                        }
+                        Text(
+                            fmtMB(model.sizeMB),
+                            style = RsType.mono(11f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        val failure = download?.takeIf { it.state == "failed" }?.message
+        if (!failure.isNullOrBlank()) {
+            Text(
+                failure,
+                style = RsType.body(12f, lineHeightRatio = 1.35f),
+                color = c.error,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+        }
+    }
+}
+
+/** Round progress disc: track + 0–100 % arc + the percentage (or a word) in the middle. */
+@Composable
+private fun ModelProgressDisc(
+    progress: Float,
+    label: String,
+    onClick: () -> Unit,
+) {
+    val c = LocalRsColors.current
+    val clamped = progress.coerceIn(0f, 1f)
+    Box(
+        Modifier
+            .size(44.dp)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val stroke = 3.dp.toPx()
+            drawCircle(
+                color = c.hairline,
+                radius = size.minDimension / 2 - stroke / 2,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = stroke),
+            )
+            drawArc(
+                color = c.primary,
+                startAngle = -90f,
+                sweepAngle = 360f * clamped,
+                useCenter = false,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = stroke,
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                ),
+            )
+        }
+        Text(
+            label,
+            style = RsType.mono(10f),
+            color = c.ink,
+        )
+    }
+}
+
+/** Everything about a model that does not fit on the card, plus the delete action. */
+@Composable
+fun ModelDetailsSheet(
+    store: AppStore,
+    model: ModelEntry,
+    onClose: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val c = LocalRsColors.current
+    val state = store.rememberState()
+    val installed = model.id in state.installed
+    val download = state.downloads[model.id]
+    val fit = ModelCatalog.fit(model, store.device.tier)
+
+    RsSheet(open = true, onClose = onClose, title = model.name) {
+        Text(model.desc, style = RsType.body(15f, lineHeightRatio = 1.55f), color = c.body)
+        RsGroup(Modifier.padding(top = 16.dp)) {
+            DetailLine("Kind", if (model.kind == ImageType.Anime) "Anime and illustration" else "Photo", first = true)
+            DetailLine("Engine", if (model.engine == "MNN") "MNN (mnnsr-ncnn)" else "ncnn (${model.engineTool})")
+            DetailLine("Native scales", model.scales.joinToString(" / ") { "$it×" })
+            DetailLine("Size", if (model.sizeMB <= 0.0) "Bundled, no download" else fmtMB(model.sizeMB))
+            DetailLine("Speed", model.speed)
+            DetailLine("Licence", model.license)
+            DetailLine("On this device", fit.label)
+            DetailLine(
+                "Status",
+                when {
+                    installed -> "Installed"
+                    download != null -> "${(download.progress * 100).toInt()}% · ${download.state}"
+                    else -> "Not downloaded"
+                },
+            )
+        }
+        Row(Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (installed && !model.required) {
+                RsButton(
+                    onClick = {
+                        store.deleteModel(model.id)
+                        store.updatePrefs(ModeId.UPSCALE) { if (it.modelId == model.id) it.copy(modelId = "auto") else it }
+                        store.updatePrefs(ModeId.SUPER) { if (it.modelId == model.id) it.copy(modelId = "auto") else it }
+                        onDelete()
+                    },
+                    variant = RsButtonVariant.Danger,
+                    modifier = Modifier.weight(1f),
+                    icon = LucideIcons.Trash2,
+                    label = "Delete",
+                )
+            } else if (!installed && download == null && model.manifestId != null) {
+                RsButton(
+                    onClick = {
+                        store.downloadModel(model.id)
+                        onClose()
+                    },
+                    variant = RsButtonVariant.Primary,
+                    modifier = Modifier.weight(1f),
+                    icon = LucideIcons.Download,
+                    label = "Download · ${fmtMB(model.sizeMB)}",
+                )
+            }
+            RsButton(onClick = onClose, variant = RsButtonVariant.Ghost, modifier = Modifier.weight(1f), label = "Close")
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun DetailLine(label: String, value: String, first: Boolean = false) {
+    val c = LocalRsColors.current
+    if (!first) com.tumuyan.ncnn.realsr.design.HairlineSoftDivider()
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 11.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(label, style = RsType.body(13f), color = c.muted, modifier = Modifier.width(112.dp))
+        Text(value, style = RsType.body(13f, lineHeightRatio = 1.4f), color = c.ink, modifier = Modifier.weight(1f))
     }
 }
 

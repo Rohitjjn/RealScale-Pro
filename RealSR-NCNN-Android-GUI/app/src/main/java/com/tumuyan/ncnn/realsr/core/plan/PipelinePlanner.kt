@@ -151,7 +151,6 @@ data class Plan(
     val cols: Int,
     val rows: Int,
     val tiles: Int,
-    val extraResize: Boolean,
     val check: PlanCheck,
 )
 
@@ -344,7 +343,6 @@ object PipelinePlanner {
             cols = cols,
             rows = rows,
             tiles = cols * rows,
-            extraResize = scale == 5,
             check = check,
         )
     }

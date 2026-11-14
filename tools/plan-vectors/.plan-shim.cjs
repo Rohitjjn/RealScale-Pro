@@ -45,7 +45,7 @@ var DEVICE = {
   outputCapMP: 64,
   superCapMP: 128
 };
-var MODELS = [{ "id": "esrgan-general-v3", "name": "Real-ESRGAN general v3", "secPerMP": 3, "sizeMB": 0 }, { "id": "waifu2x-anime", "name": "waifu2x anime", "secPerMP": 4, "sizeMB": 0 }, { "id": "srmd-x2", "name": "SRMD 2\xD7", "secPerMP": 4, "sizeMB": 0 }, { "id": "anime4k-x2", "name": "Anime4K 2\xD7", "secPerMP": 1.6, "sizeMB": 0 }, { "id": "esrgan-anime-sharp-lite", "name": "AnimeSharp Lite x4", "secPerMP": 8, "sizeMB": 0 }, { "id": "esrgan-anime-sharp", "name": "AnimeSharp x4", "secPerMP": 12, "sizeMB": 0 }, { "id": "esrgan-remacri", "name": "Remacri x4", "secPerMP": 14, "sizeMB": 0 }, { "id": "esrgan-ultramix", "name": "UltraMix Balanced x4", "secPerMP": 13, "sizeMB": 0 }, { "id": "esrgan-nomos8ksc", "name": "Nomos8kSC x4", "secPerMP": 18, "sizeMB": 0 }, { "id": "esrgan-sourcebook", "name": "SourceBook x2", "secPerMP": 14, "sizeMB": 0 }, { "id": "mnn-moesr", "name": "MoeSR illustration (MNN)", "secPerMP": 14, "sizeMB": 0 }, { "id": "mnn-nomos8ksc", "name": "Nomos8kSC (MNN)", "secPerMP": 16, "sizeMB": 0 }, { "id": "waifu2x-cunet", "name": "waifu2x CUnet", "secPerMP": 6, "sizeMB": 0 }, { "id": "srmd-nf-x2", "name": "SRMD 2\xD7 (no denoise)", "secPerMP": 4, "sizeMB": 0 }, { "id": "anime4k-x4", "name": "Anime4K 4\xD7", "secPerMP": 2.2, "sizeMB": 0 }];
+var MODELS = [{ "id": "esrgan-general-v3", "name": "Real-ESRGAN General v3", "secPerMP": 3, "sizeMB": 0 }, { "id": "waifu2x-anime", "name": "Waifu2x Anime", "secPerMP": 4, "sizeMB": 0 }, { "id": "waifu2x-photo", "name": "Waifu2x Photo", "secPerMP": 4, "sizeMB": 0 }, { "id": "srmd-x2", "name": "SRMD", "secPerMP": 5, "sizeMB": 0 }, { "id": "df2k", "name": "RealSR DF2K", "secPerMP": 12, "sizeMB": 0 }, { "id": "df2k-jpeg", "name": "RealSR DF2K JPEG", "secPerMP": 12, "sizeMB": 0 }, { "id": "esrgan-remacri", "name": "Remacri x4", "secPerMP": 14, "sizeMB": 0 }, { "id": "esrgan-ultramix", "name": "UltraMix Balanced x4", "secPerMP": 13, "sizeMB": 0 }, { "id": "esrgan-ultrasharp", "name": "UltraSharp x4 (fp16)", "secPerMP": 14, "sizeMB": 0 }, { "id": "esrgan-nomos8ksc", "name": "Nomos8kSC x4", "secPerMP": 18, "sizeMB": 0 }, { "id": "waifu2x-cunet", "name": "Waifu2x CUnet", "secPerMP": 6, "sizeMB": 0 }, { "id": "esrgan-anime-sharp-lite", "name": "AnimeSharp Lite x4", "secPerMP": 8, "sizeMB": 0 }, { "id": "esrgan-anime-sharp", "name": "AnimeSharp x4", "secPerMP": 12, "sizeMB": 0 }, { "id": "mnn-anime-6b", "name": "RealESRGAN Anime 6B (MNN)", "secPerMP": 9, "sizeMB": 0 }, { "id": "anime4k-x2", "name": "Anime4K 2\xD7", "secPerMP": 1.6, "sizeMB": 0 }, { "id": "anime4k-x4", "name": "Anime4K 4\xD7", "secPerMP": 2.2, "sizeMB": 0 }];
 var ID_MAP = { "esrgan-general-v3": "esrgan-general-v3", "realcugan-se2": "waifu2x-anime", "esrgan-x4plus": "esrgan-remacri", "esrgan-anime-x4": "esrgan-anime-sharp", "esrgan-v3-anime": "waifu2x-anime" };
 var modelById = (id) => MODELS.find((m) => m.id === (ID_MAP[id] ?? id)) ?? MODELS[0];
 var TILE_PRESETS = [
@@ -173,7 +173,6 @@ function makePlan(photo, mode, prefs, installed, opts = {}) {
     cols,
     rows,
     tiles: cols * rows,
-    extraResize: scale === 5,
     check
   };
 }

@@ -2,6 +2,24 @@
 
 All notable changes to **RealScale-Pro** are documented in this file.
 
+## [2.2.0] - 2026-11-14
+
+### Added
+- **Home is the import screen**: "Choose Another Image To Upscale" with four tiles — **Gallery** (in-app browser), **Files** (full system document browser, any folder or cloud provider), **Camera**, and **More** (Paste from clipboard, Share from other apps). The old hero buttons and the recent-photos strip are gone.
+- **Result is where a job ends**: a finished upscale navigates straight to the result, which now has a **Full screen** button opening the upscaled file in a pinch/double-tap zoomable viewer with share.
+- **Starter models** section in the Model Manager, above the All / Photo / Anime lists, with the two models the app installs at startup (Real-ESRGAN General v3 for photos, waifu2x Anime for illustrations).
+- **Model cards** rebuilt: name and description on the left, a Details chevron, and the action on the right — download icon with size, round 0–100 % progress, or a green check disc when installed.
+- **Widget quick upscale**: the Enhance widget now carries 2× / 3× / 5× chips. Tapping one picks an image and starts the job immediately at that factor.
+
+### Changed
+- **Model catalog matches the shipped engine**: only the 14 models the bundled ncnn/MNN binaries actually support (`assets/model_manifest.json`), plus the two bundled Anime4K shader models. Real-CUGAN, SourceBook, MoeSR and the duplicate SRMD variant were dropped.
+- **3× and 5× work.** The network runs at the factor its weights support (`ModelCatalog.modelScaleFor`) and the engine measures the real output, then makes one exact Lanczos pass to the size the plan promised.
+- **Live tiles show the image**: while upscaling, the photo is drawn monochrome and each finished tile reveals the colour result, with a hairline grid and an amber ring on the active cell.
+- **Tips are just text**: the "Tip" eyebrow above the upscaling tip is gone.
+- **Settings**: the Privacy section (usage analytics, crash reports) is removed, the status bar and its icons follow the in-app theme immediately, and Send feedback opens the mail app prefilled to `userrohitai@gmail.com`.
+- **Guide screen** uses a real, text-free photo pair, and the notification primer's bell glyph is centred in its tile.
+- Version **2.2.0** (`57`).
+
 ## [2.1.0] - 2026-11-12
 
 ### Added

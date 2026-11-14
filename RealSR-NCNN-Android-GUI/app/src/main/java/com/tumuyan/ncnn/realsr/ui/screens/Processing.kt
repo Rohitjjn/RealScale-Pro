@@ -34,6 +34,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.pointer.pointerInput
@@ -69,8 +73,12 @@ private val TIPS = listOf(
 )
 
 /**
- * Tile fill: the real output grid, painted tile by tile as the engine reports progress. Cells come
- * from the plan (cols × rows of the actual tile size), never from a decorative animation.
+ * Tile fill: the real output grid painted tile by tile as the engine reports progress.
+ *
+ * The photo starts as a monochrome, dimmed preview — nothing has been enhanced yet. Every finished
+ * tile reveals the colour image inside its own cell, so the picture literally develops square by
+ * square while the engine works. The active cell gets a thin amber ring and there is a hairline grid
+ * so the tile count stays readable on top of a busy photo.
  */
 @Composable
 fun TileFill(
@@ -82,40 +90,75 @@ fun TileFill(
     modifier: Modifier = Modifier,
 ) {
     val c = LocalRsColors.current
+    val total = (cols * rows).coerceAtLeast(1)
+    val limit = done.coerceIn(0, total)
     Box(
         modifier
             .clip(RoundedCornerShape(RsRadius.sm.dp))
             .background(c.darkElevated),
     ) {
+        // 1. Untouched area: the same photo, desaturated and dim.
         AsyncImage(
             model = photoUri,
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
-            alpha = 0.35f,
+            colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
+            alpha = 0.45f,
         )
-        Column(Modifier.fillMaxSize()) {
-            repeat(rows) { row ->
-                Row(Modifier.weight(1f).fillMaxWidth()) {
-                    repeat(cols) { col ->
-                        val index = row * cols + col
-                        val filled = index < done
-                        val isActive = index == active
-                        Box(
-                            Modifier
-                                .weight(1f)
-                                .fillMaxSize()
-                                .padding(0.5.dp)
-                                .background(
-                                    when {
-                                        filled -> c.primary.copy(alpha = 0.85f)
-                                        isActive -> c.primary.copy(alpha = 0.45f)
-                                        else -> c.darkSoft.copy(alpha = 0.25f)
-                                    },
-                                ),
-                        )
+        // 2. Finished tiles: the colour image, clipped to that tile only.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .drawWithContent {
+                    if (cols <= 0 || rows <= 0 || limit <= 0) return@drawWithContent
+                    val cellW = size.width / cols
+                    val cellH = size.height / rows
+                    for (index in 0 until limit) {
+                        val row = index / cols
+                        val col = index % cols
+                        clipRect(
+                            left = col * cellW,
+                            top = row * cellH,
+                            right = (col + 1) * cellW,
+                            bottom = (row + 1) * cellH,
+                        ) {
+                            this@drawWithContent.drawContent()
+                        }
                     }
-                }
+                },
+        ) {
+            AsyncImage(
+                model = photoUri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        // 3. Grid lines plus the tile being worked on right now.
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            if (cols <= 0 || rows <= 0) return@Canvas
+            val cellW = size.width / cols
+            val cellH = size.height / rows
+            val line = c.onDark.copy(alpha = 0.10f)
+            for (col in 1 until cols) {
+                drawLine(line, Offset(col * cellW, 0f), Offset(col * cellW, size.height), 1f)
+            }
+            for (row in 1 until rows) {
+                drawLine(line, Offset(0f, row * cellH), Offset(size.width, row * cellH), 1f)
+            }
+            if (active in 0 until total) {
+                val row = active / cols
+                val col = active % cols
+                drawRect(
+                    color = c.amber.copy(alpha = 0.9f),
+                    topLeft = Offset(col * cellW + 0.5f, row * cellH + 0.5f),
+                    size = androidx.compose.ui.geometry.Size(
+                        (cellW - 1f).coerceAtLeast(1f),
+                        (cellH - 1f).coerceAtLeast(1f),
+                    ),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f),
+                )
             }
         }
     }
@@ -146,16 +189,16 @@ fun ProcessingScreen(store: AppStore) {
         return
     }
 
-    // Hand over to the result as soon as the job is saved.
+    // Hand over to the result as soon as the job is saved. The store already rewrites the stack, so
+    // this only makes sure a job that finished while the screen was off-stack still lands there.
     LaunchedEffect(job.status, job.resultId) {
         if (job.status == JobStatus.Done) {
             val id = job.resultId
+            store.acknowledgeJob()
+            store.clearJob()
             if (id != null) {
-                store.acknowledgeJob()
-                store.clearJob()
-                store.replaceTop(Route.Result(id))
+                if (store.state.value.route !is Route.Result) store.replaceTop(Route.Result(id))
             } else {
-                store.clearJob()
                 store.home()
             }
         }
@@ -261,9 +304,18 @@ fun ProcessingScreen(store: AppStore) {
                 }
             }
 
-            Column(Modifier.padding(top = 24.dp)) {
-                com.tumuyan.ncnn.realsr.design.EyebrowLabel("Tip")
-                Text(TIPS[tip], style = RsType.body(14f, lineHeightRatio = 1.6f), color = c.body, modifier = Modifier.padding(top = 6.dp))
+            Row(
+                Modifier
+                    .padding(top = 24.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(RsRadius.md.dp))
+                    .background(c.card)
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(LucideIcons.Zap, contentDescription = null, tint = c.muted, modifier = Modifier.size(18.dp))
+                Text(TIPS[tip], style = RsType.body(14f, lineHeightRatio = 1.5f), color = c.body)
             }
             Spacer(Modifier.height(24.dp))
         }

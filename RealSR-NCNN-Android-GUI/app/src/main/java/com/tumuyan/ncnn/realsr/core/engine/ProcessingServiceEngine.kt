@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.BitmapFactory
+import kotlin.math.abs
 import android.net.Uri
 import android.os.IBinder
 import androidx.documentfile.provider.DocumentFile
@@ -428,7 +429,7 @@ class ProcessingServiceEngine(
 
                 val (inW, inH) = decodeDimensions(beforeFile)
                 val outExt = prefs.outputFormat.extension
-                val outputFile = File(
+                var outputFile = File(
                     creationsDir,
                     "RealScale_${itemStartMs}_${pos}_${entry.preset.id.name.lowercase(Locale.US)}_${entry.scale}x.$outExt"
                 )
@@ -551,6 +552,51 @@ class ProcessingServiceEngine(
                     jobQueue.markActiveFinished()
                     refreshQueueSnapshot()
                     continue
+                }
+
+                /*
+                 * Exact output size — this is what makes 3× and 5× real.
+                 *
+                 * Every model has a native factor (waifu2x/SRMD 2×, Real-ESRGAN 4×, Anime4K 2/4×), so
+                 * asking a 4× model for a 3× result used to hand `-s 3` to a network that can only do
+                 * 4×: the job "finished" with the wrong dimensions. The engine's own output is
+                 * measured here and, when it is not the size the plan promised, one Lanczos pass
+                 * corrects it. Same code path fixes 5×, and any model/scale combination.
+                 */
+                if (cmdResult.success && outputFile.exists() && outputFile.length() > 0L && inW > 0 && inH > 0) {
+                    val targetW = inW * entry.scale
+                    val targetH = inH * entry.scale
+                    val (madeW, madeH) = decodeDimensions(outputFile)
+                    if (madeW > 0 && madeH > 0 && (abs(madeW - targetW) > 2 || abs(madeH - targetH) > 2)) {
+                        val factor = targetW.toDouble() / madeW.toDouble()
+                        val fitted = File(
+                            creationsDir,
+                            "RealScale_${itemStartMs}_${pos}_fit_${entry.scale}x.$outExt"
+                        )
+                        _state.update { prev ->
+                            if (prev is EngineState.Running && prev.currentItemId == entry.id) {
+                                prev.copy(stage = ProcessingStage.ENHANCING, latestStatusLine = "Fitting to ${entry.scale}×")
+                            } else {
+                                prev
+                            }
+                        }
+                        val fitCommand = com.tumuyan.ncnn.realsr.core.engine.PresetCommandResolver
+                            .buildResizeCommand(outputFile.absolutePath, fitted.absolutePath, factor)
+                        if (!prefs.hideProgramOutput) appendLog("$ $fitCommand")
+                        val fitResult = runServiceCommand(
+                            service = service,
+                            command = fitCommand,
+                            workingDir = realsrDir.absolutePath
+                        ) { line ->
+                            if (!prefs.hideProgramOutput) appendLog(line)
+                        }
+                        if (fitResult.success && fitted.exists() && fitted.length() > 0L) {
+                            outputFile.delete()
+                            outputFile = fitted
+                        } else {
+                            fitted.delete()
+                        }
+                    }
                 }
 
                 if (!cmdResult.success || !outputFile.exists() || outputFile.length() == 0L) {

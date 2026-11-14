@@ -20,6 +20,8 @@ import com.tumuyan.ncnn.realsr.ui.RealScaleDesignApp
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.ThemePref
 import com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -46,6 +48,13 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) consumeIncomingIntent(intent)
 
         setContent { RealScaleDesignApp(store) }
+
+        lifecycleScope.launch {
+            store.state
+                .map { appIsDark(it.settings.theme) }
+                .distinctUntilChanged()
+                .collect { applyEdgeToEdge(it) }
+        }
     }
 
     /**
@@ -53,16 +62,26 @@ class MainActivity : ComponentActivity() {
      * light system (or the reverse) the status bar used to be tinted for the wrong theme, which
      * reads as a dark strip across the top of every screen.
      */
-    private fun applyEdgeToEdge() {
-        val pref = AppStore.persistedTheme(this)
-        val systemDark = (resources.configuration.uiMode and
-            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+    private fun systemIsDark(): Boolean =
+        (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val appDark = when (pref) {
-            ThemePref.Dark -> true
-            ThemePref.Light -> false
-            ThemePref.System -> systemDark
-        }
+
+    private fun appIsDark(pref: ThemePref): Boolean = when (pref) {
+        ThemePref.Dark -> true
+        ThemePref.Light -> false
+        ThemePref.System -> systemIsDark()
+    }
+
+    private fun applyEdgeToEdge() = applyEdgeToEdge(appIsDark(AppStore.persistedTheme(this)))
+
+    /**
+     * System bars follow the app's own theme, and they are re-applied whenever that theme changes.
+     *
+     * `enableEdgeToEdge` only sets the icon colour once: switching Settings → Dark left dark icons
+     * on a dark status bar, so the clock and the notification icons disappeared until the activity
+     * was recreated. The store's theme is collected below and the bar style is re-applied in place.
+     */
+    private fun applyEdgeToEdge(appDark: Boolean) {
         val transparent = android.graphics.Color.TRANSPARENT
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(transparent, transparent) { appDark },
@@ -90,6 +109,13 @@ class MainActivity : ComponentActivity() {
 
         if (incoming.getBooleanExtra(EXTRA_OPEN_PHOTO_PICKER, false)) {
             incoming.removeExtra(EXTRA_OPEN_PHOTO_PICKER)
+            /*
+             * The widget can ask for a specific factor: the picked image then starts upscaling on
+             * its own, so a widget tap is one tap and not "pick, then find the button".
+             */
+            val scale = incoming.getIntExtra(EXTRA_AUTO_SCALE, 0)
+            incoming.removeExtra(EXTRA_AUTO_SCALE)
+            store.pendingAutoScale = scale.takeIf { it in 2..5 }
             intents.pickDocument()
             return
         }
@@ -154,5 +180,8 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_OPEN_PHOTO_PICKER = "com.tumuyan.ncnn.realsr.EXTRA_OPEN_PHOTO_PICKER"
+
+        /** 2, 3, 4 or 5: start upscaling as soon as the picked image is imported. */
+        const val EXTRA_AUTO_SCALE = "com.tumuyan.ncnn.realsr.EXTRA_AUTO_SCALE"
     }
 }

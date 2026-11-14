@@ -28,6 +28,10 @@ sealed interface Route {
     @Serializable
     data class Result(val resultId: String) : Route
 
+    /** The finished upscale, full screen and zoomable. */
+    @Serializable
+    data class ResultFull(val resultId: String) : Route
+
     @Serializable
     data object Upscales : Route
 

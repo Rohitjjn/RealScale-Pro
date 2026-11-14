@@ -97,7 +97,6 @@ class PipelinePlannerGoldenTest {
             assertEquals("$where cols", expected.getValue("cols").jsonPrimitive.int, plan.cols)
             assertEquals("$where rows", expected.getValue("rows").jsonPrimitive.int, plan.rows)
             assertEquals("$where tiles", expected.getValue("tiles").jsonPrimitive.int, plan.tiles)
-            assertEquals("$where extraResize", expected.getValue("extraResize").jsonPrimitive.boolean, plan.extraResize)
             assertEquals("$where check", checkJson(expected), checkJson(plan))
             index++
         }

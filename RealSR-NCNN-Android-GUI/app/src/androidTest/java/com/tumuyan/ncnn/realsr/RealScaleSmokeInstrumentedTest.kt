@@ -275,10 +275,12 @@ class RealScaleSmokeInstrumentedTest {
             waitForText("RealScale-Pro", 12_000L)
             scenario.onActivity { activity -> activity.storeForTest().skipOnboardingForTest() }
 
-            waitForText("Recent photos", 12_000L)
+            // Home is now the four import tiles: no hero buttons, no photo strip.
+            waitForText("Choose Another Image To Upscale", 12_000L)
             composeRule.onNodeWithText("Sharper, bigger photos. Nothing leaves your device.")
                 .assertIsDisplayed()
-            composeRule.onAllNodesWithText("Allow photo access")[0].assertIsDisplayed()
+            composeRule.onNodeWithText("Gallery").assertIsDisplayed()
+            composeRule.onNodeWithText("Files").assertIsDisplayed()
             composeRule.waitForIdle()
             captureComposeRootBitmap(context, "08_home.png")?.recycle()
 
@@ -292,18 +294,20 @@ class RealScaleSmokeInstrumentedTest {
             captureComposeRootBitmap(context, "09_settings_dark.png")?.recycle()
             composeRule.onNodeWithText("System").performClick()
             composeRule.onNodeWithContentDescription("Back").performClick()
-            waitForText("Recent photos", 8_000L)
+            waitForText("Choose Another Image To Upscale", 8_000L)
 
             // Model Manager: storage card, packs and the update check.
             composeRule.onNodeWithContentDescription("Models").performClick()
             waitForText("Model Manager", 8_000L)
             // Eyebrow labels render in caps (EyebrowLabel uppercases its text).
             composeRule.onNodeWithText("STORAGE").assertIsDisplayed()
+            composeRule.onNodeWithText("Starter models").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("All models").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("Check for updates").performScrollTo().assertIsDisplayed()
             composeRule.waitForIdle()
             captureComposeRootBitmap(context, "10_models.png")?.recycle()
             composeRule.onNodeWithContentDescription("Back").performClick()
-            waitForText("Recent photos", 8_000L)
+            waitForText("Choose Another Image To Upscale", 8_000L)
         } finally {
             runCatching {
                 scenario.onActivity { it.finish() }

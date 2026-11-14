@@ -109,125 +109,37 @@ fun HomeScreen(store: AppStore) {
                     .fillMaxSize()
                     .verticalScroll(scroll),
             ) {
-                /* 1. The upscale button is the first thing on the screen */
-                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp)) {
-                    RsButton(
-                        onClick = {
-                            store.haptic(HapticKind.Light)
-                            store.pickFile()
-                        },
-                        variant = RsButtonVariant.Primary,
-                        size = RsButtonSize.Lg,
-                        full = true,
-                        icon = LucideIcons.ImageUpscale,
-                        label = "Upscale a photo",
-                    )
-                    if (state.photoAccess) {
-                        RsButton(
-                            onClick = { store.push(Route.Gallery) },
-                            variant = RsButtonVariant.Ghost,
-                            modifier = Modifier.padding(top = 8.dp),
-                            full = true,
-                            icon = LucideIcons.Images,
-                            label = "Browse gallery",
-                        )
-                    }
-                }
+                /*
+                 * No hero buttons and no photo strip any more: the first thing on Home is the four
+                 * ways to bring an image in. Gallery opens the in-app browser, Files opens the
+                 * system document browser (any folder, any provider), Camera shoots a new photo and
+                 * More keeps only the clipboard and the share-target note.
+                 */
+                Text(
+                    "Choose Another Image To Upscale",
+                    style = RsType.display(30f),
+                    color = c.ink,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp),
+                )
                 Text(
                     "Sharper, bigger photos. Nothing leaves your device.",
                     style = RsType.body(15f, lineHeightRatio = 1.6f),
                     color = c.muted,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
-                )
-
-                /* 2. Recent photos */
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.Bottom,
-                ) {
-                    Column {
-                        Text("Recent photos", style = RsType.display(26f), color = c.ink)
-                        Row(
-                            Modifier
-                                .padding(top = 8.dp)
-                                .heightIn(min = 28.dp)
-                                .clip(RoundedCornerShape(RsRadius.full.dp))
-                                .background(c.card)
-                                .clickable { pendingMode = null }
-                                .padding(horizontal = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Dot(RsDotTone.Good)
-                            Text(
-                                if (state.mode == ModeId.SUPER) "Super Resolution" else "Upscale Mode",
-                                style = RsType.body(13f, FontWeight.Medium),
-                                color = c.ink,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.weight(1f))
-                    if (state.photoAccess) {
-                        RsButton(
-                            onClick = { store.push(Route.Gallery) },
-                            variant = RsButtonVariant.Ghost,
-                            size = RsButtonSize.Sm,
-                            label = "See all",
-                            icon = LucideIcons.ChevronRight,
-                        )
-                    }
-                }
-
-                if (!state.photoAccess) {
-                    PhotoAccessCard(store, Modifier.padding(horizontal = 20.dp, vertical = 16.dp))
-                } else {
-                    /*
-                     * The device's own recent photos, newest first, scrolled left to right — the
-                     * same strip the ZIP prototype opens on. It is a LazyRow of at most
-                     * HOME_PHOTO_LIMIT cards: a plain Row with all 240 MediaStore rows composed
-                     * every image at once, which is what made the whole screen crawl.
-                     */
-                    val recent = remember(state.photos) { state.photos.take(HOME_PHOTO_LIMIT) }
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp, bottom = 4.dp),
-                        contentPadding = PaddingValues(horizontal = 20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        if (state.photosLoading && recent.isEmpty()) {
-                            items(4) {
-                                Column(Modifier.width(148.dp)) {
-                                    Skeleton(
-                                        Modifier.fillMaxWidth().aspectRatio(0.8f),
-                                        shape = RoundedCornerShape(RsRadius.lg.dp),
-                                    )
-                                    Spacer(Modifier.height(8.dp))
-                                    Skeleton(Modifier.fillMaxWidth().height(44.dp), shape = RoundedCornerShape(RsRadius.md.dp))
-                                }
-                            }
-                        } else {
-                            items(recent, key = { it.id }) { photo ->
-                                PhotoCard(store, photo)
-                            }
-                        }
-                    }
-                }
-
-                /* 3. Choose another image */
-                Text(
-                    "Choose another image",
-                    style = RsType.display(26f),
-                    color = c.ink,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 40.dp),
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp),
                 )
                 val tiles = listOf(
-                    Quad(AppGlyphs.Photo, "Gallery", "Albums and all photos") { store.push(Route.Gallery) },
-                    Quad(LucideIcons.FolderOpen, "Files", "Browse folders") { store.pickFile() },
+                    Quad(AppGlyphs.Photo, "Gallery", "Browse albums on this device") {
+                        store.haptic(HapticKind.Light)
+                        store.push(Route.Gallery)
+                    },
+                    Quad(LucideIcons.FolderOpen, "Files", "Any folder or cloud drive") {
+                        store.haptic(HapticKind.Light)
+                        store.pickFromFiles()
+                    },
                     Quad(LucideIcons.Camera, "Camera", "Take a photo") {
                         if (!state.cameraAsked) sheet = "camera" else store.takePhoto()
                     },
-                    Quad(LucideIcons.Ellipsis, "More", "Clipboard, cloud, other apps") { sheet = "more" },
+                    Quad(LucideIcons.Ellipsis, "More", "Clipboard, other apps") { sheet = "more" },
                 )
                 Column(
                     Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -359,7 +271,7 @@ fun HomeScreen(store: AppStore) {
         }
 
         RsSheet(open = sheet == "more", onClose = { sheet = null }, title = "More ways to import") {
-            RsGroup(Modifier.padding(bottom = 16.dp)) {
+            RsGroup(Modifier.padding(bottom = 8.dp)) {
                 RsRow(
                     title = "Paste from clipboard",
                     sub = "Use an image you copied",
@@ -372,20 +284,9 @@ fun HomeScreen(store: AppStore) {
                     },
                 )
                 RsRow(
-                    title = "Cloud drives and other folders",
-                    sub = "Opens the system picker",
-                    icon = LucideIcons.Cloud,
-                    chevron = true,
-                    onClick = {
-                        sheet = null
-                        store.pickFile()
-                    },
-                )
-                RsRow(
-                    title = "Shared from other apps",
-                    sub = "Send an image to RealScale-Pro from any app",
+                    title = "Share from other apps",
+                    sub = "In any app: Share → RealScale-Pro. The image opens here for upscaling.",
                     icon = LucideIcons.Share2,
-                    trailing = { RsBadge("Later", tone = RsBadgeTone.Outline) },
                 )
             }
         }

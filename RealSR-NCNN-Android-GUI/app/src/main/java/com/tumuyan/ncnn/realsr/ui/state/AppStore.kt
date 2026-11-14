@@ -322,6 +322,11 @@ class AppStore(
         if (mediaIntents == null) toast("No file picker available") else mediaIntents?.pickDocument()
     }
 
+    /** The Files tile on Home: the real system browser, not the photo-only picker. */
+    fun pickFromFiles() {
+        if (mediaIntents == null) toast("No file picker available") else mediaIntents?.pickFromFiles()
+    }
+
     fun takePhoto() {
         if (mediaIntents == null) toast("No camera available") else mediaIntents?.takePhoto()
     }
@@ -331,14 +336,58 @@ class AppStore(
         if (!pasted) toast("No image on the clipboard")
     }
 
+    /**
+     * Set by the home-screen widget before it opens the picker: the next imported image starts
+     * upscaling immediately at this scale instead of stopping on the configuration screen.
+     */
+    var pendingAutoScale: Int? = null
+
     fun onImportedPhoto(photo: PhotoItem?) {
         if (photo == null) {
             toast("That image could not be opened")
             return
         }
         addImportedPhoto(photo)
+        val auto = pendingAutoScale
+        pendingAutoScale = null
+        if (auto != null && auto in 2..5) {
+            // One tap from the widget: recommended model, the scale the user tapped, no dialog.
+            startWidgetJob(photo, auto)
+            return
+        }
         toast("${photo.name} added")
         push(Route.Config(photo.id))
+    }
+
+    /**
+     * Widget shortcut: build a plan at exactly [scale]× with the recommended model and start it.
+     * `MANUAL` is only used to carry the scale through the planner; model selection stays automatic.
+     */
+    fun startWidgetJob(photo: PhotoItem, scale: Int) {
+        val mode = ModeId.UPSCALE
+        val base = prefsFor(mode)
+        val prefs = if (scale == 2) base else base.copy(level = PlanLevel.MANUAL, scale = scale)
+        val settings = _state.value.settings
+        val plan = PipelinePlanner.makePlan(
+            photo = PlanInput(photo.width, photo.height, photo.sizeMB, photo.ext, photo.type, photo.lowConfidence),
+            mode = mode,
+            prefs = prefs,
+            installed = _state.value.installed,
+            device = device.toPlanDevice(),
+            settingsCompute = when (settings.compute) {
+                ComputePref.Cpu -> "cpu"
+                ComputePref.Gpu -> "gpu"
+                ComputePref.Auto -> "auto"
+            },
+            settingsFormat = when (settings.format) {
+                FormatSetting.Jpeg -> "jpeg"
+                FormatSetting.Png -> "png"
+                FormatSetting.Webp -> "webp"
+                FormatSetting.Auto -> "auto"
+            },
+        )
+        haptic(HapticKind.Medium)
+        startJob(photo, plan, mode)
     }
 
     /* ------------------------------------------------------------------ results */
@@ -578,21 +627,33 @@ class AppStore(
     }
 
     /** Feedback is stored locally; there is no backend and no upload. */
-    fun saveFeedback(text: String, attachDevice: Boolean) {
+    /**
+     * "Send feedback": the message is written to a local copy *and* handed to the user's mail app
+     * prefilled, so one tap on Send in Gmail/Outlook actually reaches us. The old version only saved
+     * a text file on the device and nothing was ever delivered.
+     */
+    fun sendFeedback(text: String, attachDevice: Boolean) {
         val trimmed = text.trim()
         if (trimmed.length < 3) return
-        val dir = File(context.filesDir, "feedback").apply { mkdirs() }
-        val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
-        val body = buildString {
-            append(trimmed).append("\n\n---\n")
-            if (attachDevice) {
-                append("device: ${device.label}\n")
-                append("ramGB: ${device.ramGB}\ncores: ${device.cores}\ngpu: ${device.gpu}\n")
-            }
-            append("version: 2.0\n")
+        val body = buildFeedbackBody(trimmed, attachDevice)
+        runCatching {
+            val dir = File(context.filesDir, "feedback").apply { mkdirs() }
+            val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+            File(dir, "feedback-$stamp.txt").writeText(body)
         }
-        runCatching { File(dir, "feedback-$stamp.txt").writeText(body) }
-        toast("Thanks. Your feedback was saved to send.")
+        val opened = mediaIntents?.sendFeedbackMail("RealScale-Pro feedback", body) ?: false
+        toast(if (opened) "Opening your mail app…" else "No email app installed")
+    }
+
+    private fun buildFeedbackBody(text: String, attachDevice: Boolean): String = buildString {
+        append(text).append("\n\n---\n")
+        if (attachDevice) {
+            append("device: ").append(device.label).append('\n')
+            append("ramGB: ").append(device.ramGB).append('\n')
+            append("cores: ").append(device.cores).append('\n')
+            append("gpu: ").append(device.gpu).append('\n')
+        }
+        append("version: 2.2.0\n")
     }
 
     /** Settings > Reset the app: settings, history and downloaded models. Photos are untouched. */
@@ -718,20 +779,37 @@ class AppStore(
                     benchmarkSamples.add(first.modelId to secondsPerMp)
                     if (benchmarkSamples.size > 5) benchmarkSamples.removeAt(0)
                 }
+                val finishedId = first?.id?.toString()
                 update { state ->
                     val job = state.job
                     if (job == null) {
                         state
                     } else {
+                        /*
+                         * Land on the result. The job used to finish and quietly drop the user back
+                         * on Home — the finished upscale was only reachable through My Upscales.
+                         * The stack is rewritten (not pushed) so back from the result goes to where
+                         * the job was started, and the id is checked so a second emission cannot
+                         * stack a duplicate screen.
+                         */
+                        val routes = if (finishedId != null && state.phase == Phase.App) {
+                            val withoutJobScreens = state.routes.filterNot {
+                                it is Route.Processing || it is Route.Result || it is Route.ResultFull
+                            }
+                            withoutJobScreens + Route.Result(finishedId)
+                        } else {
+                            state.routes
+                        }
                         state.copy(
                             job = job.copy(
                                 progress = 1f,
                                 status = JobStatus.Done,
-                                resultId = first?.id?.toString(),
+                                resultId = finishedId,
                                 elapsedSec = elapsed,
                                 remainingSec = 0,
                                 stageLabel = "Saved",
                             ),
+                            routes = routes,
                         )
                     }
                 }
@@ -770,6 +848,7 @@ class AppStore(
             engineTool = entry.engineTool,
             modelPath = modelPath,
             scale = plan.scale,
+            modelScale = ModelCatalog.modelScaleFor(entry, plan.scale),
             denoiseLevel = entry.denoiseLevel ?: denoiseLevelFor(prefsFor(mode).denoise).takeIf { entry.denoise },
         )
 
@@ -866,6 +945,9 @@ class AppStore(
     companion object {
         private const val KEY_STATE = "state_v1"
 
+        /** Where the feedback form sends what the user wrote. */
+        const val FEEDBACK_EMAIL = "userrohitai@gmail.com"
+
         /** The theme the user picked in Settings, readable by entry points that have no store. */
         fun persistedTheme(context: Context): ThemePref {
             val raw = context
@@ -883,7 +965,12 @@ class AppStore(
 
 /** Implemented by the activity: every entry point that leaves the app's own screens. */
 interface MediaIntents {
+    /** System photo picker (single image, no permission needed). */
     fun pickDocument()
+
+    /** System document browser: every folder, SD card and cloud provider, filtered to images. */
+    fun pickFromFiles()
+
     fun takePhoto()
 
     /** Opens the system share sheet for [uri]; false when nothing can receive it. */
@@ -891,6 +978,9 @@ interface MediaIntents {
 
     /** Returns true when a bitmap was found on the clipboard and imported. */
     fun pasteImage(): Boolean
+
+    /** Opens the user's mail app with the feedback text ready to send. False when none exists. */
+    fun sendFeedbackMail(subject: String, body: String): Boolean
 }
 
 @kotlinx.serialization.Serializable

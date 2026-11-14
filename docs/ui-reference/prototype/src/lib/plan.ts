@@ -93,7 +93,6 @@ export interface Plan {
   cols: number;
   rows: number;
   tiles: number;
-  extraResize: boolean;
   check: Check;
 }
 
@@ -221,7 +220,7 @@ export function makePlan(
     inW, inH, inMP: (inW * inH) / 1e6, overLimit, optimized,
     outW, outH, outMP, inputNote, format, ext, etaSec, sizeMB,
     cols, rows, tiles: cols * rows,
-    extraResize: scale === 5, check,
+    check,
   };
 }
 

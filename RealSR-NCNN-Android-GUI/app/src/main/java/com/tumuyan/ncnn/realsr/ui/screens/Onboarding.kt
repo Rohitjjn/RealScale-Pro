@@ -454,7 +454,9 @@ private fun Primer(store: AppStore, photos: Boolean) {
         ) {
             Spacer(Modifier.height(24.dp))
             PrimerMark(
-                icon = if (photos) AppGlyphs.Photo else AppGlyphs.Bell,
+                // The hand-drawn bell was not centred in the 64 dp tile (its ink sat low and right
+                // of centre), so the notification primer looked off next to the photo one.
+                icon = if (photos) AppGlyphs.Photo else LucideIcons.Bell,
                 label = if (photos) "Photos" else "Notifications",
             )
             Spacer(Modifier.height(32.dp))

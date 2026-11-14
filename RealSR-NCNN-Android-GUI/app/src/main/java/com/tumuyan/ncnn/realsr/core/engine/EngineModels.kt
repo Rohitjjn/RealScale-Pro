@@ -52,7 +52,10 @@ data class ModelExecutionSpec(
     val displayName: String,
     val engineTool: String,
     val modelPath: String,
+    /** The factor the user asked for; also the size the finished file must have. */
     val scale: Int,
+    /** The factor the network can actually run at. Differs from [scale] for 3× and 5×. */
+    val modelScale: Int = scale,
     val denoiseLevel: Int? = null
 )
 

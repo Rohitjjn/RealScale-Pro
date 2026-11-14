@@ -165,7 +165,42 @@ time) is now the sort key, newest first, left to right.
   `SizeMode.Exact` so a resized widget re-composes at its real size instead of keeping the smallest
   layout, strings moved to resources, and `RealScaleWidgetsUpdater` refreshed from `MainActivity
   .onStart` and whenever the recent-creations list changes.
-- **Version** 2.1.1 (55) → 2.1.2 (56).
+- **Version** 2.1.1 (55) → 2.1.2 (56) → 2.2.0 (57).
+
+## Phase 3 — Home, Result, Models, 3×/5× and widgets
+
+- **Home** is now the import screen. The "Upscale" / "Browse" hero and the entire recent-photos
+  strip are gone; the first thing on the page is **"Choose Another Image To Upscale"** with four
+  tiles. `Files` uses `ActivityResultContracts.OpenDocument` (`MediaIntents.pickFromFiles`) so the
+  user reaches every folder, SD card and cloud provider, while `Gallery` keeps the in-app browser.
+  `More` holds exactly two rows: *Paste from clipboard* and *Share from other apps*.
+- **Result.** A finished job rewrites the stack to `Route.Result` instead of landing on Home, so the
+  user sees what they paid for. "Hold to see original" is removed — the slider already does it — and
+  the compare block is now the slider plus one row with a **Full screen** action that opens
+  `Route.ResultFull`, a pinch/double-tap zoomable view of the finished file with share. Before Phase
+  3 that button pushed the *original* photo's viewer, so the upscale was never shown full screen.
+- **Model Manager.** `ModelCatalog` was rewritten against `assets/model_manifest.json`: 14 models
+  the shipped ncnn/MNN binaries really load, plus the two Anime4K shader models. `PACKS` is now
+  `starter` (2, auto-installed) + `catalog`; the UI renders a **Starter models** section first and
+  then All / Photo / Anime over `catalogModels(filter)`. Cards put the name and description on the
+  left with a Details chevron, and the download icon, round 0–100 % progress or green check disc on
+  the right, size underneath.
+- **3× and 5×.** `ModelCatalog.modelScaleFor` picks the factor the weights can run at (4× for
+  Real-ESRGAN, 2× for waifu2x, 2/3/4 for SRMD) and `ModelExecutionSpec.modelScale` passes that to
+  the binary; the engine then measures the written file and, when it is not `in × scale`, runs one
+  `resize-ncnn -m avir-lancir` pass (`PresetCommandResolver.buildResizeCommand`). `Plan.extraResize`
+  is gone because the planner no longer needs to special-case 5×.
+- **Live tiles** draw the photo desaturated and reveal the colour image tile by tile
+  (`drawWithContent` + `clipRect`), with grid hairlines and an amber ring on the active cell; the
+  tip block lost its "Tip" eyebrow.
+- **Settings.** Privacy section removed; system-bar style is re-applied from the store's theme
+  (`MainActivity.applyEdgeToEdge(appDark)`), which fixes invisible status-bar icons in dark mode;
+  Send feedback opens `ACTION_SENDTO mailto:userrohitai@gmail.com` prefilled (with a text-share
+  fallback and a local copy kept on disk).
+- **Widgets.** The Enhance widget gained 2× / 3× / 5× chips; each fires
+  `EXTRA_AUTO_SCALE` so the picked image starts upscaling immediately (`AppStore.startWidgetJob`).
+  Chips render only when the cell is tall enough (`LocalSize`), and the launcher placeholder mirrors
+  them.
 
 ### Verification
 

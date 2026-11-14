@@ -217,37 +217,21 @@ fun SettingsScreen(store: AppStore) {
                 )
             }
 
-            SectionLabel("Privacy")
-            RsGroup {
-                RsSwitchRow(
-                    title = "Usage analytics",
-                    sub = "Off by default. Never includes images.",
-                    checked = settings.analytics,
-                    onChange = { store.updateSettings { s -> s.copy(analytics = it) } },
-                )
-                RsSwitchRow(
-                    title = "Crash reports",
-                    sub = "Off by default.",
-                    checked = settings.crashReports,
-                    onChange = { store.updateSettings { s -> s.copy(crashReports = it) } },
-                )
-            }
-            Text(
-                "Your images never leave this device. There is no account and no cloud processing.",
-                style = RsType.body(13f, lineHeightRatio = 1.5f),
-                color = c.muted,
-                modifier = Modifier.padding(top = 10.dp, start = 4.dp),
-            )
-
             SectionLabel("Support")
             RsGroup {
                 RsRow(title = "Replay the guide", chevron = true, topDivider = false, onClick = { store.replayGuide() })
-                RsRow(title = "FAQ and feedback", chevron = true, onClick = { store.push(Route.Help) })
+                RsRow(
+                    title = "Send feedback",
+                    sub = FEEDBACK_EMAIL,
+                    chevron = true,
+                    onClick = { store.push(Route.Help) },
+                )
+                RsRow(title = "FAQ", chevron = true, onClick = { store.push(Route.Help) })
             }
 
             SectionLabel("About")
             RsGroup {
-                RsRow(title = "Version", value = "2.0 · Images", topDivider = false)
+                RsRow(title = "Version", value = VERSION_LABEL, topDivider = false)
                 RsRow(
                     title = "Open-source licenses and credits",
                     chevron = true,
@@ -355,6 +339,10 @@ private fun <T> OptionList(options: List<Pair<T, Pair<String, String?>>>, select
 
 /* ---------- Help and feedback ---------- */
 
+/** Where the feedback form sends the message. */
+internal const val FEEDBACK_EMAIL = "userrohitai@gmail.com"
+private const val VERSION_LABEL = "2.2.0 · Images"
+
 private val FAQ = listOf(
     "Why is upscaling slow on my phone?" to
         "Every pixel is rebuilt on your device instead of a server. Bigger photos, higher scales and heavier models take longer. Upscale Mode with the Default level is the fastest path.",
@@ -457,7 +445,7 @@ fun HelpScreen(store: AppStore) {
                 onClick = {
                     open = false
                     text = ""
-                    store.saveFeedback(text, attach)
+                    store.sendFeedback(text, attach)
                 },
                 variant = RsButtonVariant.Primary,
                 size = RsButtonSize.Lg,
