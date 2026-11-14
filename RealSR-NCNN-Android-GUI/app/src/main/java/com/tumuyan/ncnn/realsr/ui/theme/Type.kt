@@ -5,7 +5,6 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontFeature
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.tumuyan.ncnn.realsr.R
@@ -102,5 +101,3 @@ object RealScaleType {
         )
 }
 
-/** Numeric feature flags helpers for ad-hoc styles. */
-val TnumFeatures = listOf(FontFeature(tnum = true), FontFeature(lnum = true))
