@@ -107,6 +107,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Test seam for the instrumentation smoke test. */
+    internal fun storeForTest(): AppStore = store
+
     /** True when the current photo permission grants access to the whole library. */
     fun hasPhotoAccess(): Boolean {
         val permission = photoPermission()

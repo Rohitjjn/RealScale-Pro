@@ -204,6 +204,14 @@ class AppStore(
 
     fun markSuperIntroSeen() = update { it.copy(superIntroSeen = true) }
 
+    /**
+     * Testing seam for the instrumentation smoke test: lands on Home without walking the guide,
+     * the primers or the Starter Pack download. Not reachable from any screen.
+     */
+    internal fun skipOnboardingForTest() {
+        update { it.copy(phase = Phase.App, onboarded = true, routes = listOf(Route.Home)) }
+    }
+
     /* ------------------------------------------------------------------ feedback */
 
     fun toast(text: String) {
