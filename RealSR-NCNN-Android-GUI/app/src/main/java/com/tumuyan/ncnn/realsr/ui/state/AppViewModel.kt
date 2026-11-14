@@ -16,6 +16,7 @@ import android.view.View
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tumuyan.ncnn.realsr.core.database.RealScaleDatabase
+import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
 import com.tumuyan.ncnn.realsr.core.engine.EtaTracker
 import com.tumuyan.ncnn.realsr.core.engine.ImageContentClassifier

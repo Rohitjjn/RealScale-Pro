@@ -103,4 +103,4 @@ object RealScaleType {
 }
 
 /** Numeric feature flags helpers for ad-hoc styles. */
-val TnumFeatures = listOf(FontFeature("tnum"), FontFeature("lnum"))
+val TnumFeatures = listOf(FontFeature(tnum = true), FontFeature(lnum = true))

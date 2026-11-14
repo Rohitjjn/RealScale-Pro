@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,7 +83,7 @@ fun UpscalesScreen(viewModel: AppViewModel, navController: NavHostController) {
 
     fun shareSelected() {
         val files = selected.mapNotNull { id ->
-            creations.firstOrNull { it.id == id }?.outputPath?.let { File(it) }.takeIf { it.exists() }
+            creations.firstOrNull { it.id == id }?.outputPath?.let { File(it) }.takeIf { it?.exists() == true }
         }
         if (files.isEmpty()) return
         selected = emptySet()
@@ -133,13 +134,13 @@ fun UpscalesScreen(viewModel: AppViewModel, navController: NavHostController) {
                     Spacer(Modifier.weight(1f))
                     if (selected.isNotEmpty()) {
                         RealScaleIconButton(
-                            onClick = shareSelected,
+                            onClick = { shareSelected() },
                             variant = IconButtonVariant.Dark,
                             contentDescription = "Share",
                             icon = painterResource(R.drawable.ic_lucide_share_2),
                         )
                         RealScaleIconButton(
-                            onClick = deleteSelected,
+                            onClick = { deleteSelected() },
                             variant = IconButtonVariant.Dark,
                             contentDescription = "Delete",
                             icon = painterResource(R.drawable.ic_lucide_trash_2),
@@ -179,14 +180,14 @@ fun UpscalesScreen(viewModel: AppViewModel, navController: NavHostController) {
                     ) {
                         Text("${selected.size} selected", style = RealScaleType.Body15Medium, color = c.ink)
                         RealScaleButton(
-                            onClick = shareSelected,
+                            onClick = { shareSelected() },
                             variant = ButtonVariant.Secondary,
                             size = ButtonSize.Sm,
                             icon = painterResource(R.drawable.ic_lucide_share_2),
                             text = "Share",
                         )
                         RealScaleButton(
-                            onClick = deleteSelected,
+                            onClick = { deleteSelected() },
                             variant = ButtonVariant.Danger,
                             size = ButtonSize.Sm,
                             icon = painterResource(R.drawable.ic_lucide_trash_2),
@@ -220,7 +221,7 @@ fun UpscalesScreen(viewModel: AppViewModel, navController: NavHostController) {
         title = "Delete upscales?",
         body = "Remove ${selected.size} selected result${if (selected.size != 1) "s" else ""} from your history. The files stay on your device.",
         confirmLabel = "Delete",
-        onConfirm = doDelete,
+        onConfirm = { doDelete() },
         cancelLabel = "Cancel",
         danger = true,
     )

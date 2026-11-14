@@ -248,7 +248,7 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavHostController) {
                     title = "Clear cache",
                     sub = "Remove temporary files. Models and results are kept.",
                     icon = painterResource(R.drawable.ic_lucide_trash_2),
-                    onClick = clearCache,
+                    onClick = { clearCache() },
                 )
                 androidx.compose.material3.HorizontalDivider(color = c.hairlineSoft, thickness = 1.dp)
                 RealScaleRow(
