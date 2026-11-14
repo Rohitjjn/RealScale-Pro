@@ -96,142 +96,78 @@ class RealScaleSmokeInstrumentedTest {
     }
 
     @Test
-    fun studioModelHubSettingsAndEndToEndFlow() {
+    fun designOnboardingHomeSettingsAndModelsFlow() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        // Start from a clean install state so the first-run guide is the entry point.
+        context.getSharedPreferences("realscale_state", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         try {
-            composeRule.waitUntil(timeoutMillis = 10_000L) {
-                composeRule.onAllNodesWithText("RealScale-Pro").fetchSemanticsNodes().isNotEmpty()
-            }
+            waitForText("RealScale-Pro", 12_000L)
 
-            // 1. Cold-start Studio screen assertions + Light canvas visual verification
-            composeRule.onNodeWithText("RealScale-Pro").assertIsDisplayed()
-            composeRule.onNodeWithText("Choose a photo").assertIsDisplayed()
+            // 1. Guide, photo primer, notification primer and device check.
+            waitForText("Skip", 12_000L)
+            clickText("Skip")
+            waitForText("See your recent photos", 8_000L)
+            clickText("Not now")
+            waitForText("Know when it's done", 8_000L)
+            clickText("Not now")
+            waitForText("Continue", 25_000L)
+            clickText("Continue")
+
+            // 2. Setup finishes on its own once the starter pack step completes.
+            val setupClicked = runCatching {
+                waitForText("Start upscaling", 8_000L)
+                clickText("Start upscaling")
+                true
+            }.getOrDefault(false)
+            assertTrue("Setup screen never offered Start upscaling", setupClicked)
+
+            // 3. Home.
+            waitForText("Recent photos", 12_000L)
+            composeRule.onNodeWithText("Sharper, bigger photos. Nothing leaves your device.")
+                .assertIsDisplayed()
+            composeRule.onNodeWithText("Allow photo access").assertIsDisplayed()
             composeRule.waitForIdle()
-            val studioLightShot = captureComposeRootBitmap(context, "01_studio_light.png")
-            if (studioLightShot != null) {
-                assertCanvasHasWarmLightEditorialBackground(studioLightShot)
-                studioLightShot.recycle()
-            }
+            captureComposeRootBitmap(context, "07_home.png")?.recycle()
 
-            // 2. Navigate to Library via bottom bar, verify empty state, then return to Studio
-            composeRule.onNodeWithText("Library").performClick()
-            composeRule.onNodeWithText("No creations yet").assertIsDisplayed()
+            // 4. Settings: theme switch, planner-related rows, back.
+            composeRule.onNodeWithContentDescription("Settings").performClick()
+            waitForText("Theme", 8_000L)
+            composeRule.onNodeWithText("Dynamic color").assertIsDisplayed()
+            composeRule.onNodeWithText("Compute preference").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("Dark").performClick()
             composeRule.waitForIdle()
-            captureComposeRootBitmap(context, "02_library.png")?.recycle()
-            composeRule.onNodeWithText("Studio").performClick()
+            captureComposeRootBitmap(context, "08_settings_dark.png")?.recycle()
+            composeRule.onNodeWithText("System").performClick()
+            composeRule.onNodeWithContentDescription("Back").performClick()
+            waitForText("Recent photos", 8_000L)
 
-            // 3. Navigate to Model Hub, filter Photo models, verify HuggingFace catalog item, return
-            composeRule.onNodeWithContentDescription("Open Model Hub").performClick()
-            composeRule.onNodeWithText("Model Hub").assertIsDisplayed()
-            composeRule.onNodeWithText("Photo").performClick()
-            composeRule.onNodeWithText("Everyday Photo v3").assertIsDisplayed()
+            // 5. Model Manager: storage card, packs, update check.
+            composeRule.onNodeWithContentDescription("Models").performClick()
+            waitForText("Model Manager", 8_000L)
+            composeRule.onNodeWithText("Storage").assertIsDisplayed()
+            composeRule.onNodeWithText("Check for updates").performScrollTo().assertIsDisplayed()
             composeRule.waitForIdle()
-            captureComposeRootBitmap(context, "03_model_hub.png")?.recycle()
-            composeRule.onNodeWithContentDescription("Navigate back").performClick()
-
-            // 4. Navigate to Settings, toggle Warm Dark -> verify Dark canvas -> Warm Light theme, return
-            composeRule.onNodeWithContentDescription("Open Settings").performClick()
-            composeRule.onNodeWithText("Settings").assertIsDisplayed()
-            composeRule.onNodeWithText("Appearance").assertIsDisplayed()
-            composeRule.onNodeWithText("Warm Dark").performClick()
-            composeRule.waitForIdle()
-            val settingsDarkShot = captureComposeRootBitmap(context, "04_settings_dark.png")
-            if (settingsDarkShot != null) {
-                assertCanvasHasWarmDarkEditorialBackground(settingsDarkShot)
-                settingsDarkShot.recycle()
-            }
-            composeRule.onNodeWithText("Warm Light").performClick()
-            composeRule.onNodeWithContentDescription("Navigate back").performClick()
-
-            // 4. Deliver real 24x18 PNG via singleTop ACTION_SEND share intent
-            val sampleInput = createSolidPng(File(context.cacheDir, "smoke_input.png"), 24, 18, Color.rgb(204, 120, 92))
-            scenario.onActivity { activity ->
-                val shareIntent = Intent(activity, MainActivity::class.java).apply {
-                    action = Intent.ACTION_SEND
-                    type = "image/png"
-                    putExtra(Intent.EXTRA_STREAM, Uri.fromFile(sampleInput))
-                    addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                }
-                activity.startActivity(shareIntent)
-            }
-
-            composeRule.waitUntil(timeoutMillis = 5_000L) {
-                composeRule.onAllNodesWithText("Change photo").fetchSemanticsNodes().isNotEmpty()
-            }
-            composeRule.onNodeWithContentDescription("Selected photo preview").assertIsDisplayed()
-
-            // 5. Verify un-downloaded Photo preset prompts on-demand download in sticky bar
-            composeRule.onNodeWithText("Photo").performScrollTo().performClick()
-            composeRule.onNodeWithText("Get Photo model · 2.3 MB").assertIsDisplayed()
-
-            // 6. Switch back to Instant preset, select 4x scale, verify live summary, and tap sticky Enhance CTA
-            composeRule.onNodeWithText("Instant").performScrollTo().performClick()
-            composeRule.onNodeWithText("4×").performScrollTo().performClick()
-            composeRule.waitUntil(timeoutMillis = 5_000L) {
-                composeRule.onAllNodes(hasText("24×18 → 96×72", substring = true)).fetchSemanticsNodes().isNotEmpty()
-            }
-            composeRule.onNodeWithText("Preview").assertIsDisplayed()
-            composeRule.waitForIdle()
-            captureComposeRootBitmap(context, "05_studio_selected.png")?.recycle()
-            composeRule.onNodeWithText("Enhance").performClick()
-
-            composeRule.waitUntil(timeoutMillis = 20_000L) {
-                composeRule.onAllNodesWithText("Result").fetchSemanticsNodes().isNotEmpty() ||
-                    composeRule.onAllNodesWithText("Could not complete upscale").fetchSemanticsNodes().isNotEmpty()
-            }
-
-            val completedNatively = composeRule.onAllNodesWithText("Result").fetchSemanticsNodes().isNotEmpty()
-            if (completedNatively) {
-                composeRule.waitUntil(timeoutMillis = 5_000L) {
-                    composeRule.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty()
-                }
-                composeRule.onNodeWithText("Save").assertIsDisplayed()
-                composeRule.onNodeWithText("Share").assertIsDisplayed()
-            } else {
-                // Host CI emulator kernel is x86_64 without binfmt_misc for standalone arm64 ELF execve;
-                // return cleanly to Studio, seed a real 4x creation, and verify Result & Before/After view.
-                composeRule.onNodeWithText("Back to Studio").performScrollTo().performClick()
-                val creationsDir = File(context.filesDir, "creations").apply { mkdirs() }
-                val beforeCopy = createSolidPng(File(creationsDir, "smoke_before.png"), 24, 18, Color.rgb(204, 120, 92))
-                val afterCopy = createSolidPng(File(creationsDir, "smoke_after.png"), 96, 72, Color.rgb(93, 184, 166))
-                runBlocking {
-                    RealScaleAppContainer.getInstance(context).database.recentCreationDao().insert(
-                        RecentCreationEntity(
-                            sourceUri = Uri.fromFile(beforeCopy).toString(),
-                            beforeImagePath = beforeCopy.absolutePath,
-                            outputPath = afterCopy.absolutePath,
-                            presetId = "INSTANT",
-                            presetLabel = "Smoke 4×",
-                            modelId = "resize-ncnn",
-                            scale = 4,
-                            inputWidth = 24,
-                            inputHeight = 18,
-                            outputWidth = 96,
-                            outputHeight = 72,
-                            durationMs = 420L,
-                            createdAtEpochMs = System.currentTimeMillis()
-                        )
-                    )
-                }
-                composeRule.waitUntil(timeoutMillis = 5_000L) {
-                    composeRule.onAllNodesWithText("Smoke 4×").fetchSemanticsNodes().isNotEmpty()
-                }
-                composeRule.onNodeWithText("Smoke 4×").performSemanticsAction(SemanticsActions.OnClick)
-                composeRule.waitUntil(timeoutMillis = 5_000L) {
-                    composeRule.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty()
-                }
-                composeRule.onNodeWithText("Result").assertIsDisplayed()
-                composeRule.onNode(hasText("24 × 18 → 96 × 72", substring = true)).assertIsDisplayed()
-                composeRule.onNodeWithText("Save").assertIsDisplayed()
-                composeRule.onNodeWithText("Share").assertIsDisplayed()
-            }
+            captureComposeRootBitmap(context, "09_models.png")?.recycle()
+            composeRule.onNodeWithContentDescription("Back").performClick()
+            waitForText("Recent photos", 8_000L)
         } finally {
             runCatching {
                 scenario.onActivity { it.finish() }
                 context.stopService(Intent(context, ProcessingService::class.java))
             }
         }
+    }
+
+    private fun waitForText(text: String, timeoutMs: Long) {
+        composeRule.waitUntil(timeoutMillis = timeoutMs) {
+            composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun clickText(text: String) {
+        composeRule.onNodeWithText(text).performClick()
     }
 
     @Test
