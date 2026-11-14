@@ -104,40 +104,13 @@ jobs:
           fi
           cat /tmp/gradle.log | tail -n 40
 
-      # The agent sandbox cannot read Actions logs (blob storage is egress-blocked), so build and
-      # test failures are relayed in full to the CI bridge issue.
+      # The agent sandbox cannot read Actions logs or artifacts (blob storage is egress-blocked), so
+      # build and test failures are relayed in full to the CI bridge issue.
       - name: Relay build/test failure to the CI bridge issue
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python3 - <<'PY'
-          import glob, json, os, re, urllib.request
-          chunks = []
-          if os.path.exists("/tmp/gradle.log"):
-              text = open("/tmp/gradle.log", errors="replace").read()
-              keep = [ln for ln in text.splitlines()
-                      if re.match(r"^(e: |w: .*(error|warning):)|^FAILED|FAILURE:|What went wrong|AssertionError|"
-                                  r"expected:|Caused by|> Task .* FAILED|Execution failed for task|^\s+at com\.tumuyan)", ln)]
-              if not keep:
-                  keep = text.splitlines()[-250:]
-              chunks.append("gradle:\n" + "\n".join(keep[:1400]))
-          for path in glob.glob("RealSR-NCNN-Android-GUI/app/build/test-results/**/*.xml", recursive=True):
-              xml = open(path, errors="replace").read()
-              for m in re.finditer(r'<testcase name="([^"]+)"[^>]*>\s*<failure[^>]*>(.{0,1200})', xml, re.S):
-                  chunks.append(f"test {m.group(1)}:\n{m.group(2).strip()[:1200]}")
-          body = ("### ci-failure " + os.environ.get("GITHUB_SHA", "")[:8] + "\n```\n" + "\n\n".join(chunks) + "\n```")[:60000]
-          if len(body) < 40:
-              body = "### ci-failure " + os.environ.get("GITHUB_SHA", "")[:8] + "\nNo log captured."
-          req = urllib.request.Request(
-              f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/issues/10/comments",
-              data=json.dumps({"body": body}).encode(),
-              headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}", "Accept": "application/vnd.github+json",
-                       "Content-Type": "application/json", "User-Agent": "realscale-ci"},
-              method="POST")
-          with urllib.request.urlopen(req, timeout=60) as r:
-              print("relayed", r.status)
-          PY
+        run: python3 .github/scripts/relay-ci-failure.py
 
       - name: Verify APK size (<= 30 MB) and zero bundled AI models
         run: |

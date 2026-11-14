@@ -315,7 +315,7 @@ fun RsSlider(
                 .semantics {
                     contentDescription = label
                     setProgress { target ->
-                        onChange(target.coerceIn(min, max))
+                        onChange(target.roundToInt().coerceIn(min, max))
                         true
                     }
                 }
