@@ -3,6 +3,8 @@ package com.tumuyan.ncnn.realsr.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,7 +72,7 @@ fun ProcessingScreen(viewModel: AppViewModel, navController: NavHostController) 
     val pct = (running?.progressFraction ?: 0f) * 100f
     val etaLabel = when {
         running?.etaMillis == null -> "Estimating…"
-        running?.etaMillis == 0 -> "Just a moment…"
+        running?.etaMillis == 0L -> "Just a moment…"
         else -> "${fmtDuration(running!!.etaMillis)} remaining"
     }
     val stageLabel = running?.stage?.humanLabel ?: when {
@@ -134,13 +137,13 @@ fun ProcessingScreen(viewModel: AppViewModel, navController: NavHostController) 
                     Spacer(Modifier.weight(1f))
                     when {
                         running != null -> RealScaleIconButton(
-                            onClick = cancelJob,
+                            onClick = { cancelJob() },
                             variant = IconButtonVariant.Dark,
                             contentDescription = "Cancel",
                             icon = painterResource(R.drawable.ic_lucide_x),
                         )
                         completed != null -> RealScaleIconButton(
-                            onClick = openResult,
+                            onClick = { openResult() },
                             variant = IconButtonVariant.Dark,
                             contentDescription = "View result",
                             icon = painterResource(R.drawable.ic_lucide_chevron_right),
@@ -188,7 +191,7 @@ fun ProcessingScreen(viewModel: AppViewModel, navController: NavHostController) 
                     Column {
                         RealScaleRing(progress = 0f, size = 56.dp, contentDescription = "Preparing")
                         Spacer(Modifier.height(20.dp))
-                        Text(preparing.label, style = RealScaleType.Display30, color = c.ink)
+                        Text(preparing.label, style = RealScaleType.Display34, color = c.ink)
                         Spacer(Modifier.height(8.dp))
                         Text("Getting the model and pipeline ready.", style = RealScaleType.Body15, color = c.muted)
                     }
@@ -208,7 +211,7 @@ fun ProcessingScreen(viewModel: AppViewModel, navController: NavHostController) 
                             modifier = Modifier.fillMaxWidth().width(320.dp))
                         Spacer(Modifier.height(16.dp))
                         RealScaleButton(
-                            onClick = cancelJob,
+                            onClick = { cancelJob() },
                             variant = ButtonVariant.Secondary,
                             size = ButtonSize.Lg,
                             text = "Cancel",
@@ -236,7 +239,7 @@ fun ProcessingScreen(viewModel: AppViewModel, navController: NavHostController) 
                             style = RealScaleType.Body15, color = c.muted)
                         Spacer(Modifier.height(24.dp))
                         RealScaleButton(
-                            onClick = openResult,
+                            onClick = { openResult() },
                             variant = ButtonVariant.Primary,
                             size = ButtonSize.Lg,
                             text = "View result",

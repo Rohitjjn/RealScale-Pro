@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -63,7 +64,7 @@ fun OnboardingFlow(viewModel: AppViewModel) {
     val c = LocalRealScaleColors.current
 
     @Composable
-    fun deviceRow(label: String, value: String, icon: androidx.compose.ui.graphics.Painter) {
+    fun deviceRow(label: String, value: String) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -156,11 +157,11 @@ fun OnboardingFlow(viewModel: AppViewModel) {
                         Text("Probing device…", style = RealScaleType.Body15, color = c.muted)
                         scope.launch { viewModel.probeBinariesThenRefresh() }
                     } else {
-                        deviceRow("Tier", dp.tier.label, painterResource(R.drawable.ic_lucide_cpu))
-                        deviceRow("RAM", "${dp.ramGb} GB", painterResource(R.drawable.ic_lucide_memory_stick))
-                        deviceRow("CPU cores", dp.cores.toString(), painterResource(R.drawable.ic_lucide_zap))
-                        deviceRow("Native binaries", if (dp.binariesPresent) "Ready" else "Missing", painterResource(R.drawable.ic_lucide_hard_drive))
-                        deviceRow("Storage free", "${dp.freeStorageGb.toInt()} GB", painterResource(R.drawable.ic_lucide_smartphone))
+                        deviceRow("Tier", dp.tier.label)
+                        deviceRow("RAM", "${dp.ramGb} GB")
+                        deviceRow("CPU cores", dp.cores.toString())
+                        deviceRow("Native binaries", if (dp.binariesPresent) "Ready" else "Missing")
+                        deviceRow("Storage free", "${dp.freeStorageGb.toInt()} GB")
                     }
                 }
                 PAGE_MODELS -> {
