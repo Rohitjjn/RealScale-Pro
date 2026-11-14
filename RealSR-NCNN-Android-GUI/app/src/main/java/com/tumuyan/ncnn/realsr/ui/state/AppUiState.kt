@@ -11,21 +11,44 @@ import com.tumuyan.ncnn.realsr.core.plan.TilePreset
 import kotlinx.serialization.Serializable
 
 /** Navigation targets, one to one with the prototype's `Route` union. */
+@Serializable
 sealed interface Route {
+    @Serializable
     data object Home : Route
+
+    @Serializable
     data class Viewer(val photoId: String, val single: Boolean = false) : Route
+
+    @Serializable
     data class Config(val photoId: String) : Route
+
+    @Serializable
     data object Processing : Route
+
+    @Serializable
     data class Result(val resultId: String) : Route
+
+    @Serializable
     data object Upscales : Route
+
+    @Serializable
     data object Gallery : Route
+
+    @Serializable
     data object Models : Route
+
+    @Serializable
     data object Settings : Route
+
+    @Serializable
     data object Help : Route
+
+    @Serializable
     data object About : Route
 }
 
 /** Onboarding phases, same order and names as the prototype. */
+@Serializable
 enum class Phase { Splash, Guide, PermPhotos, PermNotif, Device, Setup, App }
 
 @Serializable

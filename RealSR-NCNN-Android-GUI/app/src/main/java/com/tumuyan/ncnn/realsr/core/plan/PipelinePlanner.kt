@@ -15,6 +15,7 @@ import kotlin.math.sqrt
  * is the specification: `tools/plan-vectors` runs it under Node over a grid of inputs and the
  * golden JSON is asserted by [com.tumuyan.ncnn.realsr.core.plan.PipelinePlannerGoldenTest].
  */
+@kotlinx.serialization.Serializable
 enum class ModeId(val id: String) {
     UPSCALE("upscale"),
     SUPER("super"),
@@ -22,12 +23,14 @@ enum class ModeId(val id: String) {
 
 enum class ImageType { Photo, Anime }
 
+@kotlinx.serialization.Serializable
 enum class PlanLevel(val id: String) {
     DEFAULT("default"),
     MANUAL("manual"),
     ADVANCED("advanced"),
 }
 
+@kotlinx.serialization.Serializable
 enum class TilePreset(val id: String) {
     SAFE("safe"),
     BALANCED("balanced"),
@@ -36,6 +39,7 @@ enum class TilePreset(val id: String) {
     CUSTOM("custom"),
 }
 
+@kotlinx.serialization.Serializable
 enum class OutputFormatPref(val id: String) {
     DEFAULT("default"),
     JPEG("jpeg"),
@@ -67,6 +71,7 @@ data class PlanDevice(
 }
 
 /** User-tunable job preferences, per mode. Field names and defaults match `JobPrefs`. */
+@kotlinx.serialization.Serializable
 data class JobPrefs(
     val level: PlanLevel = PlanLevel.DEFAULT,
     val type: String = "auto",
@@ -154,8 +159,8 @@ object PipelinePlanner {
 
     /** Automatic model selection; Upscale Mode prefers the small/fast models. */
     fun recommendedId(mode: ModeId, type: ImageType): String = when (mode) {
-        ModeId.UPSCALE -> if (type == ImageType.Photo) "esrgan-general-v3" else "realcugan-se2"
-        ModeId.SUPER -> if (type == ImageType.Photo) "esrgan-x4plus" else "esrgan-anime-x4"
+        ModeId.UPSCALE -> if (type == ImageType.Photo) "esrgan-general-v3" else "waifu2x-anime"
+        ModeId.SUPER -> if (type == ImageType.Photo) "esrgan-remacri" else "esrgan-anime-sharp"
     }
 
     fun makePlan(
@@ -182,7 +187,7 @@ object PipelinePlanner {
 
         // Model
         val wantedId = recommendedId(mode, type)
-        val fallbackId = if (type == ImageType.Photo) "esrgan-general-v3" else "esrgan-v3-anime"
+        val fallbackId = if (type == ImageType.Photo) "esrgan-general-v3" else "waifu2x-anime"
         var isAuto = true
         var wanted: ModelEntry? = null
         val model: ModelEntry = when {

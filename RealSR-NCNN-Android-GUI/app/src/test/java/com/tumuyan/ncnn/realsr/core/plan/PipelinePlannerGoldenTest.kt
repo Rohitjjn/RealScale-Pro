@@ -77,11 +77,8 @@ class PipelinePlannerGoldenTest {
             assertEquals("$where scale", expected.getValue("scale").jsonPrimitive.int, plan.scale)
             assertEquals("$where model", expected.getValue("modelId").jsonPrimitive.content, plan.model.id)
             assertEquals("$where isAuto", expected.getValue("isAuto").jsonPrimitive.boolean, plan.isAuto)
-            assertEquals(
-                "$where wanted",
-                expected["wantedId"]?.jsonPrimitive?.content,
-                plan.wanted?.id,
-            )
+            val expectedWanted = expected["wantedId"]?.takeIf { it !is kotlinx.serialization.json.JsonNull }?.jsonPrimitive?.content
+            assertEquals("$where wanted", expectedWanted, plan.wanted?.id)
             assertEquals("$where tilePx", expected.getValue("tilePx").jsonPrimitive.int, plan.tilePx)
             assertEquals("$where compute", expected.getValue("compute").jsonPrimitive.content, plan.compute)
             assertEquals("$where inW", expected.getValue("inW").jsonPrimitive.int, plan.inW)

@@ -46,6 +46,7 @@ jobs:
           python3 .github/scripts/model-facts.py
 
       - name: Relay the facts to the CI bridge issue
+        if: always()
         run: |
           python3 - <<'PY'
           import json, os, urllib.request
