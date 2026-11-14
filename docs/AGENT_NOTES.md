@@ -180,3 +180,17 @@ All commands execute inside `workingDir` (`<cacheDir>/realsr`) with `input.png` 
 
 
 
+---
+
+## 10. Design-faithful UI rewrite (branch `arena/2f27242c-realscale-pro`)
+
+- **What replaced what**: the v2.1 Compose UI (`ui/RealScaleApp.kt` + `ui/RealScaleViewModel.kt` + `ui/screens/Studio|Library|ModelHub|Processing|Result|SettingsScreen` + `ui/components/*` + `ui/theme/*`, ~8,200 lines) is gone. The shipped UI is the port of `docs/ui-reference/prototype`:
+  - `design/` — tokens (`Tokens.kt`), type ramp (`Type.kt`), motion (`Motion.kt`), controls (`Foundation.kt`, `Controls.kt`, `Sheet.kt`), icons (`icons/LucideIcons.kt`, generated), theme shell (`Theme.kt`).
+  - `ui/DesignApp.kt` — the whole navigator: a route list in `AppUiState.routes` with push/pop slide+fade, `BackHandler`, reduce-motion, toast host.
+  - `ui/screens/` — `Onboarding`, `Home`, `Viewer`, `Config` + `ConfigAdvanced`, `Models`, `Processing`, `Result`, `Library` (My Upscales + Gallery), `Settings` (Settings + Help + About), `Sheets`, `QuickUpscaleSheet`.
+  - `ui/state/` — `AppUiState`/`AppStore` hold navigation, prefs per mode, settings, media, results, downloads, crop preview and job state; `MediaLibrary` is the real MediaStore query.
+  - `core/plan/` — `PipelinePlanner` (port of the prototype's `lib/plan.ts`, pinned by `PipelinePlannerGoldenTest`) and `ModelCatalog` (16 entries, `fit()`, packs).
+  - `core/imaging/OomSafeImageDecoders.kt` — moved out of the deleted `ui/components`; still used by `ImageContentClassifier` and the Glance widgets.
+- **Entry points**: `MainActivity` builds `AppStore` and renders `RealScaleDesignApp`; `MediaIntentsHost` owns pickers, camera, share, clipboard and the runtime permissions. `QuickUpscaleActivity` keeps the `ACTION_VIEW` sheet but now renders the design system (`QuickUpscaleSheet`) with the user's stored theme.
+- **Verification**: `docs/FIDELITY.md` maps every screen to its prototype source, reference PNG stem and the check that covers it. CI (`.github/workflows/build-apk.yml`) compiles both variants, runs unit tests, gates the APK size, then runs `RealScaleSmokeInstrumentedTest` on an Android 11 ATD emulator (engine extraction, Quick Upscale sheet, onboarding → Setup, Home → Settings → Model Manager).
+- **CI feedback loop**: because the sandbox cannot read Actions logs, failures are relayed to issue #10 — `relay-ci-failure.py` (Gradle + screenshots-free compile errors, instrumentation output, crash log) and `relay-model-facts.py` (model facts + per-URL manifest integrity from `check-model-manifest.py`).

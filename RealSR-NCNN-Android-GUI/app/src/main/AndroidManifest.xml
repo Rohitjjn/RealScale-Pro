@@ -8,6 +8,11 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 
     <application
         android:allowBackup="true"
@@ -79,7 +84,7 @@
         <receiver
             android:name=".widget.RealScaleEnhanceWidgetReceiver"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/widget_enhance_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -91,7 +96,7 @@
         <receiver
             android:name=".widget.RealScaleRecentWidgetReceiver"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/widget_recent_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

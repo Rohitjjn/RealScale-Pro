@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
-import com.tumuyan.ncnn.realsr.ui.components.OomSafeImageDecoders
+import com.tumuyan.ncnn.realsr.core.imaging.OomSafeImageDecoders
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale

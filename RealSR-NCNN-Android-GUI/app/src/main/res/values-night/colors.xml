@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same widget palette as the Glance content, in its night variant. -->
+    <color name="widget_canvas">#181715</color>
+    <color name="widget_surface">#23211E</color>
+    <color name="widget_ink">#F3F1EA</color>
+    <color name="widget_muted">#A7A299</color>
+    <color name="widget_on_cta">#141413</color>
+</resources>

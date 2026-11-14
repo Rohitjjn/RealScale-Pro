@@ -21,14 +21,19 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeRight
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.core.engine.EngineAssetExtractor
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
+import com.tumuyan.ncnn.realsr.ui.state.ModelDownloadUi
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestRule
@@ -37,6 +42,8 @@ import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 @RunWith(AndroidJUnit4::class)
 class RealScaleSmokeInstrumentedTest {
@@ -96,142 +103,223 @@ class RealScaleSmokeInstrumentedTest {
     }
 
     @Test
-    fun studioModelHubSettingsAndEndToEndFlow() {
+    fun designOnboardingReachesSetupScreen() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        // Start from a clean install state so the first-run guide is the entry point.
+        context.getSharedPreferences("realscale_state", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         try {
-            composeRule.waitUntil(timeoutMillis = 10_000L) {
-                composeRule.onAllNodesWithText("RealScale-Pro").fetchSemanticsNodes().isNotEmpty()
-            }
+            waitForText("RealScale-Pro", 12_000L)
+            waitForText("Skip", 12_000L)
+            clickText("Skip")
+            waitForText("See your recent photos", 8_000L)
+            clickText("Not now")
+            waitForText("Know when it's done", 8_000L)
+            clickText("Not now")
+            waitForText("Continue", 25_000L)
+            clickText("Continue")
 
-            // 1. Cold-start Studio screen assertions + Light canvas visual verification
-            composeRule.onNodeWithText("RealScale-Pro").assertIsDisplayed()
-            composeRule.onNodeWithText("Choose a photo").assertIsDisplayed()
+            // The Setup screen downloads the Starter Pack; on a CI emulator it stays in progress.
+            waitForText("Setting up RealScale-Pro", 12_000L)
+            composeRule.onNodeWithText("Setting up RealScale-Pro").assertIsDisplayed()
             composeRule.waitForIdle()
-            val studioLightShot = captureComposeRootBitmap(context, "01_studio_light.png")
-            if (studioLightShot != null) {
-                assertCanvasHasWarmLightEditorialBackground(studioLightShot)
-                studioLightShot.recycle()
-            }
-
-            // 2. Navigate to Library via bottom bar, verify empty state, then return to Studio
-            composeRule.onNodeWithText("Library").performClick()
-            composeRule.onNodeWithText("No creations yet").assertIsDisplayed()
-            composeRule.waitForIdle()
-            captureComposeRootBitmap(context, "02_library.png")?.recycle()
-            composeRule.onNodeWithText("Studio").performClick()
-
-            // 3. Navigate to Model Hub, filter Photo models, verify HuggingFace catalog item, return
-            composeRule.onNodeWithContentDescription("Open Model Hub").performClick()
-            composeRule.onNodeWithText("Model Hub").assertIsDisplayed()
-            composeRule.onNodeWithText("Photo").performClick()
-            composeRule.onNodeWithText("Everyday Photo v3").assertIsDisplayed()
-            composeRule.waitForIdle()
-            captureComposeRootBitmap(context, "03_model_hub.png")?.recycle()
-            composeRule.onNodeWithContentDescription("Navigate back").performClick()
-
-            // 4. Navigate to Settings, toggle Warm Dark -> verify Dark canvas -> Warm Light theme, return
-            composeRule.onNodeWithContentDescription("Open Settings").performClick()
-            composeRule.onNodeWithText("Settings").assertIsDisplayed()
-            composeRule.onNodeWithText("Appearance").assertIsDisplayed()
-            composeRule.onNodeWithText("Warm Dark").performClick()
-            composeRule.waitForIdle()
-            val settingsDarkShot = captureComposeRootBitmap(context, "04_settings_dark.png")
-            if (settingsDarkShot != null) {
-                assertCanvasHasWarmDarkEditorialBackground(settingsDarkShot)
-                settingsDarkShot.recycle()
-            }
-            composeRule.onNodeWithText("Warm Light").performClick()
-            composeRule.onNodeWithContentDescription("Navigate back").performClick()
-
-            // 4. Deliver real 24x18 PNG via singleTop ACTION_SEND share intent
-            val sampleInput = createSolidPng(File(context.cacheDir, "smoke_input.png"), 24, 18, Color.rgb(204, 120, 92))
-            scenario.onActivity { activity ->
-                val shareIntent = Intent(activity, MainActivity::class.java).apply {
-                    action = Intent.ACTION_SEND
-                    type = "image/png"
-                    putExtra(Intent.EXTRA_STREAM, Uri.fromFile(sampleInput))
-                    addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                }
-                activity.startActivity(shareIntent)
-            }
-
-            composeRule.waitUntil(timeoutMillis = 5_000L) {
-                composeRule.onAllNodesWithText("Change photo").fetchSemanticsNodes().isNotEmpty()
-            }
-            composeRule.onNodeWithContentDescription("Selected photo preview").assertIsDisplayed()
-
-            // 5. Verify un-downloaded Photo preset prompts on-demand download in sticky bar
-            composeRule.onNodeWithText("Photo").performScrollTo().performClick()
-            composeRule.onNodeWithText("Get Photo model · 2.3 MB").assertIsDisplayed()
-
-            // 6. Switch back to Instant preset, select 4x scale, verify live summary, and tap sticky Enhance CTA
-            composeRule.onNodeWithText("Instant").performScrollTo().performClick()
-            composeRule.onNodeWithText("4×").performScrollTo().performClick()
-            composeRule.waitUntil(timeoutMillis = 5_000L) {
-                composeRule.onAllNodes(hasText("24×18 → 96×72", substring = true)).fetchSemanticsNodes().isNotEmpty()
-            }
-            composeRule.onNodeWithText("Preview").assertIsDisplayed()
-            composeRule.waitForIdle()
-            captureComposeRootBitmap(context, "05_studio_selected.png")?.recycle()
-            composeRule.onNodeWithText("Enhance").performClick()
-
-            composeRule.waitUntil(timeoutMillis = 20_000L) {
-                composeRule.onAllNodesWithText("Result").fetchSemanticsNodes().isNotEmpty() ||
-                    composeRule.onAllNodesWithText("Could not complete upscale").fetchSemanticsNodes().isNotEmpty()
-            }
-
-            val completedNatively = composeRule.onAllNodesWithText("Result").fetchSemanticsNodes().isNotEmpty()
-            if (completedNatively) {
-                composeRule.waitUntil(timeoutMillis = 5_000L) {
-                    composeRule.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty()
-                }
-                composeRule.onNodeWithText("Save").assertIsDisplayed()
-                composeRule.onNodeWithText("Share").assertIsDisplayed()
-            } else {
-                // Host CI emulator kernel is x86_64 without binfmt_misc for standalone arm64 ELF execve;
-                // return cleanly to Studio, seed a real 4x creation, and verify Result & Before/After view.
-                composeRule.onNodeWithText("Back to Studio").performScrollTo().performClick()
-                val creationsDir = File(context.filesDir, "creations").apply { mkdirs() }
-                val beforeCopy = createSolidPng(File(creationsDir, "smoke_before.png"), 24, 18, Color.rgb(204, 120, 92))
-                val afterCopy = createSolidPng(File(creationsDir, "smoke_after.png"), 96, 72, Color.rgb(93, 184, 166))
-                runBlocking {
-                    RealScaleAppContainer.getInstance(context).database.recentCreationDao().insert(
-                        RecentCreationEntity(
-                            sourceUri = Uri.fromFile(beforeCopy).toString(),
-                            beforeImagePath = beforeCopy.absolutePath,
-                            outputPath = afterCopy.absolutePath,
-                            presetId = "INSTANT",
-                            presetLabel = "Smoke 4×",
-                            modelId = "resize-ncnn",
-                            scale = 4,
-                            inputWidth = 24,
-                            inputHeight = 18,
-                            outputWidth = 96,
-                            outputHeight = 72,
-                            durationMs = 420L,
-                            createdAtEpochMs = System.currentTimeMillis()
-                        )
-                    )
-                }
-                composeRule.waitUntil(timeoutMillis = 5_000L) {
-                    composeRule.onAllNodesWithText("Smoke 4×").fetchSemanticsNodes().isNotEmpty()
-                }
-                composeRule.onNodeWithText("Smoke 4×").performSemanticsAction(SemanticsActions.OnClick)
-                composeRule.waitUntil(timeoutMillis = 5_000L) {
-                    composeRule.onAllNodesWithText("Share").fetchSemanticsNodes().isNotEmpty()
-                }
-                composeRule.onNodeWithText("Result").assertIsDisplayed()
-                composeRule.onNode(hasText("24 × 18 → 96 × 72", substring = true)).assertIsDisplayed()
-                composeRule.onNodeWithText("Save").assertIsDisplayed()
-                composeRule.onNodeWithText("Share").assertIsDisplayed()
-            }
+            captureComposeRootBitmap(context, "07_setup.png")?.recycle()
         } finally {
             runCatching {
                 scenario.onActivity { it.finish() }
                 context.stopService(Intent(context, ProcessingService::class.java))
             }
         }
+    }
+
+    /**
+     * The first guide screen must open on a real before/after demo with the draggable slider, not a
+     * static picture with two labels. Guard: the demo image and its handle text exist, and a drag
+     * across the canvas does not throw.
+     */
+    @Test
+    fun guideFirstScreenShowsDraggableBeforeAfterDemo() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        context.getSharedPreferences("realscale_state", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            waitForText("Make any photo sharper", 12_000L)
+            composeRule.onNodeWithText("Before").assertIsDisplayed()
+            composeRule.onNodeWithText("After").assertIsDisplayed()
+            composeRule
+                .onNodeWithContentDescription("Demo photo before and after", substring = true)
+                .assertExists()
+            // Dragging the split handle must not crash the guide.
+            composeRule.onNodeWithText("Before").performTouchInput {
+                swipeRight(startX = centerX, endX = centerX + 120f, durationMillis = 220)
+            }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithText("Before").assertIsDisplayed()
+        } finally {
+            runCatching {
+                scenario.onActivity { it.finish() }
+                context.stopService(Intent(context, ProcessingService::class.java))
+            }
+        }
+    }
+
+    /**
+     * The Starter Pack screen has to behave like a download queue, not a Pause button that starts
+     * nothing: it begins by itself, moves one model at a time, and Pause / Resume toggle the queue
+     * without raising a message.
+     */
+    @Test
+    fun designSetupScreenDownloadsByItselfAndTogglesPauseSilently() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        assumeTrue(
+            "huggingface.co is not reachable from this device/emulator",
+            canReach("https://huggingface.co/"),
+        )
+        context.getSharedPreferences("realscale_state", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            waitForText("RealScale-Pro", 12_000L)
+            waitForText("Skip", 12_000L)
+            clickText("Skip")
+            waitForText("See your recent photos", 8_000L)
+            clickText("Not now")
+            waitForText("Know when it's done", 8_000L)
+            clickText("Not now")
+            waitForText("Continue", 25_000L)
+            clickText("Continue")
+            waitForText("Setting up RealScale-Pro", 12_000L)
+
+            // 1. Pause flips the button and says nothing at all.
+            assumeTrue(
+                "Starter Pack finished before the pause could be tested",
+                composeRule.onAllNodesWithText("Pause download").fetchSemanticsNodes().isNotEmpty(),
+            )
+            clickText("Pause download")
+            waitForText("Resume download", 8_000L)
+            composeRule.waitForIdle()
+            assertEquals("Pause should not raise a message", null, toastOf(scenario))
+            captureComposeRootBitmap(context, "07b_setup_paused.png")?.recycle()
+
+            // 2. Resume flips it back, silently.
+            clickText("Resume download")
+            waitForText("Pause download", 8_000L)
+            assertEquals("Resume should not raise a message", null, toastOf(scenario))
+
+            // 3. The queue moves on its own, one model at a time, and the byte counter is real.
+            val moved = waitUntil(180_000L) {
+                val downloads = downloadsOf(scenario)
+                downloads.values.any { it.progress > 0f } || installedCount(scenario) >= 2
+            }
+            assertTrue("Starter Pack never downloaded anything by itself", moved)
+            val active = downloadsOf(scenario).values.count { it.state == "downloading" || it.state == "verifying" }
+            assertTrue("Expected at most one active download, saw $active", active <= 1)
+        } finally {
+            runCatching {
+                scenario.onActivity { it.finish() }
+                context.stopService(Intent(context, ProcessingService::class.java))
+            }
+        }
+    }
+
+    private fun installedCount(scenario: ActivityScenario<MainActivity>): Int {
+        var value = 0
+        scenario.onActivity { value = it.storeForTest().state.value.installed.size }
+        return value
+    }
+
+    private fun downloadsOf(scenario: ActivityScenario<MainActivity>): Map<String, ModelDownloadUi> {
+        var value: Map<String, ModelDownloadUi> = emptyMap()
+        scenario.onActivity { value = it.storeForTest().state.value.downloads }
+        return value
+    }
+
+    private fun toastOf(scenario: ActivityScenario<MainActivity>): com.tumuyan.ncnn.realsr.ui.state.ToastMessage? {
+        var value: com.tumuyan.ncnn.realsr.ui.state.ToastMessage? = null
+        scenario.onActivity { value = it.storeForTest().state.value.toast }
+        return value
+    }
+
+    private fun waitUntil(timeoutMs: Long, condition: () -> Boolean): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            if (condition()) return true
+            Thread.sleep(500L)
+        }
+        return condition()
+    }
+
+    private fun canReach(url: String): Boolean = runCatching {
+        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 8_000
+            readTimeout = 8_000
+            requestMethod = "HEAD"
+            instanceFollowRedirects = true
+        }
+        try {
+            conn.responseCode in 200..399
+        } finally {
+            conn.disconnect()
+        }
+    }.getOrDefault(false)
+
+    @Test
+    fun designHomeSettingsAndModelManager() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        context.getSharedPreferences("realscale_state", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            waitForText("RealScale-Pro", 12_000L)
+            scenario.onActivity { activity -> activity.storeForTest().skipOnboardingForTest() }
+
+            waitForText("Recent photos", 12_000L)
+            composeRule.onNodeWithText("Sharper, bigger photos. Nothing leaves your device.")
+                .assertIsDisplayed()
+            composeRule.onAllNodesWithText("Allow photo access")[0].assertIsDisplayed()
+            composeRule.waitForIdle()
+            captureComposeRootBitmap(context, "08_home.png")?.recycle()
+
+            // Settings: theme switch, planner rows, back to Home.
+            composeRule.onNodeWithContentDescription("Settings").performClick()
+            waitForText("Theme", 8_000L)
+            composeRule.onNodeWithText("Dynamic color").assertIsDisplayed()
+            composeRule.onNodeWithText("Compute preference").performScrollTo().assertIsDisplayed()
+            composeRule.onNodeWithText("Dark").performClick()
+            composeRule.waitForIdle()
+            captureComposeRootBitmap(context, "09_settings_dark.png")?.recycle()
+            composeRule.onNodeWithText("System").performClick()
+            composeRule.onNodeWithContentDescription("Back").performClick()
+            waitForText("Recent photos", 8_000L)
+
+            // Model Manager: storage card, packs and the update check.
+            composeRule.onNodeWithContentDescription("Models").performClick()
+            waitForText("Model Manager", 8_000L)
+            // Eyebrow labels render in caps (EyebrowLabel uppercases its text).
+            composeRule.onNodeWithText("STORAGE").assertIsDisplayed()
+            composeRule.onNodeWithText("Check for updates").performScrollTo().assertIsDisplayed()
+            composeRule.waitForIdle()
+            captureComposeRootBitmap(context, "10_models.png")?.recycle()
+            composeRule.onNodeWithContentDescription("Back").performClick()
+            waitForText("Recent photos", 8_000L)
+        } finally {
+            runCatching {
+                scenario.onActivity { it.finish() }
+                context.stopService(Intent(context, ProcessingService::class.java))
+            }
+        }
+    }
+
+    private fun waitForText(text: String, timeoutMs: Long) {
+        composeRule.waitUntil(timeoutMillis = timeoutMs) {
+            composeRule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    private fun clickText(text: String) {
+        composeRule.onNodeWithText(text).performClick()
     }
 
     @Test
