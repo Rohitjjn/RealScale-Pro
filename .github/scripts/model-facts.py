@@ -41,7 +41,7 @@ def sha256_of(path: str) -> str:
 def git_blob_sha1(path: str) -> str:
     size = os.path.getsize(path)
     digest = hashlib.sha1()
-    digest.update(f"blob {size}\\0".encode())
+    digest.update(("blob %d\0" % size).encode())
     with open(path, "rb") as handle:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
@@ -119,4 +119,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import traceback
+
+    try:
+        main()
+    except Exception:  # noqa: BLE001 - the traceback is relayed, not swallowed
+        trace = traceback.format_exc()
+        print(trace)
+        json.dump({"error": trace}, open("model-facts.json", "w"), indent=1)
