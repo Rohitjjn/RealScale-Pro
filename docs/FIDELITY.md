@@ -60,6 +60,7 @@ visible reads `MaterialTheme.colorScheme`.
 | 10.x | Settings | `screens/Settings.tsx` | `ui/screens/Settings.kt` (`SettingsScreen`) | 63–66, 76 | `AppSettings`, `store.device` | instrumented |
 | 10.4 | Help and feedback | `screens/Settings.tsx` | `ui/screens/Settings.kt` (`HelpScreen`) | 67 | `FAQ`, `AppStore.saveFeedback` | — |
 | 10.5 | About | `screens/Settings.tsx` | `ui/screens/Settings.kt` (`AboutScreen`) | 68, 69 | `LICENSES` | — |
+| 4.5 | Quick Upscale sheet (`ACTION_VIEW`) | `components/ui.tsx` + old `QuickUpscaleSheet` | `ui/screens/QuickUpscaleSheet.kt` | — (no prototype state) | engine + manifest catalog | instrumented |
 | shell | Toast | `components/ui.tsx` | `design/Sheet.kt` (`RsToastHost`) | 77 | `state.toast` | instrumented (indirectly) |
 | shell | Navigation | `lib/store.tsx` (`nav.push/pop/home`) | `ui/DesignApp.kt` (`Journey`) | — | `state.routes` | instrumented |
 
@@ -85,6 +86,10 @@ visible reads `MaterialTheme.colorScheme`.
 - Instrumented (`RealScaleSmokeInstrumentedTest`): engine extraction, Quick Upscale sheet,
   onboarding → Setup, and Home → Settings → Model Manager are asserted on an Android 11 ATD
   emulator.
+- Model layer: `api.github.com`-relayed `model-facts` run reports **61 manifest files checked, 0
+  problems** against the mirror, and the catalog joins to the manifest through
+  `ModelEntry.manifestId` (see `ModelCatalog.byManifestId`), so downloads and the installed-folder
+  layout agree.
 - Pixel diff per reference PNG: **not implemented.** `tools/visual-diff` does not exist yet; the
   plan is to pair reference ↔ render by the `NN-name` stem. Until then, treat this table's
   "Verified by" column as the honest statement of coverage, and the reference PNGs as the target,
