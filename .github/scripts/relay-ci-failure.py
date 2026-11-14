@@ -48,8 +48,31 @@ def test_chunks() -> list[str]:
     return chunks
 
 
+def instrumentation_chunk() -> str | None:
+    """The emulator job writes the `am instrument` output here; relay the failure part."""
+    path = "/tmp/instrument.log"
+    if not os.path.exists(path):
+        return None
+    lines = open(path, errors="replace").read().splitlines()
+    keep = [line for line in lines if "INSTRUMENTATION_STATUS" in line or "Exception" in line
+            or "Error" in line or "at com.tumuyan" in line or line.startswith("OK (")
+            or line.startswith("FAILURES")]
+    if not keep:
+        keep = lines[-160:]
+    return "instrumentation:\n" + "\n".join(keep[:400])
+
+
+def crash_chunk() -> str | None:
+    """`adb logcat -b crash` tail, written by the emulator step on failure."""
+    path = "/tmp/crash.log"
+    if not os.path.exists(path):
+        return None
+    text = open(path, errors="replace").read().strip()
+    return "crash:\n" + text[-4000:] if text else None
+
+
 def main() -> None:
-    chunks = [chunk for chunk in [gradle_chunk()] if chunk]
+    chunks = [chunk for chunk in [gradle_chunk(), instrumentation_chunk(), crash_chunk()] if chunk]
     chunks.extend(test_chunks())
     sha = os.environ.get("GITHUB_SHA", "")[:8]
     body = f"### ci-failure {sha}\n```\n" + "\n\n".join(chunks) + "\n```"
