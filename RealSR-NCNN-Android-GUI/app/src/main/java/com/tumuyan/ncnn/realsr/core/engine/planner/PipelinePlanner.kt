@@ -221,7 +221,16 @@ object PipelinePlanner {
             }
             has(wantedId) -> installedById.getValue(wantedId)
             has(fbId) -> {
-                wanted = installed.firstOrNull { it.id == wantedId } // may be absent from catalog
+                wanted = if (has(wantedId)) null else PlannerModel(
+                    id = wantedId,
+                    displayName = "",
+                    kind = ModelKind.OTHER,
+                    scales = emptyList(),
+                    sizeMB = 0.0,
+                    minTier = 0,
+                    license = "",
+                    required = false,
+                ) // wanted model not installed → download CTA target
                 installedById.getValue(fbId)
             }
             // Nothing usable installed: fall back to any installed model so the UI can still explain.
@@ -285,7 +294,7 @@ object PipelinePlanner {
             "webp" -> Plan.OutputFormat.WEBP
             else -> Plan.OutputFormat.JPEG
         }
-        val formatPref = if (adv && prefs.format != OutputFormatPref.DEFAULT) prefs.format else opts.format
+        val formatPref = if (manual && prefs.format != OutputFormatPref.DEFAULT) prefs.format else opts.format
         val format: Plan.OutputFormat = when (formatPref) {
             OutputFormatPref.JPEG -> Plan.OutputFormat.JPEG
             OutputFormatPref.PNG -> Plan.OutputFormat.PNG
@@ -387,11 +396,19 @@ object PipelinePlanner {
 
 /* ---------- Formatting (design helpers) ---------- */
 val fmtDimsPublic: (Int, Int) -> String = { w, h -> "$w × $h" }
-fun fmtMP(mp: Double): String = if (mp >= 10) "${mp.roundToInt()} MP" else String.format(java.util.Locale.US, "%.1f MP", mp)
+fun fmtMP(mp: Double): String {
+    if (mp >= 10) return "${mp.roundToInt()} MP"
+    val tenths = (mp * 10).toInt() % 10
+    if (tenths < 5) return "${mp.toInt()} MP"
+    return String.format(java.util.Locale.US, "%.1f MP", mp)
+}
 fun fmtMB(mb: Double): String = when {
     mb >= 1000 -> String.format(java.util.Locale.US, "%.1f GB", mb / 1000)
     mb >= 100 -> "${mb.roundToInt()} MB"
-    else -> String.format(java.util.Locale.US, "%.1f MB", mb)
+    else -> {
+        val s = String.format(java.util.Locale.US, "%.1f MB", mb)
+        if (s.endsWith(".0 MB")) s.dropRight(5) + " MB" else s
+    }
 }
 fun fmtEta(sec: Long): String = when {
     sec < 60 -> "${max(5L, ((sec + 2) / 5 * 5))} s"
