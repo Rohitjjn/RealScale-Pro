@@ -2,6 +2,7 @@ package com.tumuyan.ncnn.realsr.ui.screens
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -125,14 +126,15 @@ fun SettingsScreen(viewModel: AppViewModel, navController: NavHostController) {
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text("Engine binaries", style = RealScaleType.Body15Medium, color = c.ink)
-                        Text(when {
-                            !binariesChecked -> "Tap to check native engines.",
-                            binariesPresent -> "Native engines ready.",
-                            else -> "Native engines missing — upscale will fall back.",
-                        }, style = RealScaleType.Body13, color = c.muted)
+                        val binariesStatus = when {
+                            !binariesChecked -> "Tap to check native engines."
+                            binariesPresent -> "Native engines ready."
+                            else -> "Native engines missing — upscale will fall back."
+                        }
+                        Text(binariesStatus, style = RealScaleType.Body13, color = c.muted)
                     }
                     RealScaleButton(
-                        onClick = probe,
+                        onClick = { probe() },
                         variant = ButtonVariant.Secondary,
                         size = ButtonSize.Sm,
                         text = if (binariesChecked) "Re-check" else "Check",
