@@ -111,12 +111,12 @@ fun ConfigScreen(store: AppStore, photoId: String) {
     }
 
     val prefs = state.prefsFor(mode)
-    val plan = store.planFor(photo, mode)
+    var large by remember(photo.id) { mutableStateOf("optimize") }
+    val plan = store.planFor(photo, mode, large)
     val level = prefs.level
     val manual = level != PlanLevel.DEFAULT
     val adv = level == PlanLevel.ADVANCED
     var detecting by remember(photo.id) { mutableStateOf(true) }
-    var large by remember(photo.id) { mutableStateOf("optimize") }
     var sheet by remember { mutableStateOf<String?>(null) }
     var paused by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
@@ -126,7 +126,6 @@ fun ConfigScreen(store: AppStore, photoId: String) {
         busy -> "Another upscale is running"
         else -> null
     }
-    val effectivePlan = remember(plan, large) { plan }
 
     LaunchedEffect(photo.id, large, prefs) {
         if (detecting) {
@@ -139,13 +138,13 @@ fun ConfigScreen(store: AppStore, photoId: String) {
 
     fun start(force: Boolean) {
         if (blockedReason != null) return
-        if (!force && effectivePlan.check !is PlanCheck.Green) {
+        if (!force && plan.check !is PlanCheck.Green) {
             store.haptic(HapticKind.Warning)
             sheet = "check"
             return
         }
         store.haptic(HapticKind.Medium)
-        store.startJob(photo, effectivePlan, mode)
+        store.startJob(photo, plan, mode)
     }
 
     Box(Modifier.fillMaxSize().background(c.canvas)) {
@@ -503,7 +502,7 @@ private fun ManualSections(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("auto" to "Auto", "photo" to "Photo", "anime" to "Anime").forEach { (value, label) ->
                     RsChip(
-                        label = label,
+                        text = label,
                         selected = prefs.type == value,
                         modifier = Modifier.weight(1f),
                         onClick = {
@@ -563,7 +562,7 @@ private fun ManualSections(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(2, 3, 4, 5).forEach { scale ->
                     RsChip(
-                        label = "$scale×",
+                        text = "$scale×",
                         selected = prefs.scale == scale,
                         modifier = Modifier.weight(1f),
                         onClick = {

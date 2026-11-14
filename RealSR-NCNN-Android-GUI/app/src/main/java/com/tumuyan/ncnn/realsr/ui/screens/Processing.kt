@@ -174,7 +174,7 @@ fun ProcessingScreen(store: AppStore) {
     val cells = cols * rows
     val doneCells = (tileProgress * cells).toInt()
     val active = if (tileProgress < 1f) doneCells else -1
-    val left = plan.etaSec * (1 - p)
+    val left = plan.etaSec * (1 - p).toDouble()
     val throttled = plan.etaSec > 90 && p > 0.5f && p < 0.7f
     val aspect = (photo.width.toFloat() / photo.height).coerceIn(0.4f, 2.5f)
 
@@ -234,7 +234,7 @@ fun ProcessingScreen(store: AppStore) {
                         color = c.ink,
                     )
                     Text(
-                        "Elapsed ${fmtClock(plan.etaSec * p)}",
+                        "Elapsed ${fmtClock(plan.etaSec * p.toDouble())}",
                         style = RsType.body(13f).copy(fontFeatureSettings = "tnum"),
                         color = c.muted,
                         modifier = Modifier.padding(top = 2.dp),

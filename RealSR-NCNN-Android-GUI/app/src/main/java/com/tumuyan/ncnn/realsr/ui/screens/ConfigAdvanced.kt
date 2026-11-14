@@ -98,7 +98,7 @@ fun AdvancedSections(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         row.forEach { preset ->
                             RsChip(
-                                label = preset.label,
+                                text = preset.label,
                                 sub = if (preset.px > 0) "${preset.px} px · ${preset.mem}" else preset.mem,
                                 selected = prefs.tile == preset.id,
                                 enabled = preset.disabledReason == null,
@@ -110,7 +110,7 @@ fun AdvancedSections(
                     }
                 }
                 RsChip(
-                    label = "Custom",
+                    text = "Custom",
                     sub = "64 to 1024 px, in steps of 32",
                     selected = prefs.tile == TilePreset.CUSTOM,
                     modifier = Modifier.fillMaxWidth(),
@@ -176,7 +176,6 @@ fun AdvancedSections(
                         step = 1,
                         label = "CPU threads",
                         onChange = { setPrefs { prefs2 -> prefs2.copy(threads = it) } },
-                        suffix = if (prefs.threads == 0) "" else "",
                     )
                 }
             }

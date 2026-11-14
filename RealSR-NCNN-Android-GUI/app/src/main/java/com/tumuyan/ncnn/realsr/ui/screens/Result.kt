@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -114,7 +115,7 @@ fun BeforeAfter(
             Modifier
                 .fillMaxSize()
                 .drawWithContent {
-                    clipRect(right = size.width * (shown / 100f).coerceIn(0f, 1f)) { this@drawWithContent.drawContent() }
+                    clipRect(right = size.width * (shown / 100f).coerceIn(0f, 1f)) { drawContent() }
                 },
         ) {
             AsyncImage(
@@ -125,22 +126,16 @@ fun BeforeAfter(
             )
         }
         if (!showOriginal) {
-            Box(
-                Modifier
-                    .fillMaxHeight()
-                    .width(2.dp)
-                    .offset { androidx.compose.ui.unit.IntOffset((size.width * (shown / 100f) - 1).toInt(), 0) }
-                    .background(androidx.compose.ui.graphics.Color.White),
-            )
-            Row(
-                Modifier
-                    .align(Alignment.TopStart)
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                LabelPill("Before")
-                Spacer(Modifier.width(0.dp))
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                val x = size.width * (shown / 100f).coerceIn(0f, 1f)
+                drawLine(
+                    color = androidx.compose.ui.graphics.Color.White,
+                    start = androidx.compose.ui.geometry.Offset(x, 0f),
+                    end = androidx.compose.ui.geometry.Offset(x, size.height),
+                    strokeWidth = 2.dp.toPx(),
+                )
             }
+            Box(Modifier.align(Alignment.TopStart).padding(12.dp)) { LabelPill("Before") }
             Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) { LabelPill("After") }
         }
     }

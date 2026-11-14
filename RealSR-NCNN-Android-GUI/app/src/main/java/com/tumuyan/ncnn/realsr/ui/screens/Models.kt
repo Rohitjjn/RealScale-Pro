@@ -154,7 +154,7 @@ fun ModelsScreen(store: AppStore) {
             ) {
                 listOf("all", "photo", "anime").forEach { value ->
                     RsChip(
-                        label = value.replaceFirstChar { it.uppercase() },
+                        text = value.replaceFirstChar { it.uppercase() },
                         selected = filter == value,
                         onClick = { filter = value },
                     )
@@ -440,7 +440,7 @@ fun ModelPickerSheet(
         ) {
             listOf("all", "photo", "anime", "installed").forEach { value ->
                 RsChip(
-                    label = value.replaceFirstChar { it.uppercase() },
+                    text = value.replaceFirstChar { it.uppercase() },
                     selected = filter == value,
                     onClick = { filter = value },
                 )
