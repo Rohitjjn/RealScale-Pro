@@ -1,5 +1,6 @@
 package com.tumuyan.ncnn.realsr
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -7,29 +8,41 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.tumuyan.ncnn.realsr.ui.RealScaleApp
-import com.tumuyan.ncnn.realsr.ui.RealScaleViewModel
+import androidx.lifecycle.lifecycleScope
+import com.tumuyan.ncnn.realsr.ui.MediaIntentsHost
+import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
+import com.tumuyan.ncnn.realsr.ui.RealScaleDesignApp
+import com.tumuyan.ncnn.realsr.ui.state.AppStore
+import kotlinx.coroutines.launch
 
+/**
+ * The one activity of the redesigned app: it owns the store, the system dialogs that the store asks
+ * for through [AppStore.permissionRequester] and [AppStore.mediaIntents], and the incoming-image
+ * intents (Open with / share target / widget / notification).
+ */
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: RealScaleViewModel by viewModels {
-        RealScaleViewModel.Factory(application)
-    }
+    private lateinit var container: RealScaleAppContainer
+    private lateinit var store: AppStore
+    private lateinit var intents: MediaIntentsHost
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        if (savedInstanceState == null) {
-            consumeIncomingIntent(intent)
-        }
+        container = RealScaleAppContainer.getInstance(this)
+        store = AppStore(this, container)
+        intents = MediaIntentsHost(this, container, store)
 
-        setContent {
-            RealScaleApp(viewModel = viewModel)
-        }
+        // Rotations and process death restore the Compose tree, not a new activity instance.
+        if (savedInstanceState == null) consumeIncomingIntent(intent)
+
+        setContent { RealScaleDesignApp(store) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -38,41 +51,41 @@ class MainActivity : ComponentActivity() {
         consumeIncomingIntent(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (store.state.value.photoAccess) store.refreshPhotos()
+        store.refreshDevice()
+    }
+
     private fun consumeIncomingIntent(incoming: Intent?) {
         if (incoming == null) return
 
         if (incoming.getBooleanExtra(EXTRA_OPEN_PHOTO_PICKER, false)) {
             incoming.removeExtra(EXTRA_OPEN_PHOTO_PICKER)
-            viewModel.requestOpenPhotoPicker()
+            intents.pickDocument()
             return
         }
 
         val creationId = incoming.getLongExtra(ProcessingService.EXTRA_OPEN_CREATION_ID, -1L)
         if (creationId > 0L) {
             incoming.removeExtra(ProcessingService.EXTRA_OPEN_CREATION_ID)
-            viewModel.openCreationById(creationId)
+            lifecycleScope.launch {
+                val row = runCatching { container.database.recentCreationDao().getById(creationId) }.getOrNull()
+                if (row != null) store.openResult(row.id.toString()) else store.toast("That result is no longer available")
+            }
             return
         }
 
-        when (incoming.action) {
-            Intent.ACTION_VIEW -> {
-                val dataUri = incoming.data
-                if (dataUri != null && dataUri.scheme != "realscale") {
-                    viewModel.onExternalPhotosReceived(listOf(dataUri))
-                }
-            }
-            Intent.ACTION_SEND -> {
-                val single = extractParcelableUri(incoming) ?: incoming.data
-                if (single != null) {
-                    viewModel.onExternalPhotosReceived(listOf(single))
-                }
-            }
-            Intent.ACTION_SEND_MULTIPLE -> {
-                val list = extractParcelableUriList(incoming)
-                if (list.isNotEmpty()) {
-                    viewModel.onExternalPhotosReceived(list)
-                }
-            }
+        val uris = when (incoming.action) {
+            Intent.ACTION_VIEW -> listOfNotNull(incoming.data)
+            Intent.ACTION_SEND -> listOfNotNull(extractParcelableUri(incoming) ?: incoming.data)
+            Intent.ACTION_SEND_MULTIPLE -> extractParcelableUriList(incoming)
+            else -> emptyList()
+        }.filter { it.scheme != "realscale" }
+        if (uris.isEmpty()) return
+
+        lifecycleScope.launch {
+            uris.forEach { uri -> runCatching { intents.importFromUri(uri) } }
         }
     }
 
@@ -93,6 +106,20 @@ class MainActivity : ComponentActivity() {
             intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM).orEmpty()
         }
     }
+
+    /** True when the current photo permission grants access to the whole library. */
+    fun hasPhotoAccess(): Boolean {
+        val permission = photoPermission()
+        return ContextCompat.checkSelfPermission(this, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    fun photoPermission(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES
+        else Manifest.permission.READ_EXTERNAL_STORAGE
+
+    @Suppress("unused")
+    private fun systemPickVisual(): PickVisualMediaRequest =
+        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
 
     companion object {
         const val EXTRA_OPEN_PHOTO_PICKER = "com.tumuyan.ncnn.realsr.EXTRA_OPEN_PHOTO_PICKER"

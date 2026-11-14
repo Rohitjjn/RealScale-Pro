@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.Calendar
@@ -402,6 +403,54 @@ class AppStore(
         scope.launch {
             container.modelRepository.deleteInstalledModel(modelId)
             toast("${ModelCatalog.byId(modelId).name} removed")
+        }
+    }
+
+    /* ------------------------------------------------------------------ maintenance */
+
+    /** "Clear cache": temp files the engine wrote, nothing the user saved. */
+    fun clearCache() {
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                File(context.cacheDir, "realsr").deleteRecursively()
+                File(context.cacheDir, "upscale").deleteRecursively()
+                File(context.cacheDir, "crop").deleteRecursively()
+            }
+            withContext(Dispatchers.Main) { toast("Cache cleared") }
+        }
+    }
+
+    /** Feedback is stored locally; there is no backend and no upload. */
+    fun saveFeedback(text: String, attachDevice: Boolean) {
+        val trimmed = text.trim()
+        if (trimmed.length < 3) return
+        val dir = File(context.filesDir, "feedback").apply { mkdirs() }
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+        val body = buildString {
+            append(trimmed).append("\n\n---\n")
+            if (attachDevice) {
+                append("device: ${device.label}\n")
+                append("ramGB: ${device.ramGB}\ncores: ${device.cores}\ngpu: ${device.gpu}\n")
+            }
+            append("version: 2.0\n")
+        }
+        runCatching { File(dir, "feedback-$stamp.txt").writeText(body) }
+        toast("Thanks. Your feedback was saved to send.")
+    }
+
+    /** Settings > Reset the app: settings, history and downloaded models. Photos are untouched. */
+    fun resetApp() {
+        scope.launch {
+            runCatching {
+                _state.value.installed.forEach { modelId ->
+                    runCatching { container.modelRepository.deleteInstalledModel(modelId) }
+                }
+                container.database.recentCreationDao().clearAll()
+            }
+            prefsStore.edit().clear().apply()
+            _state.value = AppUiState(phase = Phase.Splash)
+            persist()
+            toast("App reset")
         }
     }
 
