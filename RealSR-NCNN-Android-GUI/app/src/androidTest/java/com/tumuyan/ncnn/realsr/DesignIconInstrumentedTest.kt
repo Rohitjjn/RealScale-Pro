@@ -49,8 +49,9 @@ class DesignIconInstrumentedTest {
         var total = 0
         for ((name, glyph) in lucideGlyphs()) {
             total++
+            val children = glyph.root.count()
             val nodes = glyph.root.sumOf { node -> (node as? VectorPath)?.pathData?.size ?: 0 }
-            println("AUDIT: $name nodes=$nodes size=${glyph.defaultWidth} x ${glyph.defaultHeight}")
+            println("AUDIT: $name children=$children nodes=$nodes")
             if (nodes == 0) blank += name
         }
         println("AUDIT: checked $total glyphs, blank=${blank.size} ${blank.joinToString(",")}")

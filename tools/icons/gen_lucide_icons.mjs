@@ -4,7 +4,8 @@
  *
  * Source: `lucide-static` (npm, ISC licence — the same glyphs `lucide-react` renders), so the
  * Compose icons are pixel-identical to the prototype's rather than look-alikes.
- * Geometry is emitted as SVG path data and parsed at class-load time with `addPathNodes`.
+ * Geometry is emitted as SVG path data and replayed into the builder with `addSvgPath`
+ * (`addPathNodes` only parses — discarding its result yields empty glyphs).
  *
  *   node tools/icons/gen_lucide_icons.mjs            # needs `npm i lucide-static` in tools/icons
  *
@@ -97,7 +98,7 @@ const entries = NAMES.map((name) => {
         stroked ? 'strokeLineCap = StrokeCap.Round' : null,
         stroked ? 'strokeLineJoin = StrokeJoin.Round' : null,
       ].filter(Boolean);
-      return `            path(${args.join(', ')}) { addPathNodes(${JSON.stringify(d)}) }`;
+      return `            path(${args.join(', ')}) { addSvgPath(${JSON.stringify(d)}) }`;
     })
     .join('\n');
   return { name, body };

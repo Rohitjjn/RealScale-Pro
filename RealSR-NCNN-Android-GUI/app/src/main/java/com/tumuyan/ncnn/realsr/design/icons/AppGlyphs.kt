@@ -5,7 +5,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
@@ -38,7 +37,7 @@ object AppGlyphs {
                 strokeLineCap = StrokeCap.Round,
                 strokeLineJoin = StrokeJoin.Round,
             ) {
-                addPathNodes(
+                addSvgPath(
                     "M 9 7.3 C 9.72 7.3 10.3 7.88 10.3 8.6 C 10.3 9.32 9.72 9.9 9 9.9 " +
                         "C 8.28 9.9 7.7 9.32 7.7 8.6 C 7.7 7.88 8.28 7.3 9 7.3 Z"
                 )
@@ -70,7 +69,7 @@ object AppGlyphs {
             strokeLineCap = StrokeCap.Round,
             strokeLineJoin = StrokeJoin.Round,
         ) {
-            addPathNodes(data)
+            addSvgPath(data)
         }
     }
 }
