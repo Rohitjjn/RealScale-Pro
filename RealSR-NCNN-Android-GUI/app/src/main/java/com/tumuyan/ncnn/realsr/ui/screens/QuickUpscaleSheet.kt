@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,7 +42,7 @@ import com.tumuyan.ncnn.realsr.core.engine.PreflightMitigation
 import com.tumuyan.ncnn.realsr.core.engine.PreflightVerdict
 import com.tumuyan.ncnn.realsr.core.engine.StagedInputPhoto
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
-import com.tumuyan.ncnn.realsr.core.model.ModelInstallStatus
+import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.ui.components.ButtonSize
 import com.tumuyan.ncnn.realsr.ui.components.ButtonVariant
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleButton
@@ -186,7 +185,7 @@ fun QuickUpscaleSheet(
                             )
                             Box(
                                 Modifier
-                                    .matchParentSize()
+                                    .fillMaxSize()
                                     .background(Brush.verticalGradient(0f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))),
                             )
                         }

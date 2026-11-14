@@ -39,6 +39,7 @@ import com.tumuyan.ncnn.realsr.ui.components.DetailList
 import com.tumuyan.ncnn.realsr.ui.components.IconButtonVariant
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleButton
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleConfirmSheet
+import com.tumuyan.ncnn.realsr.ui.components.RealScaleGroup
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleIconButton
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleProgressBar
 import com.tumuyan.ncnn.realsr.ui.components.RealScaleRing
@@ -297,7 +298,7 @@ fun ProcessingScreen(viewModel: AppViewModel, navController: NavHostController) 
                         )
                     }
                 }
-                EngineState.Cancelled -> {
+                state == EngineState.Cancelled -> {
                     Column {
                         Text("Cancelled", style = RealScaleType.Display34, color = c.ink)
                         Spacer(Modifier.height(8.dp))
@@ -321,7 +322,7 @@ fun ProcessingScreen(viewModel: AppViewModel, navController: NavHostController) 
         title = "Cancel upscale?",
         body = "Stop the current upscale? Partial results won’t be saved.",
         confirmLabel = "Cancel",
-        onConfirm = doCancel,
+        onConfirm = { doCancel() },
         cancelLabel = "Keep going",
     )
 
@@ -336,7 +337,7 @@ fun ProcessingScreen(viewModel: AppViewModel, navController: NavHostController) 
     ) {
         DetailList(
             rows = listOf(
-                "Message" to failed?.userMessage ?: "",
+                "Message" to (failed?.userMessage ?: ""),
                 "Technical output" to (failed?.technicalOutput ?: "").take(500),
             ),
         )
