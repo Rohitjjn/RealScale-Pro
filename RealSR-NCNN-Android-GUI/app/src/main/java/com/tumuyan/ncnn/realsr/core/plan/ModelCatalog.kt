@@ -35,6 +35,11 @@ data class ModelEntry(
     val engineTool: String,
     /** Directory (or single file) inside the Hugging Face mirror. */
     val sourceDir: String,
+    /**
+     * Id of this model in `assets/model_manifest.json` and the name of its folder under
+     * `filesDir/models/`. Null for models whose weights ship inside the APK (Anime4K shaders).
+     */
+    val manifestId: String? = null,
     /** For single-file MNN models: the file the engine is pointed at. */
     val entryFile: String? = null,
     /** Default `-n` level when the model takes one. */
@@ -60,6 +65,7 @@ object ModelCatalog {
             scales = listOf(4), engine = "ncnn", sizeMB = 2.3, speed = "Very fast", badge = "Fast",
             minTier = 0, pack = "starter", license = "BSD-3-Clause", secPerMP = 3.0,
             required = true, engineTool = "realsr-ncnn", sourceDir = "models-RealeSR-general-v3",
+            manifestId = "models-RealeSR-general-v3",
         ),
         ModelEntry(
             id = "waifu2x-anime", name = "waifu2x anime",
@@ -67,7 +73,7 @@ object ModelCatalog {
             scales = listOf(2), engine = "ncnn", sizeMB = 5.3, speed = "Very fast", badge = "Fast",
             minTier = 0, pack = "starter", license = "MIT", secPerMP = 4.0,
             denoise = true, required = true, engineTool = "waifu2x-ncnn",
-            sourceDir = "models-upconv_7_anime_style_art_rgb", denoiseLevel = 1,
+            sourceDir = "models-upconv_7_anime_style_art_rgb", denoiseLevel = 1, manifestId = "models-upconv_7_anime_style_art_rgb",
         ),
         ModelEntry(
             id = "srmd-x2", name = "SRMD 2×",
@@ -75,7 +81,7 @@ object ModelCatalog {
             scales = listOf(2), engine = "ncnn", sizeMB = 2.9, speed = "Very fast", badge = "Balanced",
             minTier = 0, pack = "starter", license = "MIT", secPerMP = 4.0,
             denoise = true, required = true, engineTool = "srmd-ncnn",
-            sourceDir = "models-srmd", denoiseLevel = 0,
+            sourceDir = "models-srmd", denoiseLevel = 0, manifestId = "models-srmd",
         ),
         ModelEntry(
             id = "anime4k-x2", name = "Anime4K 2×",
@@ -92,6 +98,7 @@ object ModelCatalog {
             scales = listOf(4), engine = "ncnn", sizeMB = 19.2, speed = "Fast", badge = "Balanced",
             minTier = 0, pack = "esrgan", license = "To be verified", secPerMP = 8.0,
             engineTool = "realsr-ncnn", sourceDir = "models-ESRGAN-AnimeSharpLite",
+            manifestId = "models-ESRGAN-AnimeSharpLite",
         ),
         ModelEntry(
             id = "esrgan-anime-sharp", name = "AnimeSharp x4",
@@ -99,6 +106,7 @@ object ModelCatalog {
             scales = listOf(4), engine = "ncnn", sizeMB = 32.0, speed = "Medium", badge = "Best quality",
             minTier = 1, pack = "esrgan", license = "To be verified", secPerMP = 12.0,
             engineTool = "realsr-ncnn", sourceDir = "models-ESRGAN-AnimeSharp",
+            manifestId = "models-ESRGAN-AnimeSharp",
         ),
         ModelEntry(
             id = "esrgan-remacri", name = "Remacri x4",
@@ -106,6 +114,7 @@ object ModelCatalog {
             scales = listOf(4), engine = "ncnn", sizeMB = 32.0, speed = "Medium", badge = "Best quality",
             minTier = 1, pack = "esrgan", license = "To be verified", secPerMP = 14.0,
             engineTool = "realsr-ncnn", sourceDir = "models-ESRGAN-Remacri",
+            manifestId = "models-ESRGAN-Remacri",
         ),
         ModelEntry(
             id = "esrgan-ultramix", name = "UltraMix Balanced x4",
@@ -113,6 +122,7 @@ object ModelCatalog {
             scales = listOf(4), engine = "ncnn", sizeMB = 32.0, speed = "Medium", badge = "Balanced",
             minTier = 1, pack = "esrgan", license = "To be verified", secPerMP = 13.0,
             engineTool = "realsr-ncnn", sourceDir = "models-ESRGAN-UltraMix_Balanced",
+            manifestId = "models-ESRGAN-UltraMix_Balanced",
         ),
         ModelEntry(
             id = "esrgan-nomos8ksc", name = "Nomos8kSC x4",
@@ -120,6 +130,7 @@ object ModelCatalog {
             scales = listOf(4), engine = "ncnn", sizeMB = 32.0, speed = "Slow", badge = "Best quality",
             minTier = 2, pack = "esrgan", license = "To be verified", secPerMP = 18.0,
             engineTool = "realsr-ncnn", sourceDir = "models-ESRGAN-Nomos8kSC",
+            manifestId = "models-ESRGAN-Nomos8kSC",
         ),
         ModelEntry(
             id = "esrgan-sourcebook", name = "SourceBook x2",
@@ -127,6 +138,7 @@ object ModelCatalog {
             scales = listOf(2), engine = "ncnn", sizeMB = 32.1, speed = "Medium", badge = "Balanced",
             minTier = 1, pack = "esrgan", license = "To be verified", secPerMP = 14.0,
             engineTool = "realsr-ncnn", sourceDir = "models-ESRGAN-SourceBook_v1",
+            blocked = "Not in the mirror yet",
         ),
         ModelEntry(
             id = "mnn-moesr", name = "MoeSR illustration (MNN)",
@@ -135,6 +147,7 @@ object ModelCatalog {
             minTier = 1, pack = "esrgan", license = "To be verified", secPerMP = 14.0,
             engineTool = "mnnsr-ncnn", sourceDir = "models-MNNSR",
             entryFile = "MoeSR-ESRGAN-jp_Illustration-fix1-d-x4.mnn",
+            blocked = "Not in the mirror yet",
         ),
         ModelEntry(
             id = "mnn-nomos8ksc", name = "Nomos8kSC (MNN)",
@@ -143,6 +156,7 @@ object ModelCatalog {
             minTier = 2, pack = "esrgan", license = "To be verified", secPerMP = 16.0,
             engineTool = "mnnsr-ncnn", sourceDir = "models-MNNSR",
             entryFile = "ESRGAN-Nomos8kSC-x4.mnn",
+            blocked = "Not in the mirror yet",
         ),
 
         // Noise-aware models: the denoise slider selects how hard they clean.
@@ -151,14 +165,14 @@ object ModelCatalog {
             desc = "Anime, stronger noise removal", kind = ImageType.Anime,
             scales = listOf(2), engine = "ncnn", sizeMB = 13.3, speed = "Fast", badge = "Balanced",
             minTier = 0, pack = "denoise", license = "MIT", secPerMP = 6.0,
-            denoise = true, engineTool = "waifu2x-ncnn", sourceDir = "models-cunet", denoiseLevel = 1,
+            denoise = true, engineTool = "waifu2x-ncnn", sourceDir = "models-cunet", denoiseLevel = 1, manifestId = "models-cunet",
         ),
         ModelEntry(
             id = "srmd-nf-x2", name = "SRMD 2× (no denoise)",
             desc = "Photos, keeps the grain", kind = ImageType.Photo,
             scales = listOf(2), engine = "ncnn", sizeMB = 2.9, speed = "Very fast", badge = "Fast",
             minTier = 0, pack = "denoise", license = "MIT", secPerMP = 4.0,
-            engineTool = "srmd-ncnn", sourceDir = "models-srmd",
+            engineTool = "srmd-ncnn", sourceDir = "models-srmd", manifestId = "models-srmd",
         ),
 
         // Anime4K family.
@@ -174,6 +188,13 @@ object ModelCatalog {
     val STARTER_IDS: List<String> = MODELS.filter { it.required }.map { it.id }
 
     fun byId(id: String): ModelEntry = MODELS.firstOrNull { it.id == id } ?: MODELS.first()
+
+    /** The catalog entry that a manifest id (an HF directory) installs into. */
+    fun byManifestId(manifestId: String): ModelEntry? =
+        MODELS.firstOrNull { it.manifestId == manifestId }
+
+    /** Ids the planner can treat as installed without a download (Anime4K ships its shaders). */
+    val BUNDLED_IDS: List<String> = MODELS.filter { it.manifestId == null && it.blocked == null }.map { it.id }
 
     fun packOf(id: String): Pack = PACKS.firstOrNull { it.id == id } ?: PACKS.first()
 

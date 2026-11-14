@@ -373,46 +373,72 @@ class AppStore(
     private fun observeCatalog() {
         scope.launch {
             container.modelRepository.catalogModels.collect { states ->
-                val installed = states.filter { it.isInstalled }.map { it.catalog.id }
+                // The repository speaks manifest ids (HF directories); the UI speaks catalog ids.
+                val installed = buildList {
+                    addAll(ModelCatalog.BUNDLED_IDS)
+                    states.filter { it.isInstalled }.forEach { state ->
+                        ModelCatalog.byManifestId(state.catalog.id)?.let { add(it.id) }
+                    }
+                }.distinct()
                 val downloads = states
                     .filter { it.status.name != "INSTALLED" }
-                    .associate { state ->
-                        state.catalog.id to ModelDownloadUi(
-                            modelId = state.catalog.id,
+                    .mapNotNull { state ->
+                        val entry = ModelCatalog.byManifestId(state.catalog.id) ?: return@mapNotNull null
+                        entry.id to ModelDownloadUi(
+                            modelId = entry.id,
                             progress = state.progressFraction,
                             state = state.status.name.lowercase(),
                         )
                     }
+                    .toMap()
                 update { it.copy(installed = installed, downloads = downloads) }
             }
         }
     }
 
+    /** Catalog id -> manifest id, shared by every download action. */
+    private fun manifestIdFor(modelId: String): String? = ModelCatalog.byId(modelId).takeIf {
+        it.id == modelId
+    }?.manifestId
+
     fun downloadModel(modelId: String) {
+        val entry = ModelCatalog.byId(modelId)
+        val manifestId = entry.manifestId
+        if (manifestId == null) {
+            toast(
+                if (entry.blocked != null) "${entry.name} is not downloadable yet"
+                else "${entry.name} ships with the app",
+            )
+            return
+        }
         scope.launch {
-            container.modelRepository.startOrResumeDownload(modelId, wifiOnly = _state.value.settings.wifiOnly)
-            toast("Downloading ${ModelCatalog.byId(modelId).name}")
+            container.modelRepository.startOrResumeDownload(manifestId, wifiOnly = _state.value.settings.wifiOnly)
+            toast("Downloading ${entry.name}")
         }
     }
 
     fun pauseModel(modelId: String) {
+        val manifestId = manifestIdFor(modelId) ?: return
         scope.launch {
-            container.modelRepository.pauseDownload(modelId)
+            container.modelRepository.pauseDownload(manifestId)
             toast("Download paused")
         }
     }
 
     fun cancelDownload(modelId: String) {
+        val manifestId = manifestIdFor(modelId) ?: return
         scope.launch {
-            container.modelRepository.cancelDownload(modelId)
+            container.modelRepository.cancelDownload(manifestId)
             toast("Download cancelled")
         }
     }
 
     fun deleteModel(modelId: String) {
+        val entry = ModelCatalog.byId(modelId)
+        val manifestId = entry.manifestId ?: return
         scope.launch {
-            container.modelRepository.deleteInstalledModel(modelId)
-            toast("${ModelCatalog.byId(modelId).name} removed")
+            container.modelRepository.deleteInstalledModel(manifestId)
+            toast("${entry.name} removed")
         }
     }
 
@@ -473,7 +499,7 @@ class AppStore(
         scope.launch {
             cropPreviewUri = null
             val entry = plan.model
-            val modelDir = File(container.modelRepository.modelsRootDir, entry.id)
+            val modelDir = File(container.modelRepository.modelsRootDir, entry.manifestId ?: entry.id)
             val modelPath = entry.entryFile?.let { File(modelDir, it).absolutePath } ?: modelDir.absolutePath
             val spec = ModelExecutionSpec(
                 modelId = entry.id,
@@ -613,7 +639,7 @@ class AppStore(
     fun startJob(photo: PhotoItem, plan: Plan, mode: ModeId = _state.value.mode) {
         val settings = _state.value.settings
         val entry = plan.model
-        val modelDir = File(container.modelRepository.modelsRootDir, entry.id)
+        val modelDir = File(container.modelRepository.modelsRootDir, entry.manifestId ?: entry.id)
         val modelPath = entry.entryFile?.let { File(modelDir, it).absolutePath } ?: modelDir.absolutePath
 
         val spec = ModelExecutionSpec(
