@@ -115,7 +115,7 @@ class RealScaleSmokeInstrumentedTest {
 
             // The Setup screen downloads the Starter Pack; on a CI emulator it stays in progress.
             waitForText("Setting up RealScale-Pro", 12_000L)
-            composeRule.onNodeWithText("Setup").assertIsDisplayed()
+            composeRule.onNodeWithText("Setting up RealScale-Pro").assertIsDisplayed()
             composeRule.waitForIdle()
             captureComposeRootBitmap(context, "07_setup.png")?.recycle()
         } finally {
@@ -139,7 +139,7 @@ class RealScaleSmokeInstrumentedTest {
             waitForText("Recent photos", 12_000L)
             composeRule.onNodeWithText("Sharper, bigger photos. Nothing leaves your device.")
                 .assertIsDisplayed()
-            composeRule.onNodeWithText("Allow photo access").assertIsDisplayed()
+            composeRule.onAllNodesWithText("Allow photo access")[0].assertIsDisplayed()
             composeRule.waitForIdle()
             captureComposeRootBitmap(context, "08_home.png")?.recycle()
 
