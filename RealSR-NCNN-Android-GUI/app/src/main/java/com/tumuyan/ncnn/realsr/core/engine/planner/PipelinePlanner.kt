@@ -407,7 +407,7 @@ fun fmtMB(mb: Double): String = when {
     mb >= 100 -> "${mb.roundToInt()} MB"
     else -> {
         val s = String.format(java.util.Locale.US, "%.1f MB", mb)
-        if (s.endsWith(".0 MB")) s.dropRight(5) + " MB" else s
+        if (s.endsWith(".0 MB")) s.dropLast(5) + " MB" else s
     }
 }
 fun fmtEta(sec: Long): String = when {
