@@ -405,7 +405,7 @@ fun RsStepper(
                 .semantics { contentDescription = "Decrease $label" },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Lucide.Minus, contentDescription = null, tint = if (value > min) c.ink else c.mutedSoft, modifier = Modifier.size(16.dp))
+            Icon(LucideIcons.Minus, contentDescription = null, tint = if (value > min) c.ink else c.mutedSoft, modifier = Modifier.size(16.dp))
         }
         Text(
             text = format?.invoke(value) ?: value.toString(),
@@ -427,7 +427,7 @@ fun RsStepper(
                 .semantics { contentDescription = "Increase $label" },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Lucide.Plus, contentDescription = null, tint = if (value < max) c.ink else c.mutedSoft, modifier = Modifier.size(16.dp))
+            Icon(LucideIcons.Plus, contentDescription = null, tint = if (value < max) c.ink else c.mutedSoft, modifier = Modifier.size(16.dp))
         }
     }
 }

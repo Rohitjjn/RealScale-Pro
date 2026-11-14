@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
  *
  * Generated file — do not edit by hand.
  */
-object Lucide {
+object LucideIcons {
     val ArrowLeftRight: ImageVector by lazy { build("ArrowLeftRight", "arrow-left-right") }
     val Bell: ImageVector by lazy { build("Bell", "bell") }
     val BookOpen: ImageVector by lazy { build("BookOpen", "book-open") }

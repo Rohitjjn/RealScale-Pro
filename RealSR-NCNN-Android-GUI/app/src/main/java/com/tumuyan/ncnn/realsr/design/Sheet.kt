@@ -177,7 +177,7 @@ fun RsSheet(
                             color = c.ink,
                             modifier = Modifier.weight(1f).padding(top = 4.dp),
                         )
-                        RsIconButton(icon = Lucide.X, label = "Close", onClick = onClose)
+                        RsIconButton(icon = LucideIcons.X, label = "Close", onClick = onClose)
                     }
                 }
                 Column(

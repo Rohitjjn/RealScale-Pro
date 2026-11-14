@@ -121,7 +121,7 @@ import androidx.compose.ui.unit.dp
  *
  * Generated file — do not edit by hand.
  */
-object Lucide {
+object LucideIcons {
 ${entries.map(({ name }) => `    val ${name}: ImageVector by lazy { build("${name}", "${kebab(name)}") }`).join('\n')}
 
     private fun build(name: String, id: String): ImageVector {

@@ -313,7 +313,7 @@ fun RsTopBar(
         ) {
             if (onBack != null) {
                 RsIconButton(
-                    icon = if (close) Lucide.X else Lucide.ChevronLeft,
+                    icon = if (close) LucideIcons.X else LucideIcons.ChevronLeft,
                     label = if (close) "Close" else "Back",
                     variant = RsIconButtonVariant.Plain,
                     iconSize = if (close) 22.dp else 24.dp,
@@ -439,7 +439,7 @@ fun RsRow(
             }
             trailing()
             if (chevron) {
-                Icon(Lucide.ChevronRight, contentDescription = null, tint = c.mutedSoft, modifier = Modifier.size(16.dp))
+                Icon(LucideIcons.ChevronRight, contentDescription = null, tint = c.mutedSoft, modifier = Modifier.size(16.dp))
             }
         }
     }
@@ -562,7 +562,7 @@ fun RadioMark(
         contentAlignment = Alignment.Center,
     ) {
         if (checked) {
-            Icon(Lucide.Check, contentDescription = null, tint = tint ?: c.onInverse, modifier = Modifier.size(14.dp))
+            Icon(LucideIcons.Check, contentDescription = null, tint = tint ?: c.onInverse, modifier = Modifier.size(14.dp))
         }
     }
 }
