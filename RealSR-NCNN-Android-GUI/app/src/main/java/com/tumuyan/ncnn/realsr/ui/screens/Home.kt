@@ -3,8 +3,8 @@ package com.tumuyan.ncnn.realsr.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -62,6 +64,7 @@ import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.PhotoItem
 import com.tumuyan.ncnn.realsr.ui.state.Route
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 
 private val MODES = listOf(
     Triple(ModeId.UPSCALE, "Upscale Mode", "Fast and simple. Everyday photos. Works on any device."),
@@ -71,7 +74,7 @@ private val MODES = listOf(
 @Composable
 fun HomeScreen(store: AppStore) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     var sheet by remember { mutableStateOf<String?>(null) }
     var pendingMode by remember { mutableStateOf<ModeId?>(null) }
     val scroll = rememberScrollState()
@@ -106,11 +109,35 @@ fun HomeScreen(store: AppStore) {
                     .fillMaxSize()
                     .verticalScroll(scroll),
             ) {
+                /* 1. The upscale button is the first thing on the screen */
+                Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp)) {
+                    RsButton(
+                        onClick = {
+                            store.haptic(HapticKind.Light)
+                            store.pickFile()
+                        },
+                        variant = RsButtonVariant.Primary,
+                        size = RsButtonSize.Lg,
+                        full = true,
+                        icon = LucideIcons.ImageUpscale,
+                        label = "Upscale a photo",
+                    )
+                    if (state.photoAccess) {
+                        RsButton(
+                            onClick = { store.push(Route.Gallery) },
+                            variant = RsButtonVariant.Ghost,
+                            modifier = Modifier.padding(top = 8.dp),
+                            full = true,
+                            icon = LucideIcons.Images,
+                            label = "Browse gallery",
+                        )
+                    }
+                }
                 Text(
                     "Sharper, bigger photos. Nothing leaves your device.",
                     style = RsType.body(15f, lineHeightRatio = 1.6f),
                     color = c.muted,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 24.dp),
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
                 )
 
                 /* 2. Recent photos */
@@ -154,15 +181,22 @@ fun HomeScreen(store: AppStore) {
                 if (!state.photoAccess) {
                     PhotoAccessCard(store, Modifier.padding(horizontal = 20.dp, vertical = 16.dp))
                 } else {
-                    Row(
-                        Modifier
-                            .padding(top = 16.dp, bottom = 4.dp)
-                            .horizontalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp),
+                    /*
+                     * The device's own recent photos, newest first, scrolled left to right — the
+                     * same strip the ZIP prototype opens on. It is a LazyRow of at most
+                     * HOME_PHOTO_LIMIT cards: a plain Row with all 240 MediaStore rows composed
+                     * every image at once, which is what made the whole screen crawl.
+                     */
+                    val recent = remember(state.photos) { state.photos.take(HOME_PHOTO_LIMIT) }
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, bottom = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        if (state.photosLoading && state.photos.isEmpty()) {
-                            repeat(4) { index ->
+                        if (state.photosLoading && recent.isEmpty()) {
+                            items(4) {
                                 Column(Modifier.width(148.dp)) {
                                     Skeleton(
                                         Modifier.fillMaxWidth().aspectRatio(0.8f),
@@ -173,7 +207,7 @@ fun HomeScreen(store: AppStore) {
                                 }
                             }
                         } else {
-                            state.photos.forEach { photo ->
+                            items(recent, key = { it.id }) { photo ->
                                 PhotoCard(store, photo)
                             }
                         }
@@ -392,6 +426,9 @@ fun HomeScreen(store: AppStore) {
     }
 }
 
+/** How many device photos the Home strip shows; the gallery screen owns the full list. */
+private const val HOME_PHOTO_LIMIT = 12
+
 private data class Quad(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val title: String,
@@ -421,18 +458,21 @@ private fun TileCard(tile: Quad, modifier: Modifier = Modifier) {
 @Composable
 private fun PhotoCard(store: AppStore, photo: PhotoItem) {
     val c = LocalRsColors.current
-    Column(Modifier.width(148.dp)) {
+    Column(Modifier.width(132.dp)) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(0.8f)
                 .clip(RoundedCornerShape(RsRadius.lg.dp))
                 .background(c.card)
-                .clickable { store.openViewer(photo) },
+                .clickable {
+                    store.haptic(HapticKind.Light)
+                    store.openConfig(photo)
+                },
         ) {
             AsyncImage(
                 model = photo.uri,
-                contentDescription = "View ${photo.name}",
+                contentDescription = "Upscale ${photo.name}",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )

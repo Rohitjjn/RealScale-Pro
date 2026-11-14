@@ -58,6 +58,7 @@ import com.tumuyan.ncnn.realsr.ui.state.FormatSetting
 import com.tumuyan.ncnn.realsr.ui.state.LaunchMode
 import com.tumuyan.ncnn.realsr.ui.state.Route
 import com.tumuyan.ncnn.realsr.ui.state.ThemePref
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 import kotlinx.coroutines.delay
 
 private const val FORMAT_LABEL_AUTO = "Automatic"
@@ -89,7 +90,7 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun SettingsScreen(store: AppStore) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     val settings = state.settings
     var sheet by remember { mutableStateOf<String?>(null) }
     var resetConfirm by remember { mutableStateOf(false) }
@@ -370,7 +371,7 @@ private val FAQ = listOf(
 @Composable
 fun HelpScreen(store: AppStore) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     var open by remember { mutableStateOf(false) }
     var text by remember { mutableStateOf("") }
     var attach by remember { mutableStateOf(true) }

@@ -66,15 +66,19 @@ import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.PhotoItem
 import com.tumuyan.ncnn.realsr.ui.state.ResultItem
 import com.tumuyan.ncnn.realsr.ui.state.Route
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 
 /**
  * Before/after slider. The "before" side is the real source file, the "after" side is the real
  * saved output — the prototype fakes this with a blurred stand-in.
+ *
+ * The models are [Any] so the guide can pass a bundled drawable id and the result screens can pass
+ * a `file://` string through the same code path, i.e. one slider implementation everywhere.
  */
 @Composable
 fun BeforeAfter(
-    beforeUri: String,
-    afterUri: String,
+    beforeUri: Any,
+    afterUri: Any,
     contentDescription: String,
     modifier: Modifier = Modifier,
     initial: Float = 50f,
@@ -106,12 +110,7 @@ fun BeforeAfter(
                 }
             },
     ) {
-        AsyncImage(
-            model = afterUri,
-            contentDescription = contentDescription,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
+        SliderLayer(afterUri, contentDescription, Modifier.fillMaxSize())
         Box(
             Modifier
                 .fillMaxSize()
@@ -120,12 +119,7 @@ fun BeforeAfter(
                     clipRect(right = size.width * (shown / 100f).coerceIn(0f, 1f)) { content.drawContent() }
                 },
         ) {
-            AsyncImage(
-                model = beforeUri,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+            SliderLayer(beforeUri, null, Modifier.fillMaxSize())
         }
         if (!showOriginal) {
             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
@@ -140,6 +134,30 @@ fun BeforeAfter(
             Box(Modifier.align(Alignment.TopStart).padding(12.dp)) { LabelPill("Before") }
             Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) { LabelPill("After") }
         }
+    }
+}
+
+/**
+ * One side of the slider. A drawable resource id goes through [painterResource] so the bundled guide
+ * demo renders even with no image loader configured; everything else (`file://`, `content://`) goes
+ * through Coil like the rest of the app.
+ */
+@Composable
+private fun SliderLayer(model: Any, contentDescription: String?, modifier: Modifier) {
+    if (model is Int) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(model),
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = modifier,
+        )
+    } else {
+        AsyncImage(
+            model = model,
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = modifier,
+        )
     }
 }
 
@@ -160,7 +178,7 @@ private fun LabelPill(text: String) {
 @Composable
 fun ResultScreen(store: AppStore, resultId: String) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     val result = state.results.firstOrNull { it.id == resultId }
     var hold by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<String?>(null) }
@@ -182,7 +200,7 @@ fun ResultScreen(store: AppStore, resultId: String) {
         return
     }
 
-    val photo = store.photoById(result.photoId) ?: store.state.value.photos.firstOrNull { it.uri == result.sourceUri }
+    val photo = store.photoById(result.photoId) ?: store.rememberState().photos.firstOrNull { it.uri == result.sourceUri }
     val aspect = if (photo != null) (photo.width.toFloat() / photo.height).coerceIn(0.4f, 2.5f) else 1f
 
     Column(Modifier.fillMaxSize().background(c.canvas)) {

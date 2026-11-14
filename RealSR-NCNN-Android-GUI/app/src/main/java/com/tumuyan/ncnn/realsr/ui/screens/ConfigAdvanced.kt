@@ -67,6 +67,7 @@ import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.PhotoItem
 import com.tumuyan.ncnn.realsr.ui.state.Route
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 import kotlinx.coroutines.delay
 
 @Composable
@@ -470,7 +471,7 @@ fun CheckSheet(
 
 @Composable
 fun SwapSheet(store: AppStore, photo: PhotoItem, open: Boolean, onClose: () -> Unit) {
-    val state = store.state.value
+    val state = store.rememberState()
     RsSheet(open = open, onClose = onClose, title = "Choose another image", tall = true) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),

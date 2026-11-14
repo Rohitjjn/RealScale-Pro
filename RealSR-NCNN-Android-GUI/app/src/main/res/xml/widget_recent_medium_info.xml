@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- "Recent creations" widget; same preview notes as widget_enhance_small_info.xml. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_recent_desc"
-    android:initialLayout="@layout/widget_loading_placeholder"
+    android:initialLayout="@layout/widget_recent_initial"
+    android:previewLayout="@layout/widget_recent_initial"
+    android:previewImage="@drawable/brand_logo_medallion"
     android:minHeight="110dp"
     android:minWidth="250dp"
-    android:previewImage="@drawable/brand_logo_medallion"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="1800000"
     android:widgetCategory="home_screen" />

@@ -29,6 +29,7 @@ import com.tumuyan.ncnn.realsr.core.plan.PlanLevel
 import com.tumuyan.ncnn.realsr.core.plan.fmtMB
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
 import com.tumuyan.ncnn.realsr.ui.media.MediaLibrary
+import androidx.compose.runtime.Stable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -55,6 +56,7 @@ import java.util.Calendar
  * screen with the same numbers; engine state itself lives in [RealScaleAppContainer.engine] and is
  * never duplicated here.
  */
+@Stable
 class AppStore(
     private val context: Context,
     private val container: RealScaleAppContainer,
@@ -249,7 +251,8 @@ class AppStore(
 
     fun refreshDevice() {
         device = DeviceProfiler.read(context, benchmarkSecPerTile = device.benchmarkSecPerTile)
-        update { it }
+        // `device` is a plain field, so the screens need a state change to re-read it.
+        update { it.copy(deviceRevision = it.deviceRevision + 1) }
     }
 
     /* ------------------------------------------------------------------ media */
@@ -266,10 +269,18 @@ class AppStore(
         }
     }
 
+    /**
+     * Library rows (newest first from MediaStore) plus the files the user opened with the app.
+     *
+     * The order is capture time, newest first, so the Home strip reads left to right exactly like
+     * the system gallery. Sorting on the id string — `"media:100" < "media:99"` — is what made the
+     * row look shuffled after a refresh.
+     */
     private fun mergeImported(current: List<PhotoItem>, loaded: List<PhotoItem>): List<PhotoItem> {
         val importedOnly = current.filter { it.imported }
-        val byId = (importedOnly + loaded).associateBy { it.id }
-        return byId.values.sortedByDescending { it.id }
+        return (importedOnly + loaded)
+            .distinctBy { it.id }
+            .sortedWith(compareByDescending<PhotoItem> { it.dateTaken }.thenByDescending { it.id })
     }
 
     /** A photo the user opened with the app (Open with, share target, picker). */
@@ -332,10 +343,19 @@ class AppStore(
 
     /* ------------------------------------------------------------------ results */
 
+    private var lastResultIds: List<String> = emptyList()
+
     private fun observeResults() {
         resultsJob = scope.launch {
             container.database.recentCreationDao().observeRecent(200).collect { rows ->
-                update { it.copy(results = rows.map(::toResultItem)) }
+                val mapped = rows.map(::toResultItem)
+                val ids = mapped.map { it.id }
+                update { it.copy(results = mapped) }
+                // A saved or deleted upscale changes the "Recent creations" widget.
+                if (ids != lastResultIds) {
+                    lastResultIds = ids
+                    com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater.refreshSoon(context)
+                }
             }
         }
     }
@@ -381,9 +401,21 @@ class AppStore(
 
     /* ------------------------------------------------------------------ catalog / downloads */
 
+    private var lastCatalogEmitAt = 0L
+    private var lastCatalogSignature: List<Pair<String, String>> = emptyList()
+
     private fun observeCatalog() {
         scope.launch {
             container.modelRepository.catalogModels.collect { states ->
+                // A download reports every chunk it writes. Structural changes (start, pause,
+                // install, fail) go straight through; plain progress is coalesced to ~10 fps so the
+                // screens are not recomposed hundreds of times a second.
+                val signature = states.map { it.catalog.id to it.status.name }
+                val now = SystemClock.elapsedRealtime()
+                val structural = signature != lastCatalogSignature
+                if (!structural && now - lastCatalogEmitAt < 100L) return@collect
+                lastCatalogSignature = signature
+                lastCatalogEmitAt = now
                 // The repository speaks manifest ids (HF directories); the UI speaks catalog ids.
                 val installed = buildList {
                     addAll(ModelCatalog.BUNDLED_IDS)

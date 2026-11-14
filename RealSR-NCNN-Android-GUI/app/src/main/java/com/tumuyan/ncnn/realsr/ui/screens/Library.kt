@@ -51,11 +51,12 @@ import com.tumuyan.ncnn.realsr.design.RsType
 import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.Route
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 
 @Composable
 fun UpscalesScreen(store: AppStore) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     val results = state.results
     var selecting by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(false) }
@@ -230,7 +231,7 @@ fun UpscalesScreen(store: AppStore) {
 @Composable
 fun GalleryScreen(store: AppStore) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     var tab by remember { mutableStateOf("photos") }
     var album by remember { mutableStateOf<String?>(null) }
 

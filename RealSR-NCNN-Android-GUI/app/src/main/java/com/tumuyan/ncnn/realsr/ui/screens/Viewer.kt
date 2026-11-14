@@ -64,6 +64,7 @@ import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.PhotoItem
 import com.tumuyan.ncnn.realsr.ui.state.Route
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 import kotlinx.coroutines.launch
 
 /**
@@ -73,7 +74,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ViewerScreen(store: AppStore, photoId: String, single: Boolean) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     val list = remember(state.photos, single, photoId) {
         if (single) state.photos.filter { it.id == photoId } else state.photos
     }

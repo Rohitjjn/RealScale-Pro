@@ -96,6 +96,12 @@ data class PhotoItem(
     val album: String = "",
     val ext: String = "jpg",
     val imported: Boolean = false,
+    /**
+     * Capture time in epoch millis. MediaStore's `DATE_ADDED` for library rows, import time for
+     * files opened with the app. The Home strip sorts on this, never on the string id: "media:100"
+     * sorts after "media:99" as text, which is why the row used to look shuffled.
+     */
+    val dateTaken: Long = 0L,
 ) {
     val mp: Double get() = width.toDouble() * height / 1_000_000
 }
@@ -177,6 +183,11 @@ data class AppUiState(
     val selectedUpscales: Set<String> = emptySet(),
     /** Set while the Starter Pack queue is paused from the setup screen. */
     val starterPackPaused: Boolean = false,
+    /**
+     * Bumped by `AppStore.refreshDevice()`. `device` is a plain field on the store, so this counter is
+     * what tells the screens that the profile (tier, free space) was re-read.
+     */
+    val deviceRevision: Int = 0,
 ) {
     val route: Route get() = routes.last()
     val canGoBack: Boolean get() = routes.size > 1

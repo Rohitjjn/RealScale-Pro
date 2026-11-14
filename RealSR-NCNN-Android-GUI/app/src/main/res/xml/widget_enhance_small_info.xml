@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  "Enhance a photo" widget. previewLayout is what the launcher shows inside the widget picker on
+  Android 12+; previewImage is the fallback for older launchers. Both used to point at the bare
+  medallion, which is why the widget looked broken in the picker.
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_enhance_desc"
-    android:initialLayout="@layout/widget_loading_placeholder"
+    android:initialLayout="@layout/widget_enhance_initial"
+    android:previewLayout="@layout/widget_enhance_initial"
+    android:previewImage="@drawable/brand_logo_medallion"
     android:minHeight="96dp"
     android:minWidth="148dp"
-    android:previewImage="@drawable/brand_logo_medallion"
+    android:minResizeWidth="148dp"
+    android:minResizeHeight="96dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
     android:resizeMode="horizontal|vertical"
     android:updatePeriodMillis="86400000"
     android:widgetCategory="home_screen" />

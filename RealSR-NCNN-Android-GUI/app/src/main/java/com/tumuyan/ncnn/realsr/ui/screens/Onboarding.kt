@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.tumuyan.ncnn.realsr.core.device.HapticKind
 import com.tumuyan.ncnn.realsr.core.plan.ModelCatalog
 import com.tumuyan.ncnn.realsr.core.plan.fmtMB
+import com.tumuyan.ncnn.realsr.R
 import com.tumuyan.ncnn.realsr.design.Dot
 import com.tumuyan.ncnn.realsr.design.EyebrowLabel
 import com.tumuyan.ncnn.realsr.design.GroupTopDivider
@@ -69,6 +70,7 @@ import com.tumuyan.ncnn.realsr.design.icons.AppGlyphs
 import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.Phase
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -161,7 +163,8 @@ private fun Guide(store: AppStore) {
     val c = LocalRsColors.current
     val pager = rememberPagerState { SLIDES.size }
     val last = pager.currentPage == SLIDES.size - 1
-    val replay = store.state.value.phase == Phase.Guide && store.state.value.onboarded
+    val onboardingState = store.rememberState()
+    val replay = onboardingState.phase == Phase.Guide && onboardingState.onboarded
     val finish = {
         store.setPhase(if (store.state.value.onboarded) Phase.App else Phase.PermPhotos)
     }
@@ -180,7 +183,7 @@ private fun Guide(store: AppStore) {
         ) {
             Mark(size = 28.dp)
             Spacer(Modifier.weight(1f))
-            if (store.state.value.onboarded) {
+            if (onboardingState.onboarded) {
                 RsIconButton(icon = LucideIcons.X, label = "Close guide", variant = com.tumuyan.ncnn.realsr.design.RsIconButtonVariant.Plain, onClick = finish)
             } else {
                 Box(
@@ -262,7 +265,7 @@ private fun Guide(store: AppStore) {
                 variant = RsButtonVariant.Primary,
                 size = RsButtonSize.Lg,
                 full = true,
-                label = if (last) (if (store.state.value.onboarded) "Done" else "Get started") else "Continue",
+                label = if (last) (if (onboardingState.onboarded) "Done" else "Get started") else "Continue",
             )
         }
     }
@@ -272,46 +275,24 @@ private fun Guide(store: AppStore) {
 
 @Composable
 private fun ArtSharper(store: AppStore) {
-    val c = LocalRsColors.current
-    val photo = store.state.value.photos.firstOrNull()
+    /*
+     * The demo canvas of the guide: a bundled before/after pair dragged with the same slider the
+     * result screen uses. It used to be a static photo with two labels and no handle at all.
+     */
     Box(
         Modifier
             .aspectRatio(0.75f)
-            .heightIn(max = 416.dp)
-            .clip(RoundedCornerShape(RsRadius.lg.dp))
-            .background(c.card),
+            .heightIn(max = 416.dp),
         contentAlignment = Alignment.Center,
     ) {
-        if (photo != null) {
-            coil3.compose.AsyncImage(
-                model = photo.uri,
-                contentDescription = "Your most recent photo, before and after upscaling",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-            )
-        } else {
-            Mark(size = 96.dp)
-        }
-        Box(
-            Modifier
-                .align(Alignment.TopStart)
-                .padding(12.dp)
-                .clip(CircleShape)
-                .background(c.stage.copy(alpha = 0.75f))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        ) {
-            Text("Before", style = RsType.body(12f), color = c.onDark)
-        }
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp)
-                .clip(CircleShape)
-                .background(c.stage.copy(alpha = 0.75f))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-        ) {
-            Text("After", style = RsType.body(12f), color = c.onDark)
-        }
+        BeforeAfter(
+            beforeUri = R.drawable.demo_before,
+            afterUri = R.drawable.demo_after,
+            contentDescription = "Demo photo before and after upscaling. Drag the handle to compare.",
+            modifier = Modifier.fillMaxSize(),
+            initial = 50f,
+            sweep = true,
+        )
     }
 }
 

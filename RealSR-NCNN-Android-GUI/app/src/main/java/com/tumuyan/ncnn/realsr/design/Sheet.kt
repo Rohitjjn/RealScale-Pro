@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -40,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
@@ -244,31 +247,38 @@ fun RsConfirmSheet(
 }
 
 /**
- * Toast: bottom 112 dp, centered, inverse surface, `rise-in` 450 ms. The prototype keeps it for
- * 3 s; the host owns that timing.
+ * Toast: a warm cream bubble, centered, floating just above the navigation bar.
+ *
+ * The old version sat inside a wrap-content [AnimatedVisibility] with a 112 dp bottom padding, so
+ * the padding was measured against its own small box and the bubble landed near the top of the
+ * screen instead of the bottom. It now fills the host and aligns itself to the bottom edge.
  */
 @Composable
 fun RsToastHost(message: String?, modifier: Modifier = Modifier) {
     val c = LocalRsColors.current
-    AnimatedVisibility(
-        visible = message != null,
-        enter = fadeIn(tween(RsMotion.fadeMs, easing = RsMotion.Ease)) +
-            slideInVertically(tween(RsMotion.riseMs, easing = RsMotion.Spring)) { it / 2 },
-        exit = fadeOut(tween(200, easing = RsMotion.Ease)),
-        modifier = modifier,
-    ) {
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+    val shape = RoundedCornerShape(RsRadius.md.dp)
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        AnimatedVisibility(
+            visible = message != null,
+            enter = fadeIn(tween(RsMotion.fadeMs, easing = RsMotion.Ease)) +
+                slideInVertically(tween(RsMotion.riseMs, easing = RsMotion.Spring)) { it / 2 },
+            exit = fadeOut(tween(200, easing = RsMotion.Ease)),
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
             Box(
                 Modifier
-                    .padding(bottom = 112.dp, start = 24.dp, end = 24.dp)
-                    .clip(RoundedCornerShape(RsRadius.md.dp))
-                    .background(c.inverse)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .navigationBarsPadding()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 28.dp)
+                    .shadow(elevation = 12.dp, shape = shape, clip = false)
+                    .clip(shape)
+                    .background(c.toast)
+                    .border(1.dp, c.toastLine, shape)
+                    .padding(horizontal = 16.dp, vertical = 11.dp),
             ) {
                 Text(
                     text = message.orEmpty(),
-                    style = RsType.body(14f, FontWeight.Normal, 1.4f),
-                    color = c.onInverse,
+                    style = RsType.body(14f, FontWeight.Medium, 1.4f),
+                    color = c.onToast,
                 )
             }
         }

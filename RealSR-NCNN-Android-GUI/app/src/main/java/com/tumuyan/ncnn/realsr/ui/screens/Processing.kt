@@ -56,6 +56,7 @@ import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.JobStatus
 import com.tumuyan.ncnn.realsr.ui.state.Route
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 import kotlinx.coroutines.delay
 
 private val TIPS = listOf(
@@ -123,7 +124,7 @@ fun TileFill(
 @Composable
 fun ProcessingScreen(store: AppStore) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     val job = state.job
     var confirm by remember { mutableStateOf(false) }
     var tip by remember { mutableIntStateOf(0) }

@@ -19,6 +19,7 @@ import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
 import com.tumuyan.ncnn.realsr.ui.RealScaleDesignApp
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.ThemePref
+import com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater
 import kotlinx.coroutines.launch
 
 /**
@@ -79,6 +80,9 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         if (store.state.value.photoAccess) store.refreshPhotos()
         store.refreshDevice()
+        // Keep the home-screen widgets in step with the app: the recent-creations widget shows the
+        // last three results, so it has to be redrawn whenever the app comes back to the front.
+        RealScaleWidgetsUpdater.refreshSoon(this)
     }
 
     private fun consumeIncomingIntent(incoming: Intent?) {

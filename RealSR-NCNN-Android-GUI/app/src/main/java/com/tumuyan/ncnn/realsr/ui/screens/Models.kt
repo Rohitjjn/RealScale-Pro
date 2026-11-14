@@ -60,12 +60,13 @@ import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.PhotoItem
 import com.tumuyan.ncnn.realsr.ui.state.Route
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 import kotlinx.coroutines.delay
 
 @Composable
 fun ModelsScreen(store: AppStore) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     val device = store.device
     var filter by remember { mutableStateOf("all") }
     var pendingDelete by remember { mutableStateOf<ModelEntry?>(null) }
@@ -272,7 +273,7 @@ fun ModelRow(
     onDelete: (() -> Unit)? = null,
 ) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     val installed = model.id in state.installed
     val download = state.downloads[model.id]
     val fit = ModelCatalog.fit(model, store.device.tier)
@@ -340,44 +341,111 @@ fun ModelRow(
                     }
                 }
             }
-            Box(Modifier.width(96.dp), contentAlignment = Alignment.TopEnd) {
+            Box(Modifier.width(108.dp), contentAlignment = Alignment.TopEnd) {
                 when {
-                    download != null -> Row(
-                        Modifier
-                            .heightIn(min = 44.dp)
-                            .clickable { store.cancelDownload(model.id) },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            "${(download.progress * 100).toInt()}%",
-                            style = RsType.mono(12f),
-                            color = c.muted,
+                    /*
+                     * Every state gets its own always-visible affordance. The old trailing column
+                     * was 96 dp wide and held a full text button ("Download 291 MB"), so the icon
+                     * and part of the label were clipped away on narrow rows — which is why the
+                     * download icon seemed to be missing and nothing could be tapped.
+                     */
+                    download != null && download.state == "failed" -> Column(horizontalAlignment = Alignment.End) {
+                        RsIconButton(
+                            icon = LucideIcons.RefreshCw,
+                            label = "Retry ${model.name}",
+                            onClick = { store.downloadModel(model.id) },
                         )
-                        RsRing(download.progress, "Downloading ${model.name}")
+                        Text(
+                            "Retry",
+                            style = RsType.body(11f),
+                            color = c.link,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    download != null -> Column(horizontalAlignment = Alignment.End) {
+                        Row(
+                            Modifier
+                                .heightIn(min = 40.dp)
+                                .clip(RoundedCornerShape(RsRadius.md.dp))
+                                .clickable { store.cancelDownload(model.id) }
+                                .padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                when (download.state) {
+                                    "queued" -> "Queued"
+                                    "paused" -> "Paused"
+                                    else -> "${(download.progress * 100).toInt()}%"
+                                },
+                                style = RsType.mono(12f),
+                                color = c.muted,
+                            )
+                            RsRing(download.progress, "Downloading ${model.name}")
+                        }
+                        Text(
+                            "Tap to cancel",
+                            style = RsType.body(11f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
                     }
                     installed && variant == "pick" -> com.tumuyan.ncnn.realsr.design.RadioMark(checked = selected)
                     installed && model.required -> RsBadge("Required", tone = RsBadgeTone.Outline)
-                    installed && onDelete != null -> RsIconButton(
-                        icon = LucideIcons.Trash2,
-                        label = "Delete ${model.name}",
-                        onClick = onDelete,
-                    )
+                    installed && onDelete != null -> Column(horizontalAlignment = Alignment.End) {
+                        RsIconButton(
+                            icon = LucideIcons.Trash2,
+                            label = "Delete ${model.name}",
+                            onClick = onDelete,
+                        )
+                        Text(
+                            "Delete",
+                            style = RsType.body(11f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                     installed -> RsBadge("Installed", tone = RsBadgeTone.Outline)
-                    unavailable -> Icon(
-                        LucideIcons.Lock,
-                        contentDescription = "Not available on this device",
-                        tint = c.mutedSoft,
-                        modifier = Modifier.padding(8.dp).size(18.dp),
-                    )
-                    else -> RsButton(
-                        onClick = { store.downloadModel(model.id) },
-                        size = RsButtonSize.Sm,
-                        icon = LucideIcons.Download,
-                        label = fmtMB(model.sizeMB),
-                    )
+                    unavailable -> Column(horizontalAlignment = Alignment.End) {
+                        Icon(
+                            LucideIcons.Lock,
+                            contentDescription = "Not available on this device",
+                            tint = c.muted,
+                            modifier = Modifier.padding(top = 4.dp).size(20.dp),
+                        )
+                        Text(
+                            "Too heavy",
+                            style = RsType.body(11f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
+                    else -> Column(horizontalAlignment = Alignment.End) {
+                        RsIconButton(
+                            icon = LucideIcons.Download,
+                            label = "Download ${model.name}",
+                            onClick = { store.downloadModel(model.id) },
+                        )
+                        Text(
+                            fmtMB(model.sizeMB),
+                            style = RsType.mono(11f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                 }
             }
+        }
+
+        // The reason a download stopped, right under the row, instead of a toast that scrolls away.
+        val failure = download?.takeIf { it.state == "failed" }?.message
+        if (!failure.isNullOrBlank()) {
+            Text(
+                failure,
+                style = RsType.body(12f, lineHeightRatio = 1.35f),
+                color = c.error,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+            )
         }
     }
 }
@@ -395,7 +463,7 @@ fun ModelPickerSheet(
     onClose: () -> Unit,
 ) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     var filter by remember { mutableStateOf("all") }
     var pending by remember { mutableStateOf<String?>(null) }
     val recommended = PipelinePlanner.recommendedId(mode, type)

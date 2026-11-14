@@ -21,6 +21,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeRight
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -123,6 +125,38 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.onNodeWithText("Setting up RealScale-Pro").assertIsDisplayed()
             composeRule.waitForIdle()
             captureComposeRootBitmap(context, "07_setup.png")?.recycle()
+        } finally {
+            runCatching {
+                scenario.onActivity { it.finish() }
+                context.stopService(Intent(context, ProcessingService::class.java))
+            }
+        }
+    }
+
+    /**
+     * The first guide screen must open on a real before/after demo with the draggable slider, not a
+     * static picture with two labels. Guard: the demo image and its handle text exist, and a drag
+     * across the canvas does not throw.
+     */
+    @Test
+    fun guideFirstScreenShowsDraggableBeforeAfterDemo() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        context.getSharedPreferences("realscale_state", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            waitForText("Make any photo sharper", 12_000L)
+            composeRule.onNodeWithText("Before").assertIsDisplayed()
+            composeRule.onNodeWithText("After").assertIsDisplayed()
+            composeRule
+                .onNodeWithContentDescription("Demo photo before and after", substring = true)
+                .assertExists()
+            // Dragging the split handle must not crash the guide.
+            composeRule.onNodeWithText("Before").performTouchInput {
+                swipeRight(startX = centerX, endX = centerX + 120f, durationMillis = 220)
+            }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithText("Before").assertIsDisplayed()
         } finally {
             runCatching {
                 scenario.onActivity { it.finish() }

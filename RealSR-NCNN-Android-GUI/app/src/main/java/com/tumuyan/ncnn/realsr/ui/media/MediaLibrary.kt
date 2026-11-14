@@ -75,6 +75,7 @@ class MediaLibrary(private val context: Context) {
                         lowConfidence = false,
                         album = bucket.ifBlank { "Pictures" },
                         ext = ext,
+                        dateTaken = addedSec * 1000L,
                     ),
                 )
             }
@@ -111,6 +112,7 @@ class MediaLibrary(private val context: Context) {
             album = "Imported",
             ext = extensionOf(name, mime),
             imported = true,
+            dateTaken = System.currentTimeMillis(),
         )
     }
 

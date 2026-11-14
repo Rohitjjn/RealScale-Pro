@@ -54,6 +54,10 @@ data class RsColors(
     val warning: Color = Color(0xFFD4A017),
     val onDark: Color = Color(0xFFFAF9F5),
     val onDarkSoft: Color = Color(0xFFA09D96),
+    // toasts: a warm cream bubble in both themes, never black
+    val toast: Color = Color(0xFFF6E9D2),
+    val onToast: Color = Color(0xFF44331F),
+    val toastLine: Color = Color(0xFFE7D3B4),
 ) {
     /** `bg-stage/75` and friends: the prototype uses alpha on a handful of stage colours. */
     fun stageScrim(alpha: Float): Color = stage.copy(alpha = alpha)
@@ -113,6 +117,9 @@ val DarkRsColors = RsColors(
     backdrop = Color(0xFF2B2926),
     stage = Color(0xFF0F0E0D),
     scrim = Color(0x99000000),
+    toast = Color(0xFFF3E6CE),
+    onToast = Color(0xFF3B2C1B),
+    toastLine = Color(0xFFD8C3A2),
 )
 
 val LocalRsColors = staticCompositionLocalOf { LightRsColors }

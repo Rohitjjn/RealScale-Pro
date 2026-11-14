@@ -4,4 +4,11 @@
     <color name="canvas_dark">#181715</color>
     <color name="terracotta_primary">#CC785C</color>
     <color name="brand_medallion">#BD4707</color>
+
+    <!-- Widget placeholders, drawn by the launcher before the first Glance frame. -->
+    <color name="widget_canvas">#FAF9F5</color>
+    <color name="widget_surface">#F1EEE6</color>
+    <color name="widget_ink">#141413</color>
+    <color name="widget_muted">#6B6860</color>
+    <color name="widget_on_cta">#FFFFFF</color>
 </resources>

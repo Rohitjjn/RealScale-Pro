@@ -15,6 +15,7 @@ import androidx.glance.ImageProvider
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
@@ -43,7 +44,10 @@ import com.tumuyan.ncnn.realsr.R
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
 import com.tumuyan.ncnn.realsr.core.imaging.OomSafeImageDecoders
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -58,6 +62,13 @@ private val WidgetOnTerracottaColor = ColorProvider(day = Color(0xFFFFFFFF), nig
  * Small Glance Home-Screen Widget: one-tap "Enhance a photo" launcher into RealScale-Pro Studio.
  */
 class RealScaleEnhanceWidget : GlanceAppWidget() {
+
+    /**
+     * Re-provide the content for the size the launcher actually gave us. The default
+     * `SizeMode.Single` composes once at the smallest size, so a resized widget kept its tiny
+     * layout with the CTA cut in half — one of the reasons the widgets looked broken.
+     */
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val enhanceIntent = Intent(context, MainActivity::class.java).apply {
@@ -105,7 +116,7 @@ class RealScaleEnhanceWidget : GlanceAppWidget() {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Enhance a photo",
+                            text = context.getString(R.string.widget_enhance_cta),
                             style = TextStyle(
                                 color = WidgetOnTerracottaColor,
                                 fontSize = 13.sp,
@@ -133,6 +144,8 @@ private data class WidgetCreationTile(
  * Medium Glance Home-Screen Widget: shows up to 3 recent upscaled creations with direct result deep-links.
  */
 class RealScaleRecentWidget : GlanceAppWidget() {
+
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val tiles = withContext(Dispatchers.IO) {
@@ -177,7 +190,7 @@ class RealScaleRecentWidget : GlanceAppWidget() {
                         )
                         Spacer(modifier = GlanceModifier.width(8.dp))
                         Text(
-                            text = "Recent creations",
+                            text = context.getString(R.string.widget_recent_label),
                             style = TextStyle(
                                 color = WidgetInkColor,
                                 fontSize = 14.sp,
@@ -194,7 +207,7 @@ class RealScaleRecentWidget : GlanceAppWidget() {
                                 .padding(horizontal = 10.dp, vertical = 5.dp)
                         ) {
                             Text(
-                                text = "Enhance",
+                                text = context.getString(R.string.ui_enhance),
                                 style = TextStyle(
                                     color = WidgetOnTerracottaColor,
                                     fontSize = 11.sp,
@@ -218,7 +231,7 @@ class RealScaleRecentWidget : GlanceAppWidget() {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Tap Enhance to upscale your first photo offline",
+                                text = context.getString(R.string.widget_recent_empty),
                                 style = TextStyle(
                                     color = WidgetMutedColor,
                                     fontSize = 12.sp
@@ -306,9 +319,22 @@ class RealScaleRecentWidgetReceiver : GlanceAppWidgetReceiver() {
 
 object RealScaleWidgetsUpdater {
     suspend fun refreshAll(context: Context) {
-        runCatching {
-            RealScaleEnhanceWidget().updateAll(context)
-            RealScaleRecentWidget().updateAll(context)
+        withContext(Dispatchers.IO) {
+            runCatching {
+                RealScaleEnhanceWidget().updateAll(context)
+                RealScaleRecentWidget().updateAll(context)
+            }
+        }
+    }
+
+    /**
+     * Fire-and-forget refresh for the app process: the home screen widgets have no idea that a new
+     * creation was saved or deleted, so the store calls this whenever the recent list changes.
+     */
+    fun refreshSoon(context: Context) {
+        val app = context.applicationContext
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching { refreshAll(app) }
         }
     }
 }

@@ -88,7 +88,7 @@ visible reads `MaterialTheme.colorScheme`.
 - APK packaging and the "≤ 30 MB, zero bundled models" gate: green in CI.
 - Instrumented (`RealScaleSmokeInstrumentedTest`): engine extraction, Quick Upscale sheet,
   onboarding → Setup, Starter Pack pause/resume without a toast, and Home → Settings → Model
-  Manager are asserted on an Android 11 ATD emulator.
+  Manager, plus the guide's before/after demo, are asserted on an Android 11 ATD emulator.
 - Instrumented, real network (`ModelDownloadInstrumentedTest`): the smallest manifest model is
   downloaded end to end — bytes stream, install lands on disk, Pause preserves the partial transfer
   and Resume finishes it instead of restarting. Skipped when the emulator has no route to
@@ -106,3 +106,71 @@ visible reads `MaterialTheme.colorScheme`.
   plan is to pair reference ↔ render by the `NN-name` stem. Until then, treat this table's
   "Verified by" column as the honest statement of coverage, and the reference PNGs as the target,
   not as a proof.
+
+## Third pass — responsiveness, toasts, widgets, guide demo
+
+Four defects reported together ("app lag, toast in the wrong place, models won't download or
+delete, widgets broken") turned out to share two causes plus a set of local bugs.
+
+### Root cause 1 — the screens never observed the store
+
+Every screen did `val state = store.state.value`. A `StateFlow.value` read is **not** a Compose
+snapshot read, so no screen could recompose when the state changed. It only *looked* alive because
+`AppStore` has `var` fields, which makes the class unstable, so `HomeScreen(store)` could never skip
+and the whole tree was re-executed on every emission of the flow. With 240 MediaStore rows composed
+as images in a plain `Row`, that is seconds of blocking work per download tick — the "5 second" mode
+switch, the toggle lag and the theme-switch hang were all this one loop.
+
+- `ui/state/StoreState.kt` adds `AppStore.rememberState()` (`collectAsStateWithLifecycle`), and the
+  23 direct `.value` reads in the screens now use it.
+- `AppStore` is annotated `@Stable`, so a screen whose parameter did not change is skipped.
+- `observeCatalog` coalesces pure progress emissions to ~10 fps; structural changes (start, pause,
+  install, fail) pass through immediately, so a download row starts moving on the tap frame.
+- `refreshDevice()` bumps `AppUiState.deviceRevision` — `device` is a plain field, and `update { it }`
+  used to be a no-op that no screen could see.
+
+### Root cause 2 — the Home photo strip composed the whole library
+
+`Home` rendered `state.photos.forEach { PhotoCard(...) }` inside `HorizontalScroll`. It is now a
+`LazyRow` capped at 12 cards (`HOME_PHOTO_LIMIT`); the gallery screen keeps the full list in its
+`LazyVerticalGrid`. Ordering was also wrong: `mergeImported` sorted on the *string* id, so
+`"media:100"` came before `"media:99"`. `PhotoItem.dateTaken` (MediaStore `DATE_ADDED`, or import
+time) is now the sort key, newest first, left to right.
+
+### The rest
+
+- **Guide demo.** The first guide slide is a real before/after canvas: `res/drawable-nodpi/
+  demo_before.png` + `demo_after.png` (a soft 72 % copy and a sharp original) driven by the same
+  `BeforeAfter` slider the result and Quick Upscale screens use, with the same drag/tap handle,
+  sweep-in and Before/After pills. `BeforeAfter` now takes `Any` models and renders an `Int` through
+  `painterResource` instead of Coil, so the bundled demo cannot depend on an image loader.
+- **Toasts.** `RsToastHost` was a wrap-content `AnimatedVisibility` with `padding(bottom = 112.dp)`,
+  so the padding was measured against its own small box and the bubble appeared near the top of the
+  screen. It is now a full-size host aligned `BottomCenter` with `navigationBarsPadding()` and a
+  28 dp gap, drawn above sheets. Colour: new `toast` / `onToast` / `toastLine` tokens — a warm cream
+  bubble with warm ink in both themes, never the black `inverse` surface.
+- **Model Manager.** The trailing slot was a 96 dp box holding a full text button
+  ("Download 291 MB"), so the download icon and half the label were clipped away — the icon really
+  was missing, and the clipped area swallowed taps. Each state now gets its own always-visible
+  control with a caption: download (size under it), progress + "Tap to cancel", "Retry" for a failed
+  transfer with the failure message under the row, delete, or "Too heavy" for a model the device
+  cannot run. Delete was additionally invisible because the row never re-read `state.installed`;
+  `ModelRow` observes the store now.
+- **Widgets.** Two separate problems: both receivers were labelled `@string/app_name` (the picker
+  showed two identical entries), and both providers pointed their `initialLayout` *and*
+  `previewImage` at the bare medallion, so the launcher drew a logo until the first Glance frame —
+  and, when that frame failed, forever. Fixes: distinct labels and descriptions, per-widget
+  placeholder layouts (`widget_enhance_initial`, `widget_recent_initial`) that mirror the real
+  content, `previewLayout` for the Android 12+ picker, target cells and `minResize*` sizes,
+  `SizeMode.Exact` so a resized widget re-composes at its real size instead of keeping the smallest
+  layout, strings moved to resources, and `RealScaleWidgetsUpdater` refreshed from `MainActivity
+  .onStart` and whenever the recent-creations list changes.
+- **Version** 2.1.1 (55) → 2.1.2 (56).
+
+### Verification
+
+- `guideFirstScreenShowsDraggableBeforeAfterDemo` asserts the first guide slide carries the demo
+  canvas, both pills, and survives a horizontal drag on the handle.
+- The existing Home → Settings (theme Dark → System) → Model Manager walkthrough now exercises real
+  recomposition instead of accidental full-tree redraws; it is the regression guard for the
+  observation bug.

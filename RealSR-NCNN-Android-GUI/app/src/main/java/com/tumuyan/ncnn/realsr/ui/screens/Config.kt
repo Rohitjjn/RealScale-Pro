@@ -78,6 +78,7 @@ import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.PhotoItem
 import com.tumuyan.ncnn.realsr.ui.state.Route
+import com.tumuyan.ncnn.realsr.ui.state.rememberState
 import kotlinx.coroutines.delay
 
 private fun cap(text: String) = text.replaceFirstChar { it.uppercase() }
@@ -85,7 +86,7 @@ private fun cap(text: String) = text.replaceFirstChar { it.uppercase() }
 @Composable
 fun ConfigScreen(store: AppStore, photoId: String) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    val state = store.rememberState()
     val photo = store.photoById(photoId)
     val mode = state.mode
 
@@ -402,7 +403,7 @@ private fun PlanLine(key: String, value: String) {
 private fun WantedHint(store: AppStore, wantedId: String, currentName: String, modifier: Modifier = Modifier) {
     val c = LocalRsColors.current
     val wanted = ModelCatalog.byId(wantedId)
-    val download = store.state.value.downloads[wanted.id]
+    val download = store.rememberState().downloads[wanted.id]
     Row(
         modifier
             .fillMaxWidth()
@@ -460,7 +461,7 @@ private fun ManualSections(
 ) {
     val c = LocalRsColors.current
     val recommended = com.tumuyan.ncnn.realsr.core.plan.PipelinePlanner.recommendedId(
-        store.state.value.mode,
+        store.rememberState().mode,
         plan.type,
     )
     Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
