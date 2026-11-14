@@ -1,0 +1,113 @@
+name: Model facts
+
+# Computes the real on-disk facts of every upscaling model the app offers: exact byte size per
+# model folder, per-file SHA-256, and whether the Hugging Face download URL really resolves.
+# The output (model-facts.json) is the single source of truth for ModelCatalog sizes/URLs/checksums.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/model-facts.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: model-facts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  facts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download the upstream assets archive (models + engines, 1.13.0)
+        run: |
+          curl -fL --retry 3 -o /tmp/assets.zip \
+            https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.13.0/assets.zip
+          ls -l /tmp/assets.zip
+          mkdir -p /tmp/assets
+          unzip -q /tmp/assets.zip -d /tmp/assets
+          find /tmp/assets -maxdepth 3 -type d | head -50
+
+      - name: Compute per-model facts + verify download URLs
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess, urllib.request
+
+          MODEL_DIRS = [
+              "models-Real-ESRGAN", "models-Real-ESRGAN-anime",
+              "models-Real-ESRGANv2-anime", "models-Real-ESRGANv3-anime",
+              "models-Real-ESRGANv3-general", "models-Real-ESRGAN-SourceBook",
+              "models-ESRGAN-Nomos8kSC", "models-MNN/ESRGAN-Nomos8kSC-x4.mnn",
+              "models-MNN/ESRGAN-MoeSR-jp_Illustration-x4.mnn",
+              "models-se", "models-pro", "models-nose",
+          ]
+
+          roots = []
+          for base, dirs, files in os.walk("/tmp/assets"):
+              if os.path.basename(base) == "realsr" or any(d.startswith("models-") for d in dirs):
+                  roots.append(base)
+          print("candidate roots:", roots[:5])
+
+          HF = "https://huggingface.co/tumuyan2/realsr-models/resolve/main/"
+
+          def sha256(path):
+              h = hashlib.sha256()
+              with open(path, "rb") as fh:
+                  for chunk in iter(lambda: fh.read(1 << 20), b""):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          def head(url):
+              req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "realscale-facts"})
+              try:
+                  with urllib.request.urlopen(req, timeout=45) as r:
+                      return r.status, int(r.headers.get("content-length") or 0)
+              except Exception as exc:  # noqa: BLE001
+                  return f"error: {exc}", 0
+
+          out = {"generatedAt": subprocess.check_output(["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"]).decode().strip(), "models": {}}
+          for target in MODEL_DIRS:
+              found = None
+              for root in roots:
+                  cand = os.path.join(root, target)
+                  if os.path.exists(cand):
+                      found = cand
+                      break
+              if not found:
+                  out["models"][target] = {"missing": True}
+                  print("MISSING", target)
+                  continue
+              files = []
+              if os.path.isdir(found):
+                  for name in sorted(os.listdir(found)):
+                      path = os.path.join(found, name)
+                      if os.path.isfile(path):
+                          files.append({"fileName": name, "sizeBytes": os.path.getsize(path), "sha256": sha256(path)})
+              else:
+                  files.append({"fileName": os.path.basename(found), "sizeBytes": os.path.getsize(found), "sha256": sha256(found)})
+              urls = []
+              for f in files:
+                  remote = HF + target + "/" + f["fileName"]
+                  status, length = head(remote)
+                  urls.append({"url": remote, "status": status, "remoteBytes": length, "sizeMatch": length == f["sizeBytes"]})
+              out["models"][target] = {
+                  "totalBytes": sum(f["sizeBytes"] for f in files),
+                  "files": files,
+                  "urls": urls,
+              }
+              print(target, sum(f["sizeBytes"] for f in files), "bytes,", len(files), "files, url ok:",
+                    all(isinstance(u["status"], int) and u["status"] < 400 or "302" in str(u["status"]) for u in urls))
+
+          with open("model-facts.json", "w") as fh:
+              json.dump(out, fh, indent=2)
+          print(json.dumps({k: v.get("totalBytes", "missing") for k, v in out["models"].items()}, indent=1))
+          PY
+
+      - name: Upload model facts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-facts
+          path: model-facts.json
+          retention-days: 30
