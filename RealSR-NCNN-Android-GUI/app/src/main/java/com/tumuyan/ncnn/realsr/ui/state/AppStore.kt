@@ -262,6 +262,17 @@ class AppStore(
 
     fun openViewer(photo: PhotoItem) = push(Route.Viewer(photo.id))
 
+    fun sharePhoto(photo: PhotoItem) {
+        val shared = mediaIntents?.share(Uri.parse(photo.uri), photo.name, "image/*") ?: false
+        if (!shared) toast("No app can receive this image")
+    }
+
+    fun copyFileName(photo: PhotoItem) {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+        clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("File name", photo.name))
+        toast("File name copied")
+    }
+
     fun openConfig(photo: PhotoItem) = push(Route.Config(photo.id))
 
     fun openResult(resultId: String) = push(Route.Result(resultId))
@@ -615,6 +626,9 @@ class AppStore(
 interface MediaIntents {
     fun pickDocument()
     fun takePhoto()
+
+    /** Opens the system share sheet for [uri]; false when nothing can receive it. */
+    fun share(uri: Uri, name: String, mime: String): Boolean
 
     /** Returns true when a bitmap was found on the clipboard and imported. */
     fun pasteImage(): Boolean
