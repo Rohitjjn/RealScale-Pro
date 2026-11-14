@@ -37,7 +37,7 @@ internal fun PathBuilder.addSvgPath(data: String?) {
                 reflectiveCurveToRelative(node.dx1, node.dy1, node.dx2, node.dy2)
             is PathNode.QuadTo -> quadTo(node.x1, node.y1, node.x2, node.y2)
             is PathNode.RelativeQuadTo -> quadToRelative(node.dx1, node.dy1, node.dx2, node.dy2)
-            is PathNode.ReflectiveQuadTo -> reflectiveQuadTo(node.x1, node.y1)
+            is PathNode.ReflectiveQuadTo -> reflectiveQuadTo(node.x, node.y)
             is PathNode.RelativeReflectiveQuadTo -> reflectiveQuadToRelative(node.dx, node.dy)
             is PathNode.ArcTo -> arcTo(
                 node.horizontalEllipseRadius,
