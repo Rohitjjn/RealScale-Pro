@@ -11,6 +11,7 @@ on:
   push:
     paths:
       - '.github/workflows/model-facts.yml'
+      - '.github/scripts/model-facts.py'
 
 permissions:
   contents: read
