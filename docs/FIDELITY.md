@@ -93,8 +93,11 @@ visible reads `MaterialTheme.colorScheme`.
   downloaded end to end — bytes stream, install lands on disk, Pause preserves the partial transfer
   and Resume finishes it instead of restarting. Skipped when the emulator has no route to
   `huggingface.co`, so a sandboxed runner reports an assumption failure rather than a red build.
-- Instrumented (`DesignIconInstrumentedTest`): the two permission-screen glyphs rasterise ink
-  pixels, so a broken generated vector cannot silently render an empty square.
+- Instrumented (`DesignIconInstrumentedTest`): the two permission-screen glyphs `captureToImage()`
+  and must contain >150 ink pixels, and every generated Lucide glyph must carry path nodes. This
+  caught a real bug: `addPathNodes(str)` only *parses* a path string — called as a bare statement
+  inside `path { }` it adds nothing, so all 49 glyphs had empty geometry and every icon in the app
+  drew nothing. `design/icons/SvgPath.kt` now replays the nodes through `PathBuilder`.
 - Model layer: `api.github.com`-relayed `model-facts` run reports **61 manifest files checked, 0
   problems** against the mirror, and the catalog joins to the manifest through
   `ModelEntry.manifestId` (see `ModelCatalog.byManifestId`), so downloads and the installed-folder
