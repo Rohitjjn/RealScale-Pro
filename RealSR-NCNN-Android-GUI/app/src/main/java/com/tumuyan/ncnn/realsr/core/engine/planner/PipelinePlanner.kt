@@ -224,7 +224,7 @@ object PipelinePlanner {
                 wanted = if (has(wantedId)) null else PlannerModel(
                     id = wantedId,
                     displayName = "",
-                    kind = ModelKind.OTHER,
+                    kind = PlannerModel.ModelKind.OTHER,
                     scales = emptyList(),
                     sizeMB = 0.0,
                     minTier = 0,
