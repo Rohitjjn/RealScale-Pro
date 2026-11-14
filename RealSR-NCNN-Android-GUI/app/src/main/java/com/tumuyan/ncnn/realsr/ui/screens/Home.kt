@@ -57,6 +57,7 @@ import com.tumuyan.ncnn.realsr.design.RsRow
 import com.tumuyan.ncnn.realsr.design.RsSheet
 import com.tumuyan.ncnn.realsr.design.RsType
 import com.tumuyan.ncnn.realsr.design.Skeleton
+import com.tumuyan.ncnn.realsr.design.icons.AppGlyphs
 import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.PhotoItem
@@ -187,7 +188,7 @@ fun HomeScreen(store: AppStore) {
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 40.dp),
                 )
                 val tiles = listOf(
-                    Quad(LucideIcons.Images, "Gallery", "Albums and all photos") { store.push(Route.Gallery) },
+                    Quad(AppGlyphs.Photo, "Gallery", "Albums and all photos") { store.push(Route.Gallery) },
                     Quad(LucideIcons.FolderOpen, "Files", "Browse folders") { store.pickFile() },
                     Quad(LucideIcons.Camera, "Camera", "Take a photo") {
                         if (!state.cameraAsked) sheet = "camera" else store.takePhoto()
@@ -264,7 +265,7 @@ fun HomeScreen(store: AppStore) {
                     RsGroup {
                         RsRow(
                             title = "My Upscales",
-                            icon = LucideIcons.Images,
+                            icon = AppGlyphs.Photo,
                             value = if (state.results.isEmpty()) "Empty" else state.results.size.toString(),
                             chevron = true,
                             topDivider = false,
@@ -470,7 +471,7 @@ fun PhotoAccessCard(store: AppStore, modifier: Modifier = Modifier) {
             .background(c.card)
             .padding(20.dp),
     ) {
-        Icon(LucideIcons.Images, contentDescription = null, tint = c.ink, modifier = Modifier.size(24.dp))
+        Icon(AppGlyphs.Photo, contentDescription = null, tint = c.ink, modifier = Modifier.size(24.dp))
         Text("Allow photo access", style = RsType.body(16f, FontWeight.Medium), color = c.ink, modifier = Modifier.padding(top = 12.dp))
         Text(
             "See your latest photos here and upscale one in a single tap. Gallery, Files and Camera work without it.",

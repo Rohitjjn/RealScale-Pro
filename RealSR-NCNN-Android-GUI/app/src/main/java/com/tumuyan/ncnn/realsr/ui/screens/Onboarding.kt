@@ -65,6 +65,7 @@ import com.tumuyan.ncnn.realsr.design.RsProgressBar
 import com.tumuyan.ncnn.realsr.design.RsRadius
 import com.tumuyan.ncnn.realsr.design.RsType
 import com.tumuyan.ncnn.realsr.design.Skeleton
+import com.tumuyan.ncnn.realsr.design.icons.AppGlyphs
 import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.Phase
@@ -472,7 +473,7 @@ private fun Primer(store: AppStore, photos: Boolean) {
         ) {
             Spacer(Modifier.height(24.dp))
             PrimerMark(
-                icon = if (photos) LucideIcons.Images else LucideIcons.Bell,
+                icon = if (photos) AppGlyphs.Photo else AppGlyphs.Bell,
                 label = if (photos) "Photos" else "Notifications",
             )
             Spacer(Modifier.height(32.dp))

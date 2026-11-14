@@ -60,6 +60,7 @@ import com.tumuyan.ncnn.realsr.design.RsRow
 import com.tumuyan.ncnn.realsr.design.RsSheet
 import com.tumuyan.ncnn.realsr.design.RsTopBar
 import com.tumuyan.ncnn.realsr.design.RsType
+import com.tumuyan.ncnn.realsr.design.icons.AppGlyphs
 import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.PhotoItem
@@ -315,7 +316,7 @@ fun ResultScreen(store: AppStore, resultId: String) {
         RsGroup(Modifier.padding(bottom = 16.dp)) {
             RsRow(
                 title = "Open in My Upscales",
-                icon = LucideIcons.Images,
+                icon = AppGlyphs.Photo,
                 chevron = true,
                 topDivider = false,
                 onClick = {

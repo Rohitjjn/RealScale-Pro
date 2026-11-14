@@ -68,6 +68,7 @@ def main() -> None:
             or line.startswith("Time:") or "Tests run:" in line]
     stack_heads = [line for line in lines if re.match(r"\s*(java|org|kotlin|androidx)\..*Exception", line)]
     failures = [line[:180] for line in lines if line.startswith("Error in ") or "FAILURES!!!" in line]
+    audits = [line.strip() for line in lines if "AUDIT:" in line]
 
     body = [
         f"### ci-instrumentation {os.environ.get('GITHUB_SHA', '')[:8]}",
@@ -79,6 +80,8 @@ def main() -> None:
         "assumptions:",
         *([f"  {item}" for item in skipped] or ["  (none)"]),
     ]
+    if audits:
+        body += ["audit:", *[f"  {line}" for line in audits[-60:]]]
     if failures:
         body += ["failures:", *[f"  {line}" for line in failures[:8]]]
     if stack_heads:
