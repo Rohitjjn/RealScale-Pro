@@ -158,7 +158,8 @@ class RealScaleSmokeInstrumentedTest {
             // Model Manager: storage card, packs and the update check.
             composeRule.onNodeWithContentDescription("Models").performClick()
             waitForText("Model Manager", 8_000L)
-            composeRule.onNodeWithText("Storage").assertIsDisplayed()
+            // Eyebrow labels render in caps (EyebrowLabel uppercases its text).
+            composeRule.onNodeWithText("STORAGE").assertIsDisplayed()
             composeRule.onNodeWithText("Check for updates").performScrollTo().assertIsDisplayed()
             composeRule.waitForIdle()
             captureComposeRootBitmap(context, "10_models.png")?.recycle()
