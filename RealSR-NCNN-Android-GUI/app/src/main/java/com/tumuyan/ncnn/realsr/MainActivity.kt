@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +18,7 @@ import com.tumuyan.ncnn.realsr.ui.MediaIntentsHost
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
 import com.tumuyan.ncnn.realsr.ui.RealScaleDesignApp
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
+import com.tumuyan.ncnn.realsr.ui.state.ThemePref
 import kotlinx.coroutines.launch
 
 /**
@@ -32,8 +34,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        applyEdgeToEdge()
 
         container = RealScaleAppContainer.getInstance(this)
         store = AppStore(this, container)
@@ -43,6 +45,28 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) consumeIncomingIntent(intent)
 
         setContent { RealScaleDesignApp(store) }
+    }
+
+    /**
+     * System bars follow the app's own theme, not the system one: with Settings forced to Dark on a
+     * light system (or the reverse) the status bar used to be tinted for the wrong theme, which
+     * reads as a dark strip across the top of every screen.
+     */
+    private fun applyEdgeToEdge() {
+        val pref = AppStore.persistedTheme(this)
+        val systemDark = (resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val appDark = when (pref) {
+            ThemePref.Dark -> true
+            ThemePref.Light -> false
+            ThemePref.System -> systemDark
+        }
+        val transparent = android.graphics.Color.TRANSPARENT
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(transparent, transparent) { appDark },
+            navigationBarStyle = SystemBarStyle.auto(transparent, transparent) { appDark },
+        )
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +59,7 @@ import com.tumuyan.ncnn.realsr.design.RsButton
 import com.tumuyan.ncnn.realsr.design.RsButtonSize
 import com.tumuyan.ncnn.realsr.design.RsButtonVariant
 import com.tumuyan.ncnn.realsr.design.RsDotTone
+import com.tumuyan.ncnn.realsr.design.RsGroup
 import com.tumuyan.ncnn.realsr.design.RsIconButton
 import com.tumuyan.ncnn.realsr.design.RsProgressBar
 import com.tumuyan.ncnn.realsr.design.RsRadius
@@ -469,20 +471,10 @@ private fun Primer(store: AppStore, photos: Boolean) {
                 .padding(horizontal = 24.dp),
         ) {
             Spacer(Modifier.height(24.dp))
-            Box(
-                Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(RsRadius.lg.dp))
-                    .background(c.card),
-                contentAlignment = Alignment.Center,
-            ) {
-                androidx.compose.material3.Icon(
-                    if (photos) LucideIcons.Images else LucideIcons.Bell,
-                    contentDescription = null,
-                    tint = c.ink,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
+            PrimerMark(
+                icon = if (photos) LucideIcons.Images else LucideIcons.Bell,
+                label = if (photos) "Photos" else "Notifications",
+            )
             Spacer(Modifier.height(32.dp))
             EyebrowLabel(if (photos) "Permission 1 of 2" else "Permission 2 of 2 · Optional")
             Text(
@@ -534,6 +526,32 @@ private fun Primer(store: AppStore, photos: Boolean) {
                 label = "Not now",
             )
         }
+    }
+}
+
+/**
+ * The 64 dp tile above the primer copy. Same geometry as the prototype (`06-permission-photos`,
+ * `07-permission-notifications`): a `card`-toned square, 16 dp radius, 28 dp glyph in `ink`.
+ */
+@Composable
+private fun PrimerMark(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+) {
+    val c = LocalRsColors.current
+    Box(
+        Modifier
+            .size(64.dp)
+            .clip(RoundedCornerShape(RsRadius.xl.dp))
+            .background(c.card),
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.material3.Icon(
+            icon,
+            contentDescription = label,
+            tint = c.ink,
+            modifier = Modifier.size(28.dp),
+        )
     }
 }
 
@@ -691,28 +709,44 @@ private fun DeviceCheck(store: AppStore) {
 
 /* ---------- 3.5 Setup / Starter Pack ---------- */
 
+/**
+ * The Starter Pack install. The queue in [AppStore.startStarterPack] starts on entry, moves one
+ * model at a time and streams the real byte counts, so every number here is live: percentages come
+ * from the downloader, never from a timer.
+ */
 @Composable
 private fun Setup(store: AppStore) {
     val c = LocalRsColors.current
-    val state = store.state.value
+    // Collected, not read once: the byte counts change many times per second while downloading.
+    val state by store.state.collectAsStateWithLifecycle()
     val starters = remember { ModelCatalog.STARTER_IDS.map { ModelCatalog.byId(it) } }
     val total = starters.sumOf { it.sizeMB }
-    val installedBytes = starters.sumOf { model ->
-        if (model.id in state.installed) model.sizeMB else 0.0
-    }
-    val active = starters.firstOrNull { it.id !in state.installed }
-    val fractional = active?.let { model ->
-        (state.downloads[model.id]?.progress ?: 0f) * model.sizeMB
-    } ?: 0.0
-    val mb = installedBytes + fractional
     val complete = starters.all { it.id in state.installed }
+    val paused = state.starterPackPaused
+    val mb = starters.sumOf { model ->
+        if (model.id in state.installed) {
+            model.sizeMB
+        } else {
+            (state.downloads[model.id]?.progress ?: 0f).toDouble() * model.sizeMB
+        }
+    }
+    val activeDownload = starters
+        .mapNotNull { state.downloads[it.id] }
+        .firstOrNull { it.state == "downloading" || it.state == "verifying" }
+    val speedMBps = (activeDownload?.speedBytesPerSec ?: 0L) / 1_048_576.0
+    val leftSec = if (speedMBps > 0.05) ((total - mb) / speedMBps).toInt().coerceAtLeast(1) else 0
+    val failure = starters.mapNotNull { state.downloads[it.id] }.firstOrNull { it.state == "failed" }
     var verified by remember { mutableStateOf(false) }
+
     LaunchedEffect(complete) {
         if (complete) {
             delay(700)
             verified = true
             store.haptic(HapticKind.Success)
         }
+    }
+    LaunchedEffect(Unit) {
+        if (!complete) store.startStarterPack()
     }
 
     Column(
@@ -738,22 +772,26 @@ private fun Setup(store: AppStore) {
                 if (verified) {
                     "The Starter Pack is installed. Everything now works offline."
                 } else {
-                    "Downloading the Starter Pack over Wi-Fi so upscaling works offline."
+                    "Downloading the Starter Pack over Wi-Fi or mobile data so upscaling works offline."
                 },
                 style = RsType.body(16f, lineHeightRatio = 1.6f),
                 color = c.body,
                 modifier = Modifier.padding(top = 12.dp),
             )
-            Column(
-                Modifier
-                    .padding(top = 24.dp)
-                    .clip(RoundedCornerShape(RsRadius.md.dp))
-                    .border(1.dp, c.hairline, RoundedCornerShape(RsRadius.md.dp)),
-            ) {
+            RsGroup(modifier = Modifier.padding(top = 24.dp)) {
                 starters.forEachIndexed { index, model ->
                     if (index > 0) HairlineSoftDivider()
                     val installed = model.id in state.installed
                     val download = state.downloads[model.id]
+                    val status = when {
+                        verified || installed -> "done"
+                        download == null -> "queued"
+                        download.state == "failed" -> "failed"
+                        download.state == "verifying" -> "verifying"
+                        paused || download.state == "paused" -> "paused"
+                        download.progress > 0f || download.state == "downloading" -> "loading"
+                        else -> "queued"
+                    }
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -765,21 +803,36 @@ private fun Setup(store: AppStore) {
                             Text(
                                 model.name,
                                 style = RsType.body(15f, androidx.compose.ui.text.font.FontWeight.Medium),
-                                color = if (installed || download != null) c.ink else c.muted,
+                                color = if (status == "queued") c.muted else c.ink,
                             )
-                            Text(fmtMB(model.sizeMB), style = RsType.mono(12f), color = c.muted)
+                            Text(
+                                buildString {
+                                    append(fmtMB(model.sizeMB))
+                                    if (status == "loading" && download != null) {
+                                        append(" · ").append("%.1f MB".format(download.progress.toDouble() * model.sizeMB))
+                                    }
+                                    if (status == "failed" && download?.message != null) {
+                                        append(" · ").append(download.message)
+                                    }
+                                },
+                                style = RsType.mono(12f),
+                                color = c.muted,
+                                maxLines = 2,
+                            )
                         }
-                        when {
-                            verified || installed -> Row(
+                        when (status) {
+                            "done" -> Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 androidx.compose.material3.Icon(LucideIcons.Check, contentDescription = null, tint = c.ink, modifier = Modifier.size(16.dp))
                                 Text("Done", style = RsType.body(13f), color = c.ink)
                             }
-                            download != null && download.state == "paused" -> Text("Paused", style = RsType.body(13f), color = c.body)
-                            download != null -> Text(
-                                "${(download.progress * 100).toInt()}%",
+                            "verifying" -> Text("Verifying", style = RsType.body(13f), color = c.body)
+                            "paused" -> Text("Paused", style = RsType.body(13f), color = c.body)
+                            "failed" -> Text("Failed", style = RsType.body(13f), color = c.muted)
+                            "loading" -> Text(
+                                "${((download?.progress ?: 0f) * 100).toInt().coerceIn(0, 100)}%",
                                 style = RsType.mono(13f),
                                 color = c.ink,
                             )
@@ -791,20 +844,33 @@ private fun Setup(store: AppStore) {
             Column(Modifier.padding(top = 24.dp, bottom = 16.dp)) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        "${if (total > 0) (mb / total * 100).toInt() else 0}%",
+                        "${if (total > 0) (mb / total * 100).toInt().coerceIn(0, 100) else 0}%",
                         style = RsType.display(44f).copy(fontFeatureSettings = "tnum"),
                         color = c.ink,
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "%.1f of %.1f MB".format(mb, total),
+                        buildString {
+                            append("%.1f of %.1f MB".format(mb, total))
+                            append("\n")
+                            append(
+                                when {
+                                    verified -> "Verified"
+                                    complete -> "Verifying files"
+                                    paused -> "Paused"
+                                    failure != null && activeDownload == null -> "Waiting for connection"
+                                    speedMBps > 0.05 -> "%.1f MB/s · %d s left".format(speedMBps, leftSec)
+                                    else -> "Starting…"
+                                }
+                            )
+                        },
                         style = RsType.body(13f).copy(fontFeatureSettings = "tnum"),
                         color = c.muted,
                         textAlign = TextAlign.End,
                     )
                 }
                 RsProgressBar(
-                    value = if (total > 0) (mb / total).toFloat() else 0f,
+                    value = if (total > 0) (mb / total).toFloat().coerceIn(0f, 1f) else 0f,
                     label = "Starter Pack download",
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -820,17 +886,14 @@ private fun Setup(store: AppStore) {
                     label = "Start upscaling",
                 )
             } else {
+                // Pause/Resume is a state toggle: no toast, the rows and the numbers say enough.
                 RsButton(
-                    onClick = {
-                        starters.filter { it.id !in state.installed }.forEach { model ->
-                            val download = state.downloads[model.id]
-                            if (download == null) store.downloadModel(model.id) else store.pauseModel(model.id)
-                        }
-                    },
+                    onClick = { store.toggleStarterPackPause() },
+                    variant = RsButtonVariant.Secondary,
                     size = RsButtonSize.Lg,
                     full = true,
-                    icon = if (state.downloads.values.any { it.state == "paused" }) LucideIcons.Play else LucideIcons.Pause,
-                    label = if (state.downloads.values.any { it.state == "paused" }) "Resume download" else "Pause download",
+                    icon = if (paused) LucideIcons.Play else LucideIcons.Pause,
+                    label = if (paused) "Resume download" else "Pause download",
                 )
             }
         }

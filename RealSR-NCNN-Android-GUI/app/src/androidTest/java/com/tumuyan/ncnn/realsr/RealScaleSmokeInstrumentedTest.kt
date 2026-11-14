@@ -27,8 +27,11 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.core.engine.EngineAssetExtractor
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
+import com.tumuyan.ncnn.realsr.ui.state.ModelDownloadUi
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestRule
@@ -37,6 +40,8 @@ import org.junit.runner.RunWith
 import org.junit.runners.model.Statement
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 @RunWith(AndroidJUnit4::class)
 class RealScaleSmokeInstrumentedTest {
@@ -125,6 +130,106 @@ class RealScaleSmokeInstrumentedTest {
             }
         }
     }
+
+    /**
+     * The Starter Pack screen has to behave like a download queue, not a Pause button that starts
+     * nothing: it begins by itself, moves one model at a time, and Pause / Resume toggle the queue
+     * without raising a message.
+     */
+    @Test
+    fun designSetupScreenDownloadsByItselfAndTogglesPauseSilently() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        assumeTrue(
+            "huggingface.co is not reachable from this device/emulator",
+            canReach("https://huggingface.co/"),
+        )
+        context.getSharedPreferences("realscale_state", android.content.Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            waitForText("RealScale-Pro", 12_000L)
+            waitForText("Skip", 12_000L)
+            clickText("Skip")
+            waitForText("See your recent photos", 8_000L)
+            clickText("Not now")
+            waitForText("Know when it's done", 8_000L)
+            clickText("Not now")
+            waitForText("Continue", 25_000L)
+            clickText("Continue")
+            waitForText("Setting up RealScale-Pro", 12_000L)
+
+            // 1. Pause flips the button and says nothing at all.
+            assumeTrue(
+                "Starter Pack finished before the pause could be tested",
+                composeRule.onAllNodesWithText("Pause download").fetchSemanticsNodes().isNotEmpty(),
+            )
+            clickText("Pause download")
+            waitForText("Resume download", 8_000L)
+            composeRule.waitForIdle()
+            assertEquals("Pause should not raise a message", null, toastOf(scenario))
+            captureComposeRootBitmap(context, "07b_setup_paused.png")?.recycle()
+
+            // 2. Resume flips it back, silently.
+            clickText("Resume download")
+            waitForText("Pause download", 8_000L)
+            assertEquals("Resume should not raise a message", null, toastOf(scenario))
+
+            // 3. The queue moves on its own, one model at a time, and the byte counter is real.
+            val moved = waitUntil(180_000L) {
+                val downloads = downloadsOf(scenario)
+                downloads.values.any { it.progress > 0f } || installedCount(scenario) >= 2
+            }
+            assertTrue("Starter Pack never downloaded anything by itself", moved)
+            val active = downloadsOf(scenario).values.count { it.state == "downloading" || it.state == "verifying" }
+            assertTrue("Expected at most one active download, saw $active", active <= 1)
+        } finally {
+            runCatching {
+                scenario.onActivity { it.finish() }
+                context.stopService(Intent(context, ProcessingService::class.java))
+            }
+        }
+    }
+
+    private fun installedCount(scenario: ActivityScenario<MainActivity>): Int {
+        var value = 0
+        scenario.onActivity { value = it.storeForTest().state.value.installed.size }
+        return value
+    }
+
+    private fun downloadsOf(scenario: ActivityScenario<MainActivity>): Map<String, ModelDownloadUi> {
+        var value: Map<String, ModelDownloadUi> = emptyMap()
+        scenario.onActivity { value = it.storeForTest().state.value.downloads }
+        return value
+    }
+
+    private fun toastOf(scenario: ActivityScenario<MainActivity>): com.tumuyan.ncnn.realsr.ui.state.ToastMessage? {
+        var value: com.tumuyan.ncnn.realsr.ui.state.ToastMessage? = null
+        scenario.onActivity { value = it.storeForTest().state.value.toast }
+        return value
+    }
+
+    private fun waitUntil(timeoutMs: Long, condition: () -> Boolean): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            if (condition()) return true
+            Thread.sleep(500L)
+        }
+        return condition()
+    }
+
+    private fun canReach(url: String): Boolean = runCatching {
+        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 8_000
+            readTimeout = 8_000
+            requestMethod = "HEAD"
+            instanceFollowRedirects = true
+        }
+        try {
+            conn.responseCode in 200..399
+        } finally {
+            conn.disconnect()
+        }
+    }.getOrDefault(false)
 
     @Test
     fun designHomeSettingsAndModelManager() {

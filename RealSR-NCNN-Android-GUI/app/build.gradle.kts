@@ -16,8 +16,8 @@ android {
         minSdk = 24
         // Keep targetSdk = 28 so extracted native CLI binaries in cache/realsr remain executable on Android 10+
         targetSdk = 28
-        versionCode = 54
-        versionName = "2.1.0"
+        versionCode = 55
+        versionName = "2.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -127,7 +127,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.coil.compose)
 
     implementation(libs.kotlinx.coroutines.core)
@@ -138,7 +137,6 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.room.testing)
-    testImplementation(libs.androidx.work.testing)
     testImplementation(libs.robolectric)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))

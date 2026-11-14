@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.SystemClock
+import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.core.device.DeviceProfile
 import com.tumuyan.ncnn.realsr.core.device.DeviceProfiler
@@ -36,9 +37,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.Calendar
@@ -200,7 +204,14 @@ class AppStore(
     fun finishDeviceCheck() = update { it.copy(phase = Phase.Setup) }
 
     fun finishSetup() {
-        update { it.copy(phase = Phase.App, onboarded = true, routes = listOf(Route.Home)) }
+        update {
+            it.copy(
+                phase = Phase.App,
+                onboarded = true,
+                starterPackPaused = false,
+                routes = listOf(Route.Home),
+            )
+        }
         refreshPhotos()
     }
 
@@ -388,6 +399,8 @@ class AppStore(
                             modelId = entry.id,
                             progress = state.progressFraction,
                             state = state.status.name.lowercase(),
+                            speedBytesPerSec = state.speedBytesPerSec,
+                            message = state.errorMessage,
                         )
                     }
                     .toMap()
@@ -401,7 +414,16 @@ class AppStore(
         it.id == modelId
     }?.manifestId
 
-    fun downloadModel(modelId: String) {
+    /**
+     * Starts a download. [announce] keeps the toast for taps in Model Manager; the onboarding
+     * queue starts on its own and stays silent. [allowMobileData] is set by the Starter Pack so the
+     * first-run setup is never blocked by the "Wi-Fi only" preference.
+     */
+    fun downloadModel(
+        modelId: String,
+        announce: Boolean = true,
+        allowMobileData: Boolean = false,
+    ) {
         val entry = ModelCatalog.byId(modelId)
         val manifestId = entry.manifestId
         if (manifestId == null) {
@@ -411,18 +433,86 @@ class AppStore(
             )
             return
         }
+        val wifiOnly = !allowMobileData && _state.value.settings.wifiOnly
         scope.launch {
-            container.modelRepository.startOrResumeDownload(manifestId, wifiOnly = _state.value.settings.wifiOnly)
-            toast("Downloading ${entry.name}")
+            container.modelRepository.startOrResumeDownload(manifestId, wifiOnly = wifiOnly)
+            if (announce) toast("Downloading ${entry.name}")
         }
     }
 
-    fun pauseModel(modelId: String) {
+    fun pauseModel(modelId: String, announce: Boolean = true) {
         val manifestId = manifestIdFor(modelId) ?: return
         scope.launch {
             container.modelRepository.pauseDownload(manifestId)
-            toast("Download paused")
+            if (announce) toast("Download paused")
         }
+    }
+
+    /* ---------------------------------------------------- Starter Pack queue (one at a time) */
+
+    private var starterPackJob: Job? = null
+
+    /**
+     * Downloads the Starter Pack sequentially: the next model starts only once the previous one is
+     * installed, so one row is moving and the rest read "Queued". Idempotent.
+     */
+    fun startStarterPack() {
+        if (starterPackJob?.isActive == true) return
+        starterPackJob = scope.launch {
+            for (id in ModelCatalog.STARTER_IDS) {
+                if (id in _state.value.installed) continue
+                downloadOneStarter(id)
+            }
+        }
+    }
+
+    private suspend fun downloadOneStarter(modelId: String) {
+        val manifestId = ModelCatalog.byId(modelId).manifestId ?: return
+        var attempts = 0
+        while (attempts < 3 && modelId !in _state.value.installed) {
+            while (_state.value.starterPackPaused) delay(120)
+            // Starter Pack ignores "Wi-Fi only": first-run setup has to finish on mobile data too.
+            container.modelRepository.startOrResumeDownload(manifestId, wifiOnly = false)
+            // Pause can land between the flag check above and this start; honour it either way.
+            if (_state.value.starterPackPaused) container.modelRepository.pauseAllDownloads()
+            when (awaitDownload(manifestId)) {
+                ModelInstallStatus.INSTALLED -> return
+                // Paused by the user: wait for Resume, which continues from the .part files.
+                ModelInstallStatus.PAUSED -> Unit
+                else -> {
+                    attempts++
+                    delay(1_500)
+                }
+            }
+        }
+    }
+
+    private suspend fun awaitDownload(manifestId: String): ModelInstallStatus? =
+        withTimeoutOrNull(20 * 60_000L) {
+            container.modelRepository.catalogModels
+                .mapNotNull { states -> states.firstOrNull { it.catalog.id == manifestId }?.status }
+                .first {
+                    it == ModelInstallStatus.INSTALLED ||
+                        it == ModelInstallStatus.FAILED ||
+                        it == ModelInstallStatus.PAUSED
+                }
+        } ?: ModelInstallStatus.FAILED
+
+    /** Pause button on the setup screen: stops the queue and the transfer, without a toast. */
+    fun pauseStarterPack() {
+        if (_state.value.starterPackPaused) return
+        update { it.copy(starterPackPaused = true) }
+        scope.launch { container.modelRepository.pauseAllDownloads() }
+    }
+
+    fun resumeStarterPack() {
+        if (!_state.value.starterPackPaused) return
+        update { it.copy(starterPackPaused = false) }
+        startStarterPack()
+    }
+
+    fun toggleStarterPackPause() {
+        if (_state.value.starterPackPaused) resumeStarterPack() else pauseStarterPack()
     }
 
     fun cancelDownload(modelId: String) {

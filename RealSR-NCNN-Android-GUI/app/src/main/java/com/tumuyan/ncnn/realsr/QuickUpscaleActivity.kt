@@ -33,6 +33,7 @@ import com.tumuyan.ncnn.realsr.core.engine.StagedInputPhoto
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
+import com.tumuyan.ncnn.realsr.core.plan.ModelCatalog
 import com.tumuyan.ncnn.realsr.ui.MediaExportHelper
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
 import com.tumuyan.ncnn.realsr.ui.screens.QuickUpscaleSheet
@@ -149,8 +150,12 @@ class QuickUpscaleActivity : ComponentActivity() {
                         preflightAdvisoryState = null
                     },
                     onDownloadModel = { modelId ->
-                        lifecycleScope.launch {
-                            container.modelRepository.startOrResumeDownload(modelId)
+                        // The sheet speaks catalog slugs; the downloader speaks HF directory ids.
+                        val manifestId = ModelCatalog.byId(modelId).manifestId
+                        if (manifestId != null) {
+                            lifecycleScope.launch {
+                                container.modelRepository.startOrResumeDownload(manifestId)
+                            }
                         }
                     },
                     onEnhance = {

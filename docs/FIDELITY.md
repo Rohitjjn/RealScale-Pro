@@ -44,7 +44,7 @@ visible reads `MaterialTheme.colorScheme`.
 | 3.2 | Guide (4 slides) | `screens/Onboarding.tsx` | `ui/screens/Onboarding.kt` (`Guide`, `SLIDES`) | 02–05, 79 | `HorizontalPager`, store `onboarded` | instrumented |
 | 3.3 | Permission primers | `screens/Onboarding.tsx` | `ui/screens/Onboarding.kt` (`Primer`) | 06, 07 | `AppStore.permissionRequester` → `MediaIntentsHost` | instrumented |
 | 3.4 | Device check | `screens/Onboarding.tsx` | `ui/screens/Onboarding.kt` (`DeviceCheck`) | 08, 09 | `core/device/DeviceProfile.kt` | instrumented |
-| 3.5 | Setup / Starter Pack | `screens/Onboarding.tsx` | `ui/screens/Onboarding.kt` (`Setup`) | 10–12 | `ModelCatalog.STARTER_IDS` + `state.downloads` | instrumented |
+| 3.5 | Setup / Starter Pack | `screens/Onboarding.tsx` | `ui/screens/Onboarding.kt` (`Setup`) | 10–12 | `AppStore.startStarterPack` (one model at a time) + `state.downloads` byte counts + `state.starterPackPaused` | instrumented: `designSetupScreenDownloadsByItselfAndTogglesPauseSilently`, `ModelDownloadInstrumentedTest` |
 | 4.x | Home | `screens/Home.tsx` | `ui/screens/Home.kt` | 13–18, 70 | store + `planFor` | instrumented (Home, recents empty) |
 | 4.2/4.4 | Gallery | `screens/Library.tsx` (`Gallery`) | `ui/screens/Library.kt` (`GalleryScreen`) | 19–22 | `ui/media/MediaLibrary.kt` (MediaStore) | instrumented (no-access) |
 | 4.3 | View | `screens/Viewer.tsx` | `ui/screens/Viewer.kt` | 23–28, 74 | `PhotoItem`, `photoById` | — |
@@ -72,7 +72,10 @@ visible reads `MaterialTheme.colorScheme`.
 2. **Every number is planned, not simulated.** `PipelinePlanner` is a port of `lib/plan.ts` and is
    pinned by `PipelinePlannerGoldenTest` against `tools/plan-vectors` output.
 3. **Downloads and upscales are real.** The prototype fakes progress; `ModelRepository` and
-   `UpscaleEngine` drive the same percentages.
+   `UpscaleEngine` drive the same percentages. Model downloads run in-process (one transfer at a
+   time, cancelled instantly for Pause, resumed from the `.part` files by HTTP Range) instead of
+   going through `WorkManager`, whose deferred scheduling read as "nothing downloads" on some
+   devices. The Starter Pack ignores "Wi-Fi only" so first-run setup finishes on mobile data too.
 4. **Before/after sweep** clips the "before" layer with `Modifier.drawWithContent { clipRect }`
    instead of two absolutely positioned <img> tags (the only layout mechanism Compose lacks).
 5. **Text metrics.** StyreneB is substituted by Inter (`res/font/`), so line heights match but
@@ -84,8 +87,14 @@ visible reads `MaterialTheme.colorScheme`.
 - `testDebugUnitTest` (planner golden vectors, model facts, formatter output): green in CI.
 - APK packaging and the "≤ 30 MB, zero bundled models" gate: green in CI.
 - Instrumented (`RealScaleSmokeInstrumentedTest`): engine extraction, Quick Upscale sheet,
-  onboarding → Setup, and Home → Settings → Model Manager are asserted on an Android 11 ATD
-  emulator.
+  onboarding → Setup, Starter Pack pause/resume without a toast, and Home → Settings → Model
+  Manager are asserted on an Android 11 ATD emulator.
+- Instrumented, real network (`ModelDownloadInstrumentedTest`): the smallest manifest model is
+  downloaded end to end — bytes stream, install lands on disk, Pause preserves the partial transfer
+  and Resume finishes it instead of restarting. Skipped when the emulator has no route to
+  `huggingface.co`, so a sandboxed runner reports an assumption failure rather than a red build.
+- Instrumented (`DesignIconInstrumentedTest`): the two permission-screen glyphs rasterise ink
+  pixels, so a broken generated vector cannot silently render an empty square.
 - Model layer: `api.github.com`-relayed `model-facts` run reports **61 manifest files checked, 0
   problems** against the mirror, and the catalog joins to the manifest through
   `ModelEntry.manifestId` (see `ModelCatalog.byManifestId`), so downloads and the installed-folder

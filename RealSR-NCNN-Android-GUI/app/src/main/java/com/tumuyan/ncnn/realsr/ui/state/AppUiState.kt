@@ -148,6 +148,9 @@ data class ModelDownloadUi(
     val modelId: String,
     val progress: Float = 0f,
     val state: String = "idle",
+    val speedBytesPerSec: Long = 0L,
+    /** Repository note such as "Waiting for Wi-Fi…" or a failure reason. */
+    val message: String? = null,
 )
 
 /** Everything one screen can read. */
@@ -172,6 +175,8 @@ data class AppUiState(
     val toast: ToastMessage? = null,
     val downloads: Map<String, ModelDownloadUi> = emptyMap(),
     val selectedUpscales: Set<String> = emptySet(),
+    /** Set while the Starter Pack queue is paused from the setup screen. */
+    val starterPackPaused: Boolean = false,
 ) {
     val route: Route get() = routes.last()
     val canGoBack: Boolean get() = routes.size > 1
