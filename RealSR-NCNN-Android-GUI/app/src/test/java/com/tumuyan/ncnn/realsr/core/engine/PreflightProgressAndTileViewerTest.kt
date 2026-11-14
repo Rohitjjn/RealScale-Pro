@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
 import androidx.test.core.app.ApplicationProvider
-import com.tumuyan.ncnn.realsr.ui.components.OomSafeImageDecoders
+import com.tumuyan.ncnn.realsr.core.imaging.OomSafeImageDecoders
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull

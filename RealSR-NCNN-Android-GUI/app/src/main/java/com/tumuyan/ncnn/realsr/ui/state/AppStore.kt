@@ -10,6 +10,7 @@ import com.tumuyan.ncnn.realsr.core.device.DeviceProfiler
 import com.tumuyan.ncnn.realsr.core.device.HapticKind
 import com.tumuyan.ncnn.realsr.core.device.Haptics
 import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
+import com.tumuyan.ncnn.realsr.core.engine.ImageIntakeManager
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
 import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
 import com.tumuyan.ncnn.realsr.core.engine.ModelExecutionSpec
@@ -24,6 +25,7 @@ import com.tumuyan.ncnn.realsr.core.plan.PipelinePlanner
 import com.tumuyan.ncnn.realsr.core.plan.Plan
 import com.tumuyan.ncnn.realsr.core.plan.PlanInput
 import com.tumuyan.ncnn.realsr.core.plan.PlanLevel
+import com.tumuyan.ncnn.realsr.core.plan.fmtMB
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
 import com.tumuyan.ncnn.realsr.ui.media.MediaLibrary
 import kotlinx.coroutines.CoroutineScope
@@ -416,15 +418,14 @@ class AppStore(
 
     /* ------------------------------------------------------------------ maintenance */
 
-    /** "Clear cache": temp files the engine wrote, nothing the user saved. */
+    /**
+     * "Clear cache": the staged input copies and the transient engine images, never the extracted
+     * binaries and never anything the user saved (see `ImageIntakeManager.clearTemporaryCache`).
+     */
     fun clearCache() {
-        scope.launch(Dispatchers.IO) {
-            runCatching {
-                File(context.cacheDir, "realsr").deleteRecursively()
-                File(context.cacheDir, "upscale").deleteRecursively()
-                File(context.cacheDir, "crop").deleteRecursively()
-            }
-            withContext(Dispatchers.Main) { toast("Cache cleared") }
+        scope.launch {
+            val freed = runCatching { ImageIntakeManager.clearTemporaryCache(context) }.getOrDefault(0L)
+            toast(if (freed > 0) "Cache cleared · ${fmtMB(freed / 1048576.0)}" else "Cache is already empty")
         }
     }
 
@@ -716,6 +717,19 @@ class AppStore(
 
     companion object {
         private const val KEY_STATE = "state_v1"
+
+        /** The theme the user picked in Settings, readable by entry points that have no store. */
+        fun persistedTheme(context: Context): ThemePref {
+            val raw = context
+                .getSharedPreferences("realscale_state", Context.MODE_PRIVATE)
+                .getString(KEY_STATE, null) ?: return ThemePref.System
+            return runCatching {
+                Json { ignoreUnknownKeys = true }
+                    .decodeFromString(PersistedState.serializer(), raw)
+                    .settings
+                    .theme
+            }.getOrDefault(ThemePref.System)
+        }
     }
 }
 

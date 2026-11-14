@@ -8,9 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 
-/** How the app decides between the two token sets (Settings → Theme). */
-enum class RsThemeMode { System, Light, Dark }
-
 /**
  * Wraps the design tokens, the reduce-motion flag and a Material 3 shell so any Material component
  * that slips through still resolves to sensible colours. Everything visible is built from

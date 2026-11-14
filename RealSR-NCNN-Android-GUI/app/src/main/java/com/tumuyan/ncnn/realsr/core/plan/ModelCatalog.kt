@@ -23,6 +23,7 @@ data class ModelEntry(
     val sizeMB: Double,
     val speed: String,
     val badge: String,
+    /** Lowest device tier that can run this model, 0-based (`DeviceProfile.tier` is 1..3). */
     val minTier: Int,
     val pack: String,
     val license: String,
@@ -176,10 +177,22 @@ object ModelCatalog {
 
     fun packOf(id: String): Pack = PACKS.firstOrNull { it.id == id } ?: PACKS.first()
 
-    /** "Great on your device" / "Runs OK on your device" / "Needs a Powerful device". */
+    /**
+     * How this model behaves on a device of [tier]. `minTier` counts from 0,  so a model with
+     * `minTier = 2` needs tier 3 (Powerful).
+     */
     fun fit(model: ModelEntry, tier: Int): Fit = when {
         model.blocked != null -> Fit("no", "Not available")
-        model.minTier + 1 > tier -> Fit("no", "Needs a Powerful device")
+        model.minTier >= tier -> {
+            // A model with minTier = n needs device tier n + 1.
+            val needed = when (model.minTier) {
+                0 -> "compatible"
+                1 -> "Standard"
+                2 -> "Powerful"
+                else -> "Powerful"
+            }
+            Fit("no", "Needs a $needed device")
+        }
         model.speed == "Medium" || model.speed == "Slow" -> Fit("ok", "Runs OK on your device")
         else -> Fit("good", "Great on your device")
     }

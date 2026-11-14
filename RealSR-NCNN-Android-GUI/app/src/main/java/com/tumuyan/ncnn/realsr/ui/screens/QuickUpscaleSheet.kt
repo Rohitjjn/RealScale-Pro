@@ -1,16 +1,14 @@
 package com.tumuyan.ncnn.realsr.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,19 +21,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -50,24 +44,28 @@ import com.tumuyan.ncnn.realsr.core.engine.RecoveryAction
 import com.tumuyan.ncnn.realsr.core.engine.StagedInputPhoto
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
-import com.tumuyan.ncnn.realsr.ui.components.AccessibleIconButton
-import com.tumuyan.ncnn.realsr.ui.components.BeforeAfterSplitView
-import com.tumuyan.ncnn.realsr.ui.components.BrandLogoMedallion
-import com.tumuyan.ncnn.realsr.ui.components.EditorialCard
-import com.tumuyan.ncnn.realsr.ui.components.EditorialOverline
-import com.tumuyan.ncnn.realsr.ui.components.HairlineProgressBar
-import com.tumuyan.ncnn.realsr.ui.components.IndeterminateHairlineBar
-import com.tumuyan.ncnn.realsr.ui.components.PreflightAdvisoryDialog
-import com.tumuyan.ncnn.realsr.ui.components.QuietOutlineButton
-import com.tumuyan.ncnn.realsr.ui.components.TerracottaPrimaryButton
-import com.tumuyan.ncnn.realsr.ui.components.formatDurationHuman
-import com.tumuyan.ncnn.realsr.ui.theme.RealScaleIcons
-import com.tumuyan.ncnn.realsr.ui.theme.RealScaleThemeTokens
-import com.tumuyan.ncnn.realsr.ui.theme.Spacing
+import com.tumuyan.ncnn.realsr.design.EyebrowLabel
+import com.tumuyan.ncnn.realsr.design.HairlineSoftDivider
+import com.tumuyan.ncnn.realsr.design.LocalRsColors
+import com.tumuyan.ncnn.realsr.design.Mark
+import com.tumuyan.ncnn.realsr.design.RsButton
+import com.tumuyan.ncnn.realsr.design.RsButtonSize
+import com.tumuyan.ncnn.realsr.design.RsButtonVariant
+import com.tumuyan.ncnn.realsr.design.RsChip
+import com.tumuyan.ncnn.realsr.design.RsIconButton
+import com.tumuyan.ncnn.realsr.design.RsIconButtonVariant
+import com.tumuyan.ncnn.realsr.design.RsProgressBar
+import com.tumuyan.ncnn.realsr.design.RsRadius
+import com.tumuyan.ncnn.realsr.design.RsType
+import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import java.io.File
 import java.util.Locale
 import kotlin.math.roundToInt
 
+/**
+ * The "Open with" sheet: a one-screen upscale for a single incoming image. Same contract and the
+ * same visible strings as before the redesign, rebuilt from [com.tumuyan.ncnn.realsr.design].
+ */
 @Composable
 fun QuickUpscaleSheet(
     stagedPhoto: StagedInputPhoto?,
@@ -100,570 +98,462 @@ fun QuickUpscaleSheet(
     onOpenInFullApp: (RecentCreationEntity?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val colors = RealScaleThemeTokens.colors
+    val c = LocalRsColors.current
     val context = LocalContext.current
+    val running = engineState as? EngineState.Running
     val isRunning = engineState is EngineState.Preparing || engineState is EngineState.Running
-
-    preflightAdvisory?.let { advisory ->
-        PreflightAdvisoryDialog(
-            advisory = advisory,
-            onApplyMitigation = onApplyPreflightMitigation,
-            onProceedAnyway = onConfirmPreflightProceedAnyway,
-            onDismiss = onDismissPreflightAdvisory
-        )
-    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.44f))
+            .background(c.scrim)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = {
-                    if (!isRunning) onDismiss()
-                }
+                onClick = { if (!isRunning) onDismiss() },
             ),
-        contentAlignment = Alignment.BottomCenter
+        contentAlignment = Alignment.BottomCenter,
     ) {
-        Surface(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
+                .clip(RoundedCornerShape(topStart = RsRadius.xxl.dp, topEnd = RsRadius.xxl.dp))
+                .background(c.canvas)
+                .border(
+                    1.dp,
+                    c.hairline,
+                    RoundedCornerShape(topStart = RsRadius.xxl.dp, topEnd = RsRadius.xxl.dp),
+                )
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = { /* consume taps inside sheet */ }
-                ),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            color = colors.canvas,
-            border = BorderStroke(1.dp, colors.hairline),
-            shadowElevation = 0.dp
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .navigationBarsPadding()
-                    .padding(horizontal = Spacing.lg, vertical = Spacing.md)
-            ) {
-                // Subtle sheet handle pill
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .width(36.dp)
-                        .height(4.dp)
-                        .clip(CircleShape)
-                        .background(colors.hairline)
+                    onClick = { /* consume taps inside the sheet */ },
                 )
-                Spacer(modifier = Modifier.height(Spacing.sm))
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+        ) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(36.dp)
+                    .height(4.dp)
+                    .clip(CircleShape)
+                    .background(c.hairline),
+            )
+            Spacer(Modifier.height(12.dp))
 
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        BrandLogoMedallion(size = 26.dp)
-                        Spacer(modifier = Modifier.width(Spacing.xs))
-                        Text(
-                            text = "Quick Upscale",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = colors.ink
-                        )
-                    }
-                    AccessibleIconButton(
-                        icon = RealScaleIcons.Close,
-                        contentDescription = "Close Quick Upscale",
-                        onClick = {
-                            if (isRunning) onRunInBackground() else onDismiss()
-                        }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(Spacing.sm))
-
-                if (intakeErrorMessage != null) {
-                    EditorialCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = colors.surfaceSoft
-                    ) {
-                        Text(
-                            text = "Could not open image",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = colors.ink
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = intakeErrorMessage,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.muted
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(Spacing.md))
-                    TerracottaPrimaryButton(
-                        text = "Close",
-                        onClick = onDismiss,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    return@Column
-                }
-
-                // Completed state: inline Before/After preview + Save / Share / Open
-                if (completedCreation != null) {
-                    BeforeAfterSplitView(
-                        beforeFile = File(completedCreation.beforeImagePath),
-                        afterFile = File(completedCreation.outputPath),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp)
-                    )
-                    Spacer(modifier = Modifier.height(Spacing.sm))
-                    val resolutionSummary = if (completedCreation.outputWidth > 0 && completedCreation.outputHeight > 0) {
-                        "${completedCreation.inputWidth} × ${completedCreation.inputHeight} → ${completedCreation.outputWidth} × ${completedCreation.outputHeight}"
-                    } else {
-                        completedCreation.presetLabel
-                    }
-                    Text(
-                        text = savedConfirmationMessage ?: "$resolutionSummary · Saved to Pictures/RealScale-Pro",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.muted
-                    )
-                    Spacer(modifier = Modifier.height(Spacing.md))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-                    ) {
-                        TerracottaPrimaryButton(
-                            text = "Save",
-                            onClick = { onSaveCompleted(completedCreation) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        QuietOutlineButton(
-                            text = "Share",
-                            onClick = { onShareCompleted(context, completedCreation) },
-                            modifier = Modifier.weight(1f)
-                        )
-                        QuietOutlineButton(
-                            text = "Open",
-                            onClick = { onOpenInFullApp(completedCreation) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    return@Column
-                }
-
-                // Source thumbnail + resolution card
-                if (stagedPhoto != null) {
-                    EditorialCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = colors.surfaceSoft,
-                        contentPadding = PaddingValues(Spacing.sm)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AsyncImage(
-                                model = stagedPhoto.stagedFile,
-                                contentDescription = "Source photo thumbnail",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(MaterialTheme.shapes.small)
-                                    .background(colors.surfaceCard)
-                            )
-                            Spacer(modifier = Modifier.width(Spacing.sm))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = stagedPhoto.displayName,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = colors.ink,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                val dimLabel = if (stagedPhoto.width > 0 && stagedPhoto.height > 0) {
-                                    "${stagedPhoto.width} × ${stagedPhoto.height} · ${stagedPhoto.formatLabel}"
-                                } else {
-                                    stagedPhoto.formatLabel
-                                }
-                                Text(
-                                    text = dimLabel,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.muted
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(Spacing.md))
-                }
-
-                // Active Processing or Queue state
-                if (isRunning) {
-                    val running = engineState as? EngineState.Running
-                    EditorialCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = colors.surfaceCard,
-                        contentPadding = PaddingValues(Spacing.md)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val stageLabel = when (engineState) {
-                                is EngineState.Preparing -> "Preparing"
-                                is EngineState.Running -> running?.stage?.humanLabel ?: "Enhancing"
-                                else -> "Enhancing"
-                            }
-                            val batchBadge = if (running != null && running.totalFiles > 1) {
-                                " · ${running.currentFileIndex} of ${running.totalFiles}"
-                            } else {
-                                ""
-                            }
-                            Text(
-                                text = "$stageLabel$batchBadge",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = colors.ink
-                            )
-                            val rightMetric = when {
-                                running?.hasDeterminateProgress == true -> {
-                                    val pct = (running.progressFraction * 100f).roundToInt().coerceIn(1, 99)
-                                    val eta = running.etaMillis?.let { " · ~${formatDurationHuman(it)} left" }.orEmpty()
-                                    "$pct%$eta"
-                                }
-                                running != null -> {
-                                    val sec = (running.elapsedMillis / 1000L).coerceAtLeast(1L)
-                                    "${sec}s elapsed"
-                                }
-                                else -> "Starting…"
-                            }
-                            Text(
-                                text = rightMetric,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = colors.muted
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(Spacing.sm))
-                        if (running?.hasDeterminateProgress == true) {
-                            HairlineProgressBar(fraction = running.progressFraction.coerceAtLeast(0.03f))
-                        } else {
-                            IndeterminateHairlineBar()
-                        }
-                    }
-
-                    if (queue.size > 1) {
-                        Spacer(modifier = Modifier.height(Spacing.sm))
-                        EditorialCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            containerColor = colors.surfaceSoft,
-                            contentPadding = PaddingValues(Spacing.sm)
-                        ) {
-                            EditorialOverline(text = "Queue · ${queue.size} items")
-                            Spacer(modifier = Modifier.height(4.dp))
-                            queue.take(4).forEach { qItem ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "${qItem.positionInBatch} of ${qItem.totalInBatch} · ${qItem.fileName}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (qItem.isRunning) colors.ink else colors.muted,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        text = if (qItem.isRunning) "Running" else "Cancel",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = if (qItem.isRunning) colors.muted else colors.terracotta,
-                                        modifier = Modifier
-                                            .clip(CircleShape)
-                                            .clickable(enabled = !qItem.isRunning) {
-                                                onCancelQueuedItem(qItem.id)
-                                            }
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    if (showNotificationRationale) {
-                        Spacer(modifier = Modifier.height(Spacing.sm))
-                        EditorialCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            containerColor = colors.terracottaTint,
-                            borderColor = colors.terracotta,
-                            contentPadding = PaddingValues(Spacing.md)
-                        ) {
-                            Text(
-                                text = "Notify when finished?",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = colors.ink
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Allow notifications so RealScale-Pro can show a preview with Share & Open actions when background enhancement completes.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.body
-                            )
-                            Spacer(modifier = Modifier.height(Spacing.sm))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-                            ) {
-                                TerracottaPrimaryButton(
-                                    text = "Allow",
-                                    onClick = onConfirmNotificationPermissionAndBackground,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                QuietOutlineButton(
-                                    text = "Continue quietly",
-                                    onClick = onSkipNotificationPermissionAndBackground,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.height(Spacing.md))
-                        TerracottaPrimaryButton(
-                            text = "Run in background",
-                            onClick = onRunInBackground,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(Spacing.xs))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-                    ) {
-                        QuietOutlineButton(
-                            text = "Cancel",
-                            onClick = onCancelJob,
-                            modifier = Modifier.weight(1f)
-                        )
-                        QuietOutlineButton(
-                            text = "Open in RealScale-Pro",
-                            onClick = { onOpenInFullApp(null) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    return@Column
-                }
-
-                // Error state inside sheet with one-tap recovery actions
-                if (engineState is EngineState.Failed) {
-                    EditorialCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = colors.surfaceCard,
-                        contentPadding = PaddingValues(Spacing.md)
-                    ) {
-                        Text(
-                            text = "Could not complete upscale",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = colors.ink
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = engineState.userMessage,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.body
-                        )
-                        if (engineState.recoveryActions.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(Spacing.sm))
-                            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
-                                engineState.recoveryActions.forEachIndexed { idx, action ->
-                                    if (idx == 0) {
-                                        TerracottaPrimaryButton(
-                                            text = action.label,
-                                            onClick = { onApplyRecovery(action) },
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    } else {
-                                        QuietOutlineButton(
-                                            text = action.label,
-                                            onClick = { onApplyRecovery(action) },
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(Spacing.sm))
-                }
-
-                // Compact Preset Picker (last-used preselected; uninstalled shows "Get model")
-                EditorialOverline(text = "Preset")
-                Spacer(modifier = Modifier.height(Spacing.xs))
-
-                val isSelectedPresetReady = isPresetReady(selectedPreset, catalogModels)
-                val selectedCatalogModel = catalogModels.firstOrNull { it.catalog.id == selectedPreset.defaultModelId }
-
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    UpscalePreset.ALL.chunked(2).forEach { rowPresets ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
-                        ) {
-                            rowPresets.forEach { preset ->
-                                val active = preset.id == selectedPreset.id
-                                val ready = isPresetReady(preset, catalogModels)
-                                val modelState = catalogModels.firstOrNull { it.catalog.id == preset.defaultModelId }
-                                val downloading = modelState?.status == ModelInstallStatus.DOWNLOADING ||
-                                    modelState?.status == ModelInstallStatus.QUEUED ||
-                                    modelState?.status == ModelInstallStatus.VERIFYING
-
-                                Surface(
-                                    shape = MaterialTheme.shapes.medium,
-                                    color = if (active) colors.surfaceCard else colors.surfaceSoft,
-                                    border = BorderStroke(
-                                        width = if (active) 1.5.dp else 1.dp,
-                                        color = if (active) colors.terracotta else colors.hairline
-                                    ),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .defaultMinSize(minHeight = 56.dp)
-                                        .clip(MaterialTheme.shapes.medium)
-                                        .clickable(role = Role.RadioButton) { onSelectPreset(preset) }
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 10.dp)
-                                    ) {
-                                        Text(
-                                            text = preset.title,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            color = colors.ink
-                                        )
-                                        val subLabel = when {
-                                            !preset.requiresDownload -> "Ready"
-                                            ready -> "Installed"
-                                            downloading -> "Downloading…"
-                                            else -> "Get model"
-                                        }
-                                        Text(
-                                            text = subLabel,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = if (ready) colors.muted else colors.terracotta
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(Spacing.md))
-
-                // 2x / 4x Toggle + Estimated Output Size
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                        listOf(2, 4).forEach { scaleOption ->
-                            val supported = scaleOption in selectedPreset.supportedScales
-                            val active = scaleOption == selectedScale
-                            Surface(
-                                shape = CircleShape,
-                                color = when {
-                                    active -> colors.terracotta
-                                    supported -> colors.surfaceSoft
-                                    else -> colors.canvas
-                                },
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (active) colors.terracotta else colors.hairline
-                                ),
-                                modifier = Modifier
-                                    .defaultMinSize(minWidth = 52.dp, minHeight = 40.dp)
-                                    .clip(CircleShape)
-                                    .clickable(enabled = supported, role = Role.RadioButton) {
-                                        onSelectScale(scaleOption)
-                                    }
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                                ) {
-                                    Text(
-                                        text = "${scaleOption}×",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = when {
-                                            active -> colors.onTerracotta
-                                            supported -> colors.ink
-                                            else -> colors.subtle
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    val estimateLabel = buildOutputEstimateLabel(
-                        stagedPhoto = stagedPhoto,
-                        scale = selectedScale,
-                        format = outputFormat
-                    )
-                    Text(
-                        text = estimateLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.muted
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(Spacing.md))
-                HorizontalDivider(thickness = 1.dp, color = colors.hairlineSoft)
-                Spacer(modifier = Modifier.height(Spacing.md))
-
-                // Primary Enhance or Get Model CTA
-                if (isSelectedPresetReady) {
-                    TerracottaPrimaryButton(
-                        text = "Enhance",
-                        leadingIcon = RealScaleIcons.Sparkle,
-                        enabled = stagedPhoto != null,
-                        onClick = onEnhance,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    val dlStatus = selectedCatalogModel?.status
-                    val isBusy = dlStatus == ModelInstallStatus.DOWNLOADING ||
-                        dlStatus == ModelInstallStatus.QUEUED ||
-                        dlStatus == ModelInstallStatus.VERIFYING
-                    TerracottaPrimaryButton(
-                        text = if (isBusy) {
-                            "Downloading ${selectedPreset.title} model…"
-                        } else {
-                            String.format(
-                                Locale.US,
-                                "Get model · %.1f MB",
-                                selectedPreset.approxDownloadMb
-                            )
-                        },
-                        leadingIcon = RealScaleIcons.Download,
-                        enabled = !isBusy,
-                        onClick = { onDownloadModel(selectedPreset.defaultModelId) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(Spacing.xs))
-                QuietOutlineButton(
-                    text = "Open in RealScale-Pro",
-                    onClick = { onOpenInFullApp(null) },
-                    modifier = Modifier.fillMaxWidth()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Mark(size = 26.dp)
+                Text(
+                    "Quick Upscale",
+                    style = RsType.display(24f),
+                    color = c.ink,
+                    modifier = Modifier.padding(start = 10.dp).weight(1f),
+                )
+                RsIconButton(
+                    icon = LucideIcons.X,
+                    label = "Close Quick Upscale",
+                    variant = RsIconButtonVariant.Plain,
+                    onClick = { if (isRunning) onRunInBackground() else onDismiss() },
                 )
             }
+            Spacer(Modifier.height(12.dp))
+
+            if (intakeErrorMessage != null) {
+                Card(background = c.card) {
+                    Text("Could not open image", style = RsType.body(16f, androidx.compose.ui.text.font.FontWeight.Medium), color = c.ink)
+                    Text(
+                        intakeErrorMessage,
+                        style = RsType.body(14f, lineHeightRatio = 1.5f),
+                        color = c.muted,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                RsButton(onClick = onDismiss, variant = RsButtonVariant.Primary, size = RsButtonSize.Lg, full = true, label = "Close")
+                return@Column
+            }
+
+            /* Finished: inline before/after plus Save, Share and Open. */
+            if (completedCreation != null) {
+                BeforeAfter(
+                    beforeUri = "file://${completedCreation.beforeImagePath}",
+                    afterUri = File(completedCreation.outputPath).let { "file://${it.absolutePath}" },
+                    contentDescription = "Before and after of the finished upscale",
+                    showOriginal = false,
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                )
+                Spacer(Modifier.height(10.dp))
+                val summary = if (completedCreation.outputWidth > 0 && completedCreation.outputHeight > 0) {
+                    "${completedCreation.inputWidth} × ${completedCreation.inputHeight} → " +
+                        "${completedCreation.outputWidth} × ${completedCreation.outputHeight}"
+                } else {
+                    completedCreation.presetLabel
+                }
+                Text(
+                    savedConfirmationMessage ?: "$summary · Saved to Pictures/RealScale-Pro",
+                    style = RsType.body(13f, lineHeightRatio = 1.4f),
+                    color = c.muted,
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RsButton(
+                        onClick = { onSaveCompleted(completedCreation) },
+                        variant = RsButtonVariant.Primary,
+                        modifier = Modifier.weight(1f),
+                        label = "Save",
+                    )
+                    RsButton(
+                        onClick = { onShareCompleted(context, completedCreation) },
+                        modifier = Modifier.weight(1f),
+                        icon = LucideIcons.Share2,
+                        label = "Share",
+                    )
+                    RsButton(
+                        onClick = { onOpenInFullApp(completedCreation) },
+                        modifier = Modifier.weight(1f),
+                        label = "Open",
+                    )
+                }
+                return@Column
+            }
+
+            /* Source row: thumbnail, name and dimensions. */
+            if (stagedPhoto != null) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(RsRadius.md.dp))
+                        .background(c.card)
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    AsyncImage(
+                        model = stagedPhoto.stagedFile,
+                        contentDescription = "Source photo thumbnail",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(RsRadius.sm.dp))
+                            .background(c.soft),
+                    )
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(
+                            stagedPhoto.displayName,
+                            style = RsType.body(15f, androidx.compose.ui.text.font.FontWeight.Medium),
+                            color = c.ink,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            if (stagedPhoto.width > 0 && stagedPhoto.height > 0) {
+                                "${stagedPhoto.width} × ${stagedPhoto.height} · ${stagedPhoto.formatLabel}"
+                            } else {
+                                stagedPhoto.formatLabel
+                            },
+                            style = RsType.body(13f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            /* Preflight advisory, inline instead of a dialog. */
+            preflightAdvisory?.let { advisory ->
+                Card(background = c.card) {
+                    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(LucideIcons.TriangleAlert, contentDescription = null, tint = c.warning, modifier = Modifier.size(18.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(advisory.title, style = RsType.body(15f, androidx.compose.ui.text.font.FontWeight.Medium), color = c.ink)
+                            Text(
+                                advisory.message,
+                                style = RsType.body(13f, lineHeightRatio = 1.5f),
+                                color = c.body,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                    }
+                    Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        advisory.mitigations.forEach { mitigation ->
+                            RsButton(
+                                onClick = { onApplyPreflightMitigation(mitigation) },
+                                variant = RsButtonVariant.Primary,
+                                size = RsButtonSize.Sm,
+                                full = true,
+                                label = mitigation.label,
+                            )
+                        }
+                        if (advisory.canProceedAnyway) {
+                            RsButton(
+                                onClick = onConfirmPreflightProceedAnyway,
+                                size = RsButtonSize.Sm,
+                                full = true,
+                                label = "Continue anyway",
+                            )
+                        }
+                        RsButton(onClick = onDismissPreflightAdvisory, variant = RsButtonVariant.Ghost, full = true, label = "Cancel")
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            /* Running / queued state. */
+            if (isRunning) {
+                Card(background = c.card) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        val stageLabel = when (engineState) {
+                            is EngineState.Preparing -> "Preparing"
+                            is EngineState.Running -> running?.stage?.humanLabel ?: "Enhancing"
+                            else -> "Enhancing"
+                        }
+                        val batch = if (running != null && running.totalFiles > 1) {
+                            " · ${running.currentFileIndex} of ${running.totalFiles}"
+                        } else {
+                            ""
+                        }
+                        Text("$stageLabel$batch", style = RsType.body(15f, androidx.compose.ui.text.font.FontWeight.Medium), color = c.ink)
+                        val metric = when {
+                            running?.hasDeterminateProgress == true -> {
+                                val pct = (running.progressFraction * 100f).roundToInt().coerceIn(1, 99)
+                                val eta = running.etaMillis?.let {
+                                    " · ~${com.tumuyan.ncnn.realsr.core.plan.fmtClock(it / 1000.0)} left"
+                                }.orEmpty()
+                                "$pct%$eta"
+                            }
+                            running != null -> "${(running.elapsedMillis / 1000L).coerceAtLeast(1L)} s elapsed"
+                            else -> "Starting…"
+                        }
+                        Text(metric, style = RsType.mono(12f), color = c.muted)
+                    }
+                    RsProgressBar(
+                        value = running?.progressFraction?.coerceAtLeast(0.03f) ?: 0.03f,
+                        label = "Quick upscale progress",
+                        modifier = Modifier.padding(top = 10.dp),
+                    )
+                }
+
+                if (queue.size > 1) {
+                    Spacer(Modifier.height(8.dp))
+                    Card(background = c.soft) {
+                        EyebrowLabel("Queue · ${queue.size} items")
+                        queue.take(4).forEach { item ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(top = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    "${item.positionInBatch} of ${item.totalInBatch} · ${item.fileName}",
+                                    style = RsType.body(13f),
+                                    color = if (item.isRunning) c.ink else c.muted,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    if (item.isRunning) "Running" else "Cancel",
+                                    style = RsType.body(12f, androidx.compose.ui.text.font.FontWeight.Medium),
+                                    color = if (item.isRunning) c.muted else c.primary,
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .clickable(enabled = !item.isRunning) { onCancelQueuedItem(item.id) }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+                if (showNotificationRationale) {
+                    Card(background = c.card) {
+                        Text("Notify when finished?", style = RsType.body(15f, androidx.compose.ui.text.font.FontWeight.Medium), color = c.ink)
+                        Text(
+                            "Allow notifications so RealScale-Pro can show a preview with Share & Open actions when background enhancement completes.",
+                            style = RsType.body(13f, lineHeightRatio = 1.5f),
+                            color = c.body,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            RsButton(
+                                onClick = onConfirmNotificationPermissionAndBackground,
+                                variant = RsButtonVariant.Primary,
+                                modifier = Modifier.weight(1f),
+                                label = "Allow",
+                            )
+                            RsButton(
+                                onClick = onSkipNotificationPermissionAndBackground,
+                                modifier = Modifier.weight(1f),
+                                label = "Continue quietly",
+                            )
+                        }
+                    }
+                } else {
+                    RsButton(
+                        onClick = onRunInBackground,
+                        variant = RsButtonVariant.Primary,
+                        size = RsButtonSize.Lg,
+                        full = true,
+                        label = "Run in background",
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    RsButton(onClick = onCancelJob, modifier = Modifier.weight(1f), label = "Cancel")
+                    RsButton(
+                        onClick = { onOpenInFullApp(null) },
+                        modifier = Modifier.weight(1f),
+                        label = "Open in RealScale-Pro",
+                    )
+                }
+                return@Column
+            }
+
+            /* Failure with one-tap recovery. */
+            if (engineState is EngineState.Failed) {
+                Card(background = c.card) {
+                    Text("Could not complete upscale", style = RsType.body(16f, androidx.compose.ui.text.font.FontWeight.Medium), color = c.ink)
+                    Text(
+                        engineState.userMessage,
+                        style = RsType.body(13f, lineHeightRatio = 1.5f),
+                        color = c.body,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    if (engineState.recoveryActions.isNotEmpty()) {
+                        Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            engineState.recoveryActions.forEachIndexed { index, action ->
+                                RsButton(
+                                    onClick = { onApplyRecovery(action) },
+                                    variant = if (index == 0) RsButtonVariant.Primary else RsButtonVariant.Secondary,
+                                    full = true,
+                                    label = action.label,
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            /* Presets: last used is preselected, uninstalled ones offer Get model. */
+            EyebrowLabel("Preset")
+            Spacer(Modifier.height(6.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                UpscalePreset.ALL.chunked(2).forEach { rowPresets ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        rowPresets.forEach { preset ->
+                            val active = preset.id == selectedPreset.id
+                            val ready = isPresetReady(preset, catalogModels)
+                            val modelState = catalogModels.firstOrNull { it.catalog.id == preset.defaultModelId }
+                            val downloading = modelState?.status == ModelInstallStatus.DOWNLOADING ||
+                                modelState?.status == ModelInstallStatus.QUEUED ||
+                                modelState?.status == ModelInstallStatus.VERIFYING
+                            RsChip(
+                                text = preset.title,
+                                sub = when {
+                                    !preset.requiresDownload -> "Ready"
+                                    ready -> "Installed"
+                                    downloading -> "Downloading…"
+                                    else -> "Get model"
+                                },
+                                selected = active,
+                                modifier = Modifier.weight(1f),
+                                onClick = { onSelectPreset(preset) },
+                            )
+                        }
+                        if (rowPresets.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            /* Scale toggle and the estimated output size. */
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(2, 4).forEach { option ->
+                        val supported = option in selectedPreset.supportedScales
+                        RsChip(
+                            text = "$option×",
+                            selected = option == selectedScale,
+                            enabled = supported,
+                            onClick = { onSelectScale(option) },
+                        )
+                    }
+                }
+                Text(
+                    buildOutputEstimateLabel(stagedPhoto, selectedScale, outputFormat),
+                    style = RsType.bodyTnum(13f),
+                    color = c.muted,
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HairlineSoftDivider()
+            Spacer(Modifier.height(16.dp))
+
+            val ready = isPresetReady(selectedPreset, catalogModels)
+            if (ready) {
+                RsButton(
+                    onClick = onEnhance,
+                    variant = RsButtonVariant.Primary,
+                    size = RsButtonSize.Lg,
+                    full = true,
+                    enabled = stagedPhoto != null,
+                    icon = LucideIcons.Zap,
+                    label = "Enhance",
+                )
+            } else {
+                val modelState = catalogModels.firstOrNull { it.catalog.id == selectedPreset.defaultModelId }
+                val busy = modelState?.status == ModelInstallStatus.DOWNLOADING ||
+                    modelState?.status == ModelInstallStatus.QUEUED ||
+                    modelState?.status == ModelInstallStatus.VERIFYING
+                RsButton(
+                    onClick = { onDownloadModel(selectedPreset.defaultModelId) },
+                    variant = RsButtonVariant.Primary,
+                    size = RsButtonSize.Lg,
+                    full = true,
+                    enabled = !busy,
+                    icon = LucideIcons.Download,
+                    label = if (busy) {
+                        "Downloading ${selectedPreset.title} model…"
+                    } else {
+                        String.format(Locale.US, "Get model · %.1f MB", selectedPreset.approxDownloadMb)
+                    },
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            RsButton(
+                onClick = { onOpenInFullApp(null) },
+                variant = RsButtonVariant.Ghost,
+                full = true,
+                label = "Open in RealScale-Pro",
+            )
         }
     }
+}
+
+@Composable
+private fun Card(
+    background: androidx.compose.ui.graphics.Color,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    val c = LocalRsColors.current
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(RsRadius.md.dp))
+            .background(background)
+            .border(1.dp, c.hairline, RoundedCornerShape(RsRadius.md.dp))
+            .padding(14.dp),
+        content = content,
+    )
 }
 
 private fun isPresetReady(preset: UpscalePreset, catalogModels: List<CatalogModelState>): Boolean {

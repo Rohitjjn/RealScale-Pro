@@ -12,6 +12,9 @@ on:
     paths:
       - '.github/workflows/model-facts.yml'
       - '.github/scripts/model-facts.py'
+      - '.github/scripts/check-model-manifest.py'
+      - '.github/scripts/relay-model-facts.py'
+      - 'RealSR-NCNN-Android-GUI/app/src/main/assets/model_manifest.json'
 
 permissions:
   contents: read
@@ -26,6 +29,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Check out the scripts and the model manifest
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            .github
+            RealSR-NCNN-Android-GUI/app/src/main/assets
+
       - name: Download the upstream assets archive (models + engines, 1.13.0)
         run: |
           curl -fL --retry 3 -o /tmp/assets.zip \
@@ -45,22 +55,11 @@ jobs:
         run: |
           python3 .github/scripts/model-facts.py
 
+      - name: Check every manifest URL against the mirror
+        run: python3 .github/scripts/check-model-manifest.py
+
       - name: Relay the facts to the CI bridge issue
         if: always()
-        run: |
-          python3 - <<'PY'
-          import json, os, urllib.request
-          facts = json.load(open("model-facts.json"))
-          body = "### model-facts\n```json\n" + json.dumps(facts, indent=1, sort_keys=True) + "\n```"
-          issue = 10
-          req = urllib.request.Request(
-              f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/issues/{issue}/comments",
-              data=json.dumps({"body": body}).encode(),
-              headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}", "Accept": "application/vnd.github+json",
-                       "Content-Type": "application/json", "User-Agent": "realscale-ci"},
-              method="POST")
-          with urllib.request.urlopen(req, timeout=60) as r:
-              print("relayed", r.status)
-          PY
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/relay-model-facts.py

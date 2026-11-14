@@ -212,10 +212,7 @@ fun SettingsScreen(store: AppStore) {
                     title = "Clear cache",
                     sub = if (checking) "Clearing…" else "Temporary files only.",
                     chevron = true,
-                    onClick = {
-                        store.clearCache()
-                        store.toast("Cache cleared")
-                    },
+                    onClick = { store.clearCache() },
                 )
             }
 

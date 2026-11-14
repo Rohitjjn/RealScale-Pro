@@ -1,4 +1,4 @@
-package com.tumuyan.ncnn.realsr.ui.components
+package com.tumuyan.ncnn.realsr.core.imaging
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
