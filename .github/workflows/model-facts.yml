@@ -121,5 +121,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/model-facts.json
-          git diff --cached --quiet || git commit -m "ci(model-facts): real sizes, SHA-256 and download URLs"
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "ci(model-facts): real sizes, SHA-256 and download URLs"
+          git push origin HEAD:${{ github.ref_name }}
