@@ -281,7 +281,7 @@ jobs:
           adb install -r -g "$TEST_APK"
 
           adb shell am instrument -w -r \
-            -e class com.tumuyan.ncnn.realsr.RealScaleSmokeInstrumentedTest \
+            -e class com.tumuyan.ncnn.realsr.RealScaleSmokeInstrumentedTest,com.tumuyan.ncnn.realsr.ModelDownloadInstrumentedTest,com.tumuyan.ncnn.realsr.DesignIconInstrumentedTest \
             com.realscale.pro.debug.test/androidx.test.runner.AndroidJUnitRunner > /tmp/instrument.log 2>&1 || true
           cat /tmp/instrument.log
 
@@ -307,6 +307,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/relay-ci-failure.py
+
+      # Green runs are invisible to the agent sandbox too, so always report what actually ran.
+      - name: Relay instrumentation summary to the CI bridge issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/relay-ci-summary.py
 
       - name: Upload Emulator Visual Verification Screenshots
         if: always()
