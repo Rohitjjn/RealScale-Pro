@@ -66,7 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tumuyan.ncnn.realsr.R
-import com.tumuyan.ncnn.realsr.design.icons.Lucide
+import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 
 /* ============================================================================================ */
 /* Brand                                                                                        */

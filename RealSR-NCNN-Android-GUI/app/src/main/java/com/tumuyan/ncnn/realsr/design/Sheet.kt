@@ -51,7 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
-import com.tumuyan.ncnn.realsr.design.icons.Lucide
+import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 
 /**
  * The prototype's bottom sheet: scrim fade (260 ms in / 200 ms out), panel slides up on the spring

@@ -51,7 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.tumuyan.ncnn.realsr.design.icons.Lucide
+import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import kotlin.math.roundToInt
 
 /* ============================================================================================ */

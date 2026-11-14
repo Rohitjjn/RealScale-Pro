@@ -267,6 +267,12 @@ class AppStore(
         if (!shared) toast("No app can receive this image")
     }
 
+    fun shareResult(result: ResultItem) {
+        val uri = result.savedUri?.let { Uri.parse(it) } ?: Uri.fromFile(File(result.outputPath))
+        val shared = mediaIntents?.share(uri, result.fileName, "image/*") ?: false
+        if (!shared) toast("No app can receive this image")
+    }
+
     fun copyFileName(photo: PhotoItem) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
         clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("File name", photo.name))
@@ -401,7 +407,41 @@ class AppStore(
 
     /* ------------------------------------------------------------------ planning */
 
-    fun planFor(photo: PhotoItem, mode: ModeId = _state.value.mode): Plan {
+    /** The 512 x 512 crop preview of the current settings, produced by the real engine. */
+    var cropPreviewUri: String? = null
+        private set
+
+    fun requestCropPreview(photo: PhotoItem, plan: Plan, xPercent: Int, yPercent: Int) {
+        scope.launch {
+            cropPreviewUri = null
+            val entry = plan.model
+            val modelDir = File(container.modelRepository.modelsRootDir, entry.id)
+            val modelPath = entry.entryFile?.let { File(modelDir, it).absolutePath } ?: modelDir.absolutePath
+            val spec = ModelExecutionSpec(
+                modelId = entry.id,
+                displayName = entry.name,
+                engineTool = entry.engineTool,
+                modelPath = modelPath,
+                scale = plan.scale,
+                denoiseLevel = entry.denoiseLevel,
+            )
+            val result = com.tumuyan.ncnn.realsr.core.engine.CropPreviewEngine.generateCropPreview(
+                context = context,
+                sourceUri = Uri.parse(photo.uri),
+                preset = if (_state.value.mode == ModeId.SUPER) UpscalePreset.MAXIMUM else UpscalePreset.PHOTO,
+                scale = plan.scale,
+                preferences = container.engine.preferences.value.copy(
+                    tileSize = plan.tilePx,
+                    backend = if (plan.compute == "CPU") ExecutionBackend.CPU else ExecutionBackend.AUTO_GPU,
+                ),
+                modelSpec = spec,
+                modelsRootDir = container.modelRepository.modelsRootDir,
+            )
+            cropPreviewUri = result.getOrNull()?.afterCropFile?.let { "file://${it.absolutePath}" }
+        }
+    }
+
+    fun planFor(photo: PhotoItem, mode: ModeId = _state.value.mode, large: String = "optimize"): Plan {
         val prefs = prefsFor(mode)
         val settings = _state.value.settings
         return PipelinePlanner.makePlan(
@@ -410,7 +450,7 @@ class AppStore(
             prefs = prefs,
             installed = _state.value.installed,
             device = device.toPlanDevice(),
-            large = "optimize",
+            large = large,
             settingsCompute = when (settings.compute) {
                 ComputePref.Cpu -> "cpu"
                 ComputePref.Gpu -> "gpu"
