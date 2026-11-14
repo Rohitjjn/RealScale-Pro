@@ -63,7 +63,7 @@ class RealScaleEnhanceWidget : GlanceAppWidget() {
         val enhanceIntent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             data = Uri.parse("realscale://widget/enhance")
-            putExtra(Intent.EXTRA_OPEN_PHOTO_PICKER, true)
+            putExtra("android.intent.extra.OPEN_PHOTO_PICKER", true)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
@@ -153,7 +153,7 @@ class RealScaleRecentWidget : GlanceAppWidget() {
         val enhanceIntent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             data = Uri.parse("realscale://widget/enhance_medium")
-            putExtra(Intent.EXTRA_OPEN_PHOTO_PICKER, true)
+            putExtra("android.intent.extra.OPEN_PHOTO_PICKER", true)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
