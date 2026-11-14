@@ -56,7 +56,7 @@ class PipelinePlannerTest {
         assertEquals(2400, p.outW)
         assertEquals(1600, p.outH)
         assertEquals(Check.Green, p.check)
-        assertEquals(2400, p.inW) // not capped
+        assertEquals(1200, p.inW) // not capped
         assertFalse(p.inW != 1200)
         assertEquals("Used as is", p.inputNote)
     }
