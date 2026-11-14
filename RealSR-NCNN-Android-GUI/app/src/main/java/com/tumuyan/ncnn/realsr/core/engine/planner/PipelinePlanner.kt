@@ -257,7 +257,10 @@ object PipelinePlanner {
             else -> preset?.factor ?: 1.0
         }
         val computePref = if (adv && prefs.compute != ComputePref.AUTO) prefs.compute else opts.compute
-        val compute = if (computePref == ComputePref.CPU) Plan.ComputeKind.CPU else Plan.ComputeKind.GPU
+        val compute = when (computePref) {
+            ComputePref.CPU -> Plan.ComputeKind.CPU
+            else -> Plan.ComputeKind.GPU
+        }
 
         // --- Input (design 5.2 / 8.6) --------------------------------------------------
         val rawMP = (inW.toLong() * inH.toLong()) / 1e6
