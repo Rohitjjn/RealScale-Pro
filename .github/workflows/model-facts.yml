@@ -10,7 +10,8 @@ on:
       - '.github/workflows/model-facts.yml'
 
 permissions:
-  contents: write
+  contents: read
+  issues: write
 
 concurrency:
   group: model-facts-${{ github.ref }}
@@ -112,15 +113,24 @@ jobs:
           path: model-facts.json
           retention-days: 30
 
-      # This sandbox cannot reach the artifacts blob storage, so the facts are also committed:
-      # docs/model-facts.json is the reviewed source of truth for the catalog sizes/URLs/checksums.
-      - name: Commit the facts to the branch
+      # The agent sandbox cannot read Actions logs or artifacts (blob storage is egress-blocked), so
+      # the machine-readable facts are relayed through the "CI bridge" issue and committed by hand.
+      - name: Relay the facts to the CI bridge issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p docs
-          cp model-facts.json docs/model-facts.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/model-facts.json
-          git diff --cached --quiet && exit 0
-          git commit -m "ci(model-facts): real sizes, SHA-256 and download URLs"
-          git push origin HEAD:${{ github.ref_name }}
+          python3 - <<'PY'
+          import json, os, urllib.request
+          facts = json.load(open("model-facts.json"))
+          body = "### model-facts\n```json\n" + json.dumps(facts, indent=1) + "\n```"
+          issue = int(os.environ.get("CI_BRIDGE_ISSUE", "10"))
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/issues/{issue}/comments",
+              data=json.dumps({"body": body}).encode(),
+              headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}", "Accept": "application/vnd.github+json",
+                       "Content-Type": "application/json", "User-Agent": "realscale-ci"},
+              method="POST")
+          with urllib.request.urlopen(req, timeout=60) as r:
+              print("relayed", r.status)
+          PY
+          head -c 2000 model-facts.json
