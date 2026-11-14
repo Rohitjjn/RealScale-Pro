@@ -24,7 +24,9 @@ def post(body: str) -> None:
     repo = os.environ.get("GITHUB_REPOSITORY", "Rohitjjn/RealScale-Pro")
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     if not token:
-        raise SystemExit("no GitHub token in the environment")
+        print(body[:LIMIT])
+        print("(no GH_TOKEN: printed instead of posting)")
+        return
     request = urllib.request.Request(
         f"https://api.github.com/repos/{repo}/issues/{ISSUE}/comments",
         data=json.dumps({"body": body[:LIMIT]}).encode(),
@@ -65,25 +67,28 @@ def main() -> None:
     tail = [line for line in lines if line.startswith("OK (") or line.startswith("FAILURES")
             or line.startswith("Time:") or "Tests run:" in line]
     stack_heads = [line for line in lines if re.match(r"\s*(java|org|kotlin|androidx)\..*Exception", line)]
+    failures = [line[:180] for line in lines if line.startswith("Error in ") or "FAILURES!!!" in line]
 
     body = [
         f"### ci-instrumentation {os.environ.get('GITHUB_SHA', '')[:8]}",
         "```",
         "ran:",
-        *[f"  {entry}" for entry in tests] or ["  (none)"],
+        *([f"  {entry}" for entry in tests] or ["  (none)"]),
         "",
         f"count: {len(tests)}",
         "assumptions:",
-        *[f"  {item}" for item in skipped] or ["  (none)"],
+        *([f"  {item}" for item in skipped] or ["  (none)"]),
     ]
+    if failures:
+        body += ["failures:", *[f"  {line}" for line in failures[:8]]]
     if stack_heads:
         body += ["exception-heads:", *[f"  {line.strip()[:160]}" for line in stack_heads[:10]]]
-    body += ["", "result:", *[f"  {line}" for line in tail[-6:]] or ["  (no OK/FAILURES line)"], "```"]
+    body += ["", "result:", *([f"  {line}" for line in tail[-6:]] or ["  (no OK/FAILURES line)"]), "```"]
     post("\n".join(body))
 
 
 if __name__ == "__main__":
     try:
         main()
-    except urllib.error.URLError as error:  # pragma: no cover - network only
-        print("relay skipped:", error)
+    except Exception as error:  # pragma: no cover - network/CI only
+        print("relay skipped:", type(error).__name__, error)
