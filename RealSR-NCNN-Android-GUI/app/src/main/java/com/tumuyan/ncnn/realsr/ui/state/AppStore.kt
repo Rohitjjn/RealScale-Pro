@@ -68,6 +68,9 @@ class AppStore(
     /** Set by the activity so onboarding can trigger the real system dialogs. */
     var permissionRequester: ((photos: Boolean, notifications: Boolean) -> Unit)? = null
 
+    /** Set by the activity: the real pickers (documents, camera, clipboard). */
+    var mediaIntents: MediaIntents? = null
+
     private var toastJob: Job? = null
     private var resultsJob: Job? = null
     private var jobStartedAt = 0L
@@ -256,6 +259,37 @@ class AppStore(
     }
 
     fun photoById(id: String): PhotoItem? = _state.value.photos.firstOrNull { it.id == id }
+
+    fun openViewer(photo: PhotoItem) = push(Route.Viewer(photo.id))
+
+    fun openConfig(photo: PhotoItem) = push(Route.Config(photo.id))
+
+    fun openResult(resultId: String) = push(Route.Result(resultId))
+
+    fun markCameraAsked() = update { it.copy(cameraAsked = true) }
+
+    fun pickFile() {
+        if (mediaIntents == null) toast("No file picker available") else mediaIntents?.pickDocument()
+    }
+
+    fun takePhoto() {
+        if (mediaIntents == null) toast("No camera available") else mediaIntents?.takePhoto()
+    }
+
+    fun pasteFromClipboard() {
+        val pasted = mediaIntents?.pasteImage() ?: false
+        if (!pasted) toast("No image on the clipboard")
+    }
+
+    fun onImportedPhoto(photo: PhotoItem?) {
+        if (photo == null) {
+            toast("That image could not be opened")
+            return
+        }
+        addImportedPhoto(photo)
+        toast("${photo.name} added")
+        push(Route.Config(photo.id))
+    }
 
     /* ------------------------------------------------------------------ results */
 
@@ -575,6 +609,15 @@ class AppStore(
     companion object {
         private const val KEY_STATE = "state_v1"
     }
+}
+
+/** Implemented by the activity: every entry point that leaves the app's own screens. */
+interface MediaIntents {
+    fun pickDocument()
+    fun takePhoto()
+
+    /** Returns true when a bitmap was found on the clipboard and imported. */
+    fun pasteImage(): Boolean
 }
 
 @kotlinx.serialization.Serializable
