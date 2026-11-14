@@ -115,7 +115,8 @@ fun BeforeAfter(
             Modifier
                 .fillMaxSize()
                 .drawWithContent {
-                    clipRect(right = size.width * (shown / 100f).coerceIn(0f, 1f)) { drawContent() }
+                    val content = this
+                    clipRect(right = size.width * (shown / 100f).coerceIn(0f, 1f)) { content.drawContent() }
                 },
         ) {
             AsyncImage(
