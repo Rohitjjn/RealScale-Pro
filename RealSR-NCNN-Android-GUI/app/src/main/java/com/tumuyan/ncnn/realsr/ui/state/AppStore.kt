@@ -65,6 +65,9 @@ class AppStore(
     var device: DeviceProfile = DeviceProfiler.read(context)
         private set
 
+    /** Set by the activity so onboarding can trigger the real system dialogs. */
+    var permissionRequester: ((photos: Boolean, notifications: Boolean) -> Unit)? = null
+
     private var toastJob: Job? = null
     private var resultsJob: Job? = null
     private var jobStartedAt = 0L
@@ -159,6 +162,18 @@ class AppStore(
 
     /* ------------------------------------------------------------------ onboarding flags */
 
+    fun requestPhotoPermission() {
+        permissionRequester?.invoke(true, false)
+    }
+
+    fun requestNotificationPermission() {
+        permissionRequester?.invoke(false, true)
+    }
+
+    fun skipPhotoPermission() {
+        update { it.copy(photoAccess = false, phase = Phase.PermNotif) }
+    }
+
     fun grantPhotoAccess(limited: Boolean) {
         update { it.copy(photoAccess = true, limitedAccess = limited, phase = Phase.PermNotif) }
         refreshPhotos()
@@ -166,6 +181,14 @@ class AppStore(
 
     fun finishNotifications(accepted: Boolean) {
         update { it.copy(notificationsAsked = true, phase = Phase.Device) }
+    }
+
+    fun onPermissionResult(photos: Boolean, notifications: Boolean, granted: Boolean, limited: Boolean) {
+        when {
+            photos && granted -> grantPhotoAccess(limited)
+            photos -> skipPhotoPermission()
+            notifications -> finishNotifications(granted)
+        }
     }
 
     fun finishDeviceCheck() = update { it.copy(phase = Phase.Setup) }
