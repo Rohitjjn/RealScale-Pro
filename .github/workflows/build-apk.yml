@@ -139,6 +139,38 @@ jobs:
           done
           echo "::notice title=ZeroModelsVerified::unzip -l verified zero models-*, .bin, .param, or .mnn files in both debug & release APKs."
 
+      # Issue: "app update says package conflicts with an existing package". Both variants are
+      # signed with the repository's stable key, so this step proves a freshly downloaded APK will
+      # install straight over the previous one, and prints the certificate for the release notes.
+      - name: Verify both APKs are signed with the stable update key
+        run: |
+          APKSIGNER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}" -name apksigner -type f | sort -V | tail -n 1)
+          test -n "$APKSIGNER"
+          echo "### Signing certificate (update key)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Variant | SHA-256 of signing certificate |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+          CERTS=""
+          for VARIANT in release debug; do
+            APK_PATH=$(find "RealSR-NCNN-Android-GUI/app/build/outputs/apk/$VARIANT" -name "*.apk" | head -n 1)
+            test -f "$APK_PATH"
+            CERT=$("$APKSIGNER" verify --print-certs "$APK_PATH" | grep -i "certificate SHA-256 digest" | head -n 1 | awk '{print $NF}')
+            test -n "$CERT"
+            echo "| \`$VARIANT\` | \`$CERT\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=ApkCert_${VARIANT}::${VARIANT} signing certificate SHA-256 = $CERT"
+            CERTS="$CERTS $CERT"
+          done
+          UNIQUE=$(echo "$CERTS" | tr ' ' '\n' | sort -u | grep -c . || true)
+          if [ "$UNIQUE" -ne 1 ]; then
+            echo "::error title=SigningKeysDiffer::release and debug APKs are signed with different certificates ($CERTS)"
+            exit 1
+          fi
+          if ! echo "$CERTS" | grep -qi "45C3D0AA1E3153AC4CC6185436EB9C1CF05C182BD17A78CE5D07839E3BF8C7BD"; then
+            echo "::error title=SigningKeyChanged::the APK is not signed with the stable keystore/realscale.p12 key, so it will not update an existing install"
+            exit 1
+          fi
+          echo "::notice title=StableSigningKeyVerified::both APKs share the stable update key; installing over a previous build will work."
+
       - name: Upload Distributable APKs
         uses: actions/upload-artifact@v7
         with:

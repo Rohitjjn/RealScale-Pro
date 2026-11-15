@@ -10,7 +10,16 @@ enum class ModelInstallStatus {
     PAUSED,
     VERIFYING,
     INSTALLED,
-    FAILED
+    FAILED;
+
+    /**
+     * True only for states the Model Manager should draw as a transfer (progress ring, pause or
+     * retry). Every catalog row emits a state, so treating `NOT_INSTALLED` — or `INSTALLED` — as a
+     * download is what turned all 14 cards into dead "0 % · Tap to cancel" rings with no way to
+     * start a download.
+     */
+    val isActiveTransfer: Boolean
+        get() = this == QUEUED || this == DOWNLOADING || this == VERIFYING || this == PAUSED || this == FAILED
 }
 
 @Entity(tableName = "downloaded_models")

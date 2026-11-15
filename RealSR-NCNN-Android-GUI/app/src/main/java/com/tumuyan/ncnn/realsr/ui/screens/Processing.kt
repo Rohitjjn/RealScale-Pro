@@ -94,8 +94,8 @@ fun TileFill(
     val limit = done.coerceIn(0, total)
     Box(
         modifier
-            .clip(RoundedCornerShape(RsRadius.sm.dp))
-            .background(c.darkElevated),
+            .clip(RoundedCornerShape(RsRadius.md.dp))
+            .background(c.soft),
     ) {
         // 1. Untouched area: the same photo, desaturated and dim.
         AsyncImage(
@@ -230,37 +230,36 @@ fun ProcessingScreen(store: AppStore) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp),
         ) {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(RsRadius.md.dp))
-                    .background(c.dark)
-                    .padding(12.dp),
+            /*
+             * The photo stands on its own: no dark card, no border, no padding box around the tile
+             * grid. The only thing behind it is the screen background.
+             */
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                TileFill(
+                    photoUri = photo.uri,
+                    cols = cols,
+                    rows = rows,
+                    done = doneCells,
+                    active = active,
+                    modifier = Modifier
+                        .width(300.dp)
+                        .aspectRatio(aspect),
+                )
+            }
+            Row(
+                Modifier.padding(top = 10.dp, start = 2.dp, end = 2.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    TileFill(
-                        photoUri = photo.uri,
-                        cols = cols,
-                        rows = rows,
-                        done = doneCells,
-                        active = active,
-                        modifier = Modifier
-                            .width(280.dp)
-                            .aspectRatio(aspect),
-                    )
-                }
-                Row(Modifier.padding(top = 12.dp, start = 4.dp, end = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        "Tile $tileNow of ${plan.tiles}",
-                        style = RsType.mono(12f).copy(fontFeatureSettings = "tnum"),
-                        color = c.onDark,
-                    )
-                    Text(
-                        "${if (plan.tilePx > 0) "${plan.tilePx} px" else "no tiling"} · ${plan.compute} · ${plan.scale}×",
-                        style = RsType.mono(12f).copy(fontFeatureSettings = "tnum"),
-                        color = c.onDarkSoft,
-                    )
-                }
+                Text(
+                    "Tile $tileNow of ${plan.tiles}",
+                    style = RsType.mono(12f).copy(fontFeatureSettings = "tnum"),
+                    color = c.muted,
+                )
+                Text(
+                    "${if (plan.tilePx > 0) "${plan.tilePx} px" else "no tiling"} · ${plan.compute} · ${plan.scale}×",
+                    style = RsType.mono(12f).copy(fontFeatureSettings = "tnum"),
+                    color = c.muted,
+                )
             }
 
             Row(Modifier.padding(top = 24.dp).fillMaxWidth(), verticalAlignment = Alignment.Bottom) {

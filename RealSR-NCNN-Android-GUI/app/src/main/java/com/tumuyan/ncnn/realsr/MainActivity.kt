@@ -120,6 +120,13 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        // A tap on the ongoing progress notification lands on the live upscaling screen.
+        if (incoming.getBooleanExtra(ProcessingService.EXTRA_OPEN_PROCESSING, false)) {
+            incoming.removeExtra(ProcessingService.EXTRA_OPEN_PROCESSING)
+            store.openProcessing()
+            if (store.state.value.job?.status == com.tumuyan.ncnn.realsr.ui.state.JobStatus.Running) return
+        }
+
         val creationId = incoming.getLongExtra(ProcessingService.EXTRA_OPEN_CREATION_ID, -1L)
         if (creationId > 0L) {
             incoming.removeExtra(ProcessingService.EXTRA_OPEN_CREATION_ID)

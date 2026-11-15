@@ -211,9 +211,7 @@ fun ModelsScreen(store: AppStore) {
                 },
             )
             val pending = listed.filter {
-                it.id !in state.installed &&
-                    state.downloads[it.id] == null &&
-                    ModelCatalog.fit(it, device.tier).tone != "no"
+                it.id !in state.installed && state.downloads[it.id] == null && it.blocked == null
             }
             if (pending.size > 1) {
                 Row(
@@ -338,7 +336,9 @@ fun ModelCard(
     val installed = model.id in state.installed
     val download = state.downloads[model.id]
     val fit = ModelCatalog.fit(model, store.device.tier)
-    val unavailable = fit.tone == "no" && !installed
+    // "Too heavy" is a performance warning, not a wall: the user can still install it and try.
+    val unavailable = model.blocked != null && !installed
+    val heavy = !unavailable && !installed && fit.tone == "no"
 
     Column(
         Modifier
@@ -378,30 +378,37 @@ fun ModelCard(
             }
 
             Column(
-                Modifier.width(76.dp),
+                Modifier.width(84.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 when {
                     download != null -> {
+                        val paused = download.state == "paused"
+                        val failed = download.state == "failed"
                         ModelProgressDisc(
                             progress = download.progress,
-                            label = when (download.state) {
-                                "queued" -> "Queued"
-                                "paused" -> "Paused"
-                                "failed" -> "Retry"
+                            label = when {
+                                failed -> "Retry"
+                                paused -> "Resume"
+                                download.state == "queued" -> "Queued"
+                                download.state == "verifying" -> "Check"
                                 else -> "${(download.progress * 100).toInt()}%"
                             },
+                            contentDescription = when {
+                                failed -> "Retry the ${model.name} download"
+                                paused -> "Resume the ${model.name} download"
+                                else -> "Cancel the ${model.name} download"
+                            },
                             onClick = {
-                                if (download.state == "failed") store.downloadModel(model.id)
-                                else store.cancelDownload(model.id)
+                                when {
+                                    failed || paused -> store.downloadModel(model.id)
+                                    else -> store.cancelDownload(model.id)
+                                }
                             },
                         )
                         Text(
-                            when (download.state) {
-                                "failed" -> "Tap to retry"
-                                else -> "Tap to cancel"
-                            },
-                            style = RsType.body(10f),
+                            if (download.state == "verifying") "Verifying" else fmtMB(model.sizeMB),
+                            style = RsType.mono(11f),
                             color = c.muted,
                             modifier = Modifier.padding(top = 6.dp),
                         )
@@ -452,25 +459,36 @@ fun ModelCard(
                         )
                     }
                     else -> {
-                        Box(
+                        // A real button that names its size, instead of a bare round icon.
+                        Row(
                             Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
+                                .fillMaxWidth()
+                                .heightIn(min = 40.dp)
+                                .clip(RoundedCornerShape(RsRadius.sm.dp))
                                 .background(c.ink)
-                                .clickable { store.downloadModel(model.id) },
-                            contentAlignment = Alignment.Center,
+                                .clickable { store.downloadModel(model.id) }
+                                .padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
                         ) {
                             Icon(
                                 LucideIcons.Download,
                                 contentDescription = "Download ${model.name}",
                                 tint = c.canvas,
-                                modifier = Modifier.size(21.dp),
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(5.dp))
+                            Text(
+                                fmtMB(model.sizeMB),
+                                style = RsType.mono(11f),
+                                color = c.canvas,
+                                maxLines = 1,
                             )
                         }
                         Text(
-                            fmtMB(model.sizeMB),
-                            style = RsType.mono(11f),
-                            color = c.muted,
+                            if (heavy) "Heavy" else "Download",
+                            style = RsType.body(10f),
+                            color = if (heavy) c.mutedSoft else c.muted,
                             modifier = Modifier.padding(top = 6.dp),
                         )
                     }
@@ -495,6 +513,7 @@ fun ModelCard(
 private fun ModelProgressDisc(
     progress: Float,
     label: String,
+    contentDescription: String,
     onClick: () -> Unit,
 ) {
     val c = LocalRsColors.current
@@ -502,7 +521,7 @@ private fun ModelProgressDisc(
     Box(
         Modifier
             .size(44.dp)
-            .clickable { onClick() },
+            .clickable(onClickLabel = contentDescription) { onClick() },
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {

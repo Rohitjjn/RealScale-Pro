@@ -16,10 +16,29 @@ android {
         minSdk = 24
         // Keep targetSdk = 28 so extracted native CLI binaries in cache/realsr remain executable on Android 10+
         targetSdk = 28
-        versionCode = 57
-        versionName = "2.2.0"
+        versionCode = 58
+        versionName = "2.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    /**
+     * One stable signing key for every build, checked into the repo on purpose.
+     *
+     * Both variants used to be signed with the runner's auto-generated debug keystore, which is
+     * different on every CI run: Android then refuses "Install" over an existing copy with
+     * "App not installed / package conflicts with an existing package". Shipping one PKCS#12 key
+     * (side-load distribution, not Play) makes every APK from this repository update the previous
+     * one in place.
+     */
+    signingConfigs {
+        create("realscale") {
+            storeFile = rootProject.file("keystore/realscale.p12")
+            storeType = "PKCS12"
+            storePassword = "realscale2026"
+            keyAlias = "realscale"
+            keyPassword = "realscale2026"
+        }
     }
 
     buildTypes {
@@ -31,12 +50,13 @@ android {
                 "proguard-rules.pro"
             )
             resValue("string", "app_name", "RealScale-Pro")
+            signingConfig = signingConfigs.getByName("realscale")
         }
 
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("realscale")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

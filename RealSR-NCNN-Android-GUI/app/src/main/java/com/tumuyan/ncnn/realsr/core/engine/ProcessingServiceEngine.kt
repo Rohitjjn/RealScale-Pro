@@ -641,7 +641,9 @@ class ProcessingServiceEngine(
                         prev
                     }
                 }
-                service.updateStructuredProgress(notifTitle, "Saving to Gallery…", 99)
+                // No extra notification for the save step: it posted a second, never-cleared row
+                // that stayed at 99 % after the job finished. The in-app stage text covers it.
+                service.updateStructuredProgress(notifTitle, "Saving", 100)
 
                 val galleryFileName = OutputNameFormatter.buildGalleryFileName(
                     originalDisplayName = entry.fileNameHint,
@@ -703,6 +705,7 @@ class ProcessingServiceEngine(
             }
 
             refreshQueueSnapshot()
+            runCatching { boundService?.finishSession() }
             if (sessionCreations.isNotEmpty()) {
                 val totalDuration = (System.currentTimeMillis() - sessionStartMs).coerceAtLeast(1L)
                 _state.value = EngineState.Completed(
@@ -717,8 +720,10 @@ class ProcessingServiceEngine(
                 _state.value = EngineState.Cancelled
             }
         } catch (_: CancellationException) {
+            runCatching { boundService?.finishSession() }
             _state.value = EngineState.Cancelled
         } catch (t: Throwable) {
+            runCatching { boundService?.finishSession() }
             jobQueue.clearAll()
             refreshQueueSnapshot()
             _state.value = EngineState.Failed(

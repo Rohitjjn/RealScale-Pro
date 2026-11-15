@@ -209,3 +209,24 @@ time) is now the sort key, newest first, left to right.
 - The existing Home → Settings (theme Dark → System) → Model Manager walkthrough now exercises real
   recomposition instead of accidental full-tree redraws; it is the regression guard for the
   observation bug.
+
+## Phase 3 fixes (2.2.1)
+
+- `Home` → *Gallery* calls `store.pickFile()` (system picker); the in-app `GalleryScreen` stays in
+  the navigator but is no longer the tile's destination.
+- `ModelInstallStatus.isActiveTransfer` is the single source of truth for "this row is downloading";
+  `AppStore.observeCatalog` filters with it, `ModelCard` shows a `↓ size` button otherwise. Unit test
+  `ModelInstallStatusTest` pins the two states that must never count as a transfer.
+- `TileFill` lost its dark card; the Processing screen draws the photo on `canvas` with a muted
+  caption row.
+- `RunningJobCard` (DesignApp) + `AppStore.openProcessing()` + `ProcessingService.EXTRA_OPEN_PROCESSING`
+  give the background job two ways back to its screen.
+- `ProcessingService.finishSession()` and the removal of `forceUpdateNotification` end the
+  never-cleared "Saving to Gallery… 99 %" row; the engine calls it when a batch ends or is cancelled.
+- `ZoomableImageFile` (new) draws `OomSafeImageDecoders.decodeDownsampledPreview` plus a
+  `decodeHighResRegionTile` region for the settled viewport, so the full-screen result is 1:1 sharp
+  while zoomed; `ResultFullscreen` uses it.
+- Signing: `keystore/realscale.p12` (PKCS#12, CN=RealScale-Pro, SHA-256
+  `45:C3:D0:AA:1E:31:53:AC:4C:C6:18:54:36:EB:9C:1C:F0:5C:18:2B:D1:7A:78:CE:5D:07:83:9E:3B:F8:C7:BD`)
+  is used by both build types, and CI fails if the two APKs disagree or the certificate changes.
+- Version 2.2.0 (57) → 2.2.1 (58).

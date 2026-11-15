@@ -128,9 +128,11 @@ fun HomeScreen(store: AppStore) {
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp),
                 )
                 val tiles = listOf(
-                    Quad(AppGlyphs.Photo, "Gallery", "Browse albums on this device") {
+                    // The system photo picker, not the app's own grid: one tap, every album and
+                    // every cloud-backed gallery on the device, and no permission dialog.
+                    Quad(AppGlyphs.Photo, "Gallery", "Pick a photo from this device") {
                         store.haptic(HapticKind.Light)
-                        store.push(Route.Gallery)
+                        store.pickFile()
                     },
                     Quad(LucideIcons.FolderOpen, "Files", "Any folder or cloud drive") {
                         store.haptic(HapticKind.Light)

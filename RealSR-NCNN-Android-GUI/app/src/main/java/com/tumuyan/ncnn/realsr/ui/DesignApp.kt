@@ -9,7 +9,24 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
@@ -18,6 +35,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tumuyan.ncnn.realsr.design.LocalRsColors
+import com.tumuyan.ncnn.realsr.design.RsRadius
+import com.tumuyan.ncnn.realsr.design.RsType
+import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.design.RsTheme
 import com.tumuyan.ncnn.realsr.design.RsToastHost
 import com.tumuyan.ncnn.realsr.ui.screens.AboutScreen
@@ -35,6 +55,7 @@ import com.tumuyan.ncnn.realsr.ui.screens.UpscalesScreen
 import com.tumuyan.ncnn.realsr.ui.screens.ViewerScreen
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
 import com.tumuyan.ncnn.realsr.ui.state.AppUiState
+import com.tumuyan.ncnn.realsr.ui.state.JobStatus
 import com.tumuyan.ncnn.realsr.ui.state.Phase
 import com.tumuyan.ncnn.realsr.ui.state.Route
 import com.tumuyan.ncnn.realsr.ui.state.ThemePref
@@ -68,6 +89,14 @@ fun RealScaleDesignApp(store: AppStore) {
 
 @Composable
 private fun Journey(store: AppStore, state: AppUiState) {
+    Box(Modifier.fillMaxSize()) {
+        Screens(store, state)
+        RunningJobCard(store, state)
+    }
+}
+
+@Composable
+private fun Screens(store: AppStore, state: AppUiState) {
     val reduce = com.tumuyan.ncnn.realsr.design.rememberReduceMotion()
     val route = state.route
 
@@ -123,4 +152,80 @@ private fun Route.depth(): Int = when (this) {
     Route.Processing -> 5
     is Route.Result -> 6
     is Route.ResultFull -> 7
+}
+
+/**
+ * "Still upscaling" card.
+ *
+ * "Continue in background" leaves the Processing screen on Home, and from there the job used to be
+ * unreachable — the only way back was to run the flow again. This floating card follows the user
+ * across every screen while a job runs and opens the Processing screen on tap.
+ */
+@Composable
+private fun RunningJobCard(store: AppStore, state: AppUiState) {
+    val job = state.job ?: return
+    if (job.status != JobStatus.Running) return
+    // Only on screens without their own sticky footer: the card must never sit on top of a CTA.
+    val ownsScreen = when (state.route) {
+        Route.Home, Route.Models, Route.Settings, Route.Upscales -> false
+        else -> true
+    }
+    if (ownsScreen) return
+
+    val c = LocalRsColors.current
+    val photo = state.photos.firstOrNull { it.id == job.photoId }
+    val percent = (job.progress * 100).toInt().coerceIn(0, 100)
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(RsRadius.md.dp))
+                .background(c.inverse)
+                .clickable { store.openProcessing() }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(c.canvas.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "$percent",
+                    style = RsType.mono(11f),
+                    color = c.canvas,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Upscaling in the background",
+                    style = RsType.body(14f, FontWeight.Medium),
+                    color = c.canvas,
+                    maxLines = 1,
+                )
+                Text(
+                    "${photo?.name ?: "Your photo"} · tap to open",
+                    style = RsType.body(12f),
+                    color = c.canvas.copy(alpha = 0.7f),
+                    maxLines = 1,
+                )
+            }
+            Icon(
+                LucideIcons.ChevronRight,
+                contentDescription = null,
+                tint = c.canvas,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
 }

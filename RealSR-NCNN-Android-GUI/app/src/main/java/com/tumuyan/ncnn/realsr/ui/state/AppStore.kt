@@ -472,8 +472,14 @@ class AppStore(
                         ModelCatalog.byManifestId(state.catalog.id)?.let { add(it.id) }
                     }
                 }.distinct()
+                /*
+                 * Every catalog row emits a state, and a model the user never touched reports
+                 * NOT_INSTALLED. Mapping all of them into `downloads` made every card look like a
+                 * transfer in progress — a dead 0 % ring with "Tap to cancel" and no way to start
+                 * the download at all. Only a real, user-visible transfer state belongs here.
+                 */
                 val downloads = states
-                    .filter { it.status.name != "INSTALLED" }
+                    .filter { it.status.isActiveTransfer }
                     .mapNotNull { state ->
                         val entry = ModelCatalog.byManifestId(state.catalog.id) ?: return@mapNotNull null
                         entry.id to ModelDownloadUi(
@@ -915,6 +921,22 @@ class AppStore(
     fun clearJob() = update { it.copy(job = null) }
 
     fun setJobBackground(background: Boolean) = update { it.copy(job = it.job?.copy(background = background)) }
+
+    /**
+     * Brings the running job back to the front: used by the "running in background" card and by a
+     * tap on the ongoing notification. No-op when nothing is running or the screen is already up.
+     */
+    fun openProcessing() {
+        val job = _state.value.job ?: return
+        if (job.status != JobStatus.Running) return
+        if (_state.value.route is Route.Processing) return
+        update { state ->
+            state.copy(
+                job = job.copy(background = false),
+                routes = state.routes.filterNot { it is Route.Processing } + Route.Processing,
+            )
+        }
+    }
 
     fun acknowledgeJob() {
         container.engine.acknowledgeTerminalState()

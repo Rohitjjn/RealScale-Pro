@@ -49,6 +49,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import java.io.File
 import coil3.compose.AsyncImage
 import com.tumuyan.ncnn.realsr.core.plan.ModeId
 import com.tumuyan.ncnn.realsr.core.plan.fmtDims
@@ -209,49 +210,20 @@ fun ResultFullscreen(store: AppStore, resultId: String) {
         return
     }
 
-    var scale by remember(result.id) { mutableFloatStateOf(1f) }
-    var offset by remember(result.id) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    var zoomed by remember(result.id) { mutableStateOf(false) }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .pointerInput(result.id) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(1f, 5f)
-                    offset = if (scale <= 1f) {
-                        androidx.compose.ui.geometry.Offset.Zero
-                    } else {
-                        androidx.compose.ui.geometry.Offset(
-                            x = (offset.x + pan.x).coerceIn(-size.width.toFloat(), size.width.toFloat()),
-                            y = (offset.y + pan.y).coerceIn(-size.height.toFloat(), size.height.toFloat()),
-                        )
-                    }
-                }
-            }
-            .pointerInput(result.id) {
-                detectTapGestures(
-                    onTap = { chrome = !chrome },
-                    onDoubleTap = {
-                        scale = if (scale > 1.05f) 1f else 2.5f
-                        if (scale == 1f) offset = androidx.compose.ui.geometry.Offset.Zero
-                    },
-                )
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        AsyncImage(
-            model = "file://${result.outputPath}",
-            contentDescription = "Upscaled ${result.fileName}, full screen",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale,
-                    translationX = offset.x,
-                    translationY = offset.y,
-                ),
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        /*
+         * The photo is drawn by ZoomableImageFile: a fast preview plus a native-resolution region
+         * decoded for whatever part of the upscale is on screen. That is what makes a 4× file look
+         * sharp when you pinch in, instead of the stretched bitmap the old AsyncImage + graphicsLayer
+         * pair produced.
+         */
+        ZoomableImageFile(
+            file = File(result.outputPath),
+            modifier = Modifier.fillMaxSize(),
+            onTap = { chrome = !chrome },
+            onZoomChange = { zoomed = it },
         )
 
         AnimatedVisibility(
@@ -304,7 +276,7 @@ fun ResultFullscreen(store: AppStore, resultId: String) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "Pinch or double-tap to zoom · tap to hide these controls",
+                    if (zoomed) "Drag to look around · double-tap to fit" else "Pinch or double-tap to zoom · tap to hide these controls",
                     style = RsType.body(12f),
                     color = c.onDarkSoft,
                 )

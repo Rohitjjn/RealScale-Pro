@@ -2,6 +2,18 @@
 
 All notable changes to **RealScale-Pro** are documented in this file.
 
+## [2.2.1] - 2026-11-15
+
+### Fixed
+- **Gallery tile opens the device picker.** Home's *Gallery* now launches the system photo picker (albums, Google Photos, every gallery provider) instead of the app's own grid; *Files* keeps the full folder browser.
+- **Model Manager downloads.** Every catalog row emits a state, and a model the user never touched reported `NOT_INSTALLED` — which the store mapped into `downloads`, so all cards showed a dead 0 % ring with "Tap to cancel" and there was no way to start a download from the screen. Only real transfer states (`QUEUED`, `DOWNLOADING`, `VERIFYING`, `PAUSED`, `FAILED`) are drawn now (`ModelInstallStatus.isActiveTransfer`), and a not-installed model gets a real **Download** button with its size inside it. "Too heavy" is a warning, no longer a wall.
+- **No box around the live tile grid.** The monochrome-preview card had a dark surface and padding that read as a black border; the photo now sits directly on the screen background with a caption row underneath.
+- **The job is reachable again.** "Continue in background" left the Processing screen with no way back. A floating card ("Upscaling in the background · tap to open") now follows the user on Home, Models, Settings and My Upscales, and a tap on the ongoing notification opens the Processing screen instead of Home.
+- **Stuck "Saving to Gallery… 99 %" notification.** The save stage posted a second notification that nothing ever cleared, and every finished command left its own "Done" row behind. The save step no longer notifies separately, the per-command row is always removed, and `ProcessingService.finishSession()` clears the foreground notification and stops the service when the batch ends.
+- **Full-screen viewer is sharp.** The upscale was decoded once at screen size and stretched by the GPU, so pinching in made it blurry. The viewer now paints a fast preview and, once the gesture settles, a native-resolution region of exactly the visible area decoded with `BitmapRegionDecoder` (`ZoomableImageFile`), with a loading indicator and pan limits.
+- **App updates install over the old version.** Both variants were signed with the CI runner's auto-generated debug key, which changes on every run, so Android answered "package conflicts with an existing package". The repository now ships one stable PKCS#12 key (`keystore/realscale.p12`), both `debug` and `release` use it, and CI verifies both APKs carry the same certificate. *Existing installs need one uninstall because they carry the old key.*
+- Version **2.2.1** (`58`).
+
 ## [2.2.0] - 2026-11-14
 
 ### Added
