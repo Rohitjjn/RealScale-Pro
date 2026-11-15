@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
@@ -169,7 +170,11 @@ fun ZoomableImageFile(
         contentAlignment = Alignment.Center,
     ) {
         val base = preview
-        if (base != null && viewport.width > 0 && intrinsicW > 0 && scale > 0f) {
+        // Compose draws ImageBitmap, not android.graphics.Bitmap; the wrapper is cheap (no copy) but
+        // it is remembered so a pan frame does not allocate a new one.
+        val baseImage = remember(base) { base?.bitmap?.asImageBitmap() }
+        val tileImage = remember(tile) { tile?.bitmap?.asImageBitmap() }
+        if (baseImage != null && viewport.width > 0 && intrinsicW > 0 && scale > 0f) {
             Canvas(Modifier.fillMaxSize()) {
                 val originX = size.width / 2f + panX
                 val originY = size.height / 2f + panY
@@ -177,9 +182,9 @@ fun ZoomableImageFile(
                 fun screenY(imageY: Float) = originY + (imageY - intrinsicH / 2f) * scale
 
                 drawImage(
-                    image = base.bitmap,
+                    image = baseImage,
                     srcOffset = IntOffset.Zero,
-                    srcSize = IntSize(base.bitmap.width, base.bitmap.height),
+                    srcSize = IntSize(baseImage.width, baseImage.height),
                     dstOffset = IntOffset(screenX(0f).roundToInt(), screenY(0f).roundToInt()),
                     dstSize = IntSize(
                         (intrinsicW * scale).roundToInt().coerceAtLeast(1),
@@ -190,11 +195,12 @@ fun ZoomableImageFile(
 
                 tile?.let { sharp ->
                     val src = sharp.sourceRect
-                    if (src.width() > 0 && src.height() > 0) {
+                    val sharpImage = tileImage
+                    if (sharpImage != null && src.width() > 0 && src.height() > 0) {
                         drawImage(
-                            image = sharp.bitmap,
+                            image = sharpImage,
                             srcOffset = IntOffset.Zero,
-                            srcSize = IntSize(sharp.bitmap.width, sharp.bitmap.height),
+                            srcSize = IntSize(sharpImage.width, sharpImage.height),
                             dstOffset = IntOffset(screenX(src.left.toFloat()).roundToInt(), screenY(src.top.toFloat()).roundToInt()),
                             dstSize = IntSize(
                                 (src.width() * scale).roundToInt().coerceAtLeast(1),
