@@ -66,14 +66,6 @@ object LucideIcons {
     val TriangleAlert: ImageVector by lazy { build("TriangleAlert", "triangle-alert") }
     val X: ImageVector by lazy { build("X", "x") }
     val Zap: ImageVector by lazy { build("Zap", "zap") }
-    val Activity: ImageVector by lazy { build("Activity", "activity") }
-    val Bot: ImageVector by lazy { build("Bot", "bot") }
-    val CircleDollarSign: ImageVector by lazy { build("CircleDollarSign", "circle-dollar-sign") }
-    val CreditCard: ImageVector by lazy { build("CreditCard", "credit-card") }
-    val KeyRound: ImageVector by lazy { build("KeyRound", "key-round") }
-    val Server: ImageVector by lazy { build("Server", "server") }
-    val Sparkles: ImageVector by lazy { build("Sparkles", "sparkles") }
-    val WandSparkles: ImageVector by lazy { build("WandSparkles", "wand-sparkles") }
 
     private fun build(name: String, id: String): ImageVector {
         val builder = ImageVector.Builder(
@@ -333,53 +325,6 @@ object LucideIcons {
             }
             "Zap" -> builder.apply {
             path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z") }
-            }
-            "Activity" -> builder.apply {
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2") }
-            }
-            "Bot" -> builder.apply {
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M12 8V4H8") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 6 8 h 12 a 2 2 0 0 1 2 2 v 8 a 2 2 0 0 1 -2 2 h -12 a 2 2 0 0 1 -2 -2 v -8 a 2 2 0 0 1 2 -2 z") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M2 14h2") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M20 14h2") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M15 13v2") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M9 13v2") }
-            }
-            "CircleDollarSign" -> builder.apply {
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 2 12 a 10 10 0 1 0 20 0 a 10 10 0 1 0 -20 0") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M12 18V6") }
-            }
-            "CreditCard" -> builder.apply {
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 4 5 h 16 a 2 2 0 0 1 2 2 v 10 a 2 2 0 0 1 -2 2 h -16 a 2 2 0 0 1 -2 -2 v -10 a 2 2 0 0 1 2 -2 z") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 2 10 L 22 10") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M6 14h2") }
-            }
-            "KeyRound" -> builder.apply {
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z") }
-            path(fill = SolidColor(Color.Black), stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 16 7.5 a 0.5 0.5 0 1 0 1 0 a 0.5 0.5 0 1 0 -1 0") }
-            }
-            "Server" -> builder.apply {
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 4 2 h 16 a 2 2 0 0 1 2 2 v 4 a 2 2 0 0 1 -2 2 h -16 a 2 2 0 0 1 -2 -2 v -4 a 2 2 0 0 1 2 -2 z") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 4 14 h 16 a 2 2 0 0 1 2 2 v 4 a 2 2 0 0 1 -2 2 h -16 a 2 2 0 0 1 -2 -2 v -4 a 2 2 0 0 1 2 -2 z") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 6 6 L 6.01 6") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 6 18 L 6.01 18") }
-            }
-            "Sparkles" -> builder.apply {
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M20 2v4") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M22 4h-4") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M 2 20 a 2 2 0 1 0 4 0 a 2 2 0 1 0 -4 0") }
-            }
-            "WandSparkles" -> builder.apply {
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("m14 7 3 3") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M5 6v4") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M19 14v4") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M10 2v2") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M7 8H3") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M21 16h-4") }
-            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) { addSvgPath("M11 3H9") }
             }
             else -> builder
         }.build()

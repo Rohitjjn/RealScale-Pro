@@ -58,8 +58,6 @@ import com.tumuyan.ncnn.realsr.design.RsRadius
 import com.tumuyan.ncnn.realsr.design.RsRow
 import com.tumuyan.ncnn.realsr.design.RsSheet
 import com.tumuyan.ncnn.realsr.design.RsType
-import com.tumuyan.ncnn.realsr.design.EyebrowLabel
-import com.tumuyan.ncnn.realsr.design.RsSwitchRow
 import com.tumuyan.ncnn.realsr.design.Skeleton
 import com.tumuyan.ncnn.realsr.design.icons.AppGlyphs
 import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
@@ -168,7 +166,7 @@ fun HomeScreen(store: AppStore) {
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     MODES.forEach { (id, title, desc) ->
-                        val on = state.mode == id && !state.aiMode
+                        val on = state.mode == id
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -176,12 +174,9 @@ fun HomeScreen(store: AppStore) {
                                 .background(if (on) c.inverse else c.canvas)
                                 .border(1.dp, if (on) c.inverse else c.hairline, RoundedCornerShape(RsRadius.md.dp))
                                 .clickable(role = Role.RadioButton) {
-                                    if (id == state.mode && !state.aiMode) return@clickable
+                                    if (id == state.mode) return@clickable
                                     if (id == ModeId.SUPER && !state.superIntroSeen) pendingMode = id
                                     else store.setMode(id)
-                                    // Round 5: the three modes are exclusive; picking a local one
-                                    // leaves AI mode.
-                                    store.setAiMode(false)
                                 }
                                 .padding(16.dp),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -211,66 +206,6 @@ fun HomeScreen(store: AppStore) {
                             )
                         }
                     }
-                }
-
-                /*
-                 * Round 5, feature 2: AI Upscale is the third mode, right under the two on-device
-                 * ones. It is not a re-skin of them — it uploads the photo to a model the user pays
-                 * for — so it carries its own badge and its own "add a key" line.
-                 */
-                val aiOn = state.aiMode
-                Row(
-                    Modifier
-                        .padding(horizontal = 20.dp)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(RsRadius.md.dp))
-                        .background(if (aiOn) c.inverse else c.canvas)
-                        .border(1.dp, if (aiOn) c.inverse else c.hairline, RoundedCornerShape(RsRadius.md.dp))
-                        .clickable(role = Role.RadioButton) {
-                            when {
-                                !aiOn -> {
-                                    store.setAiMode(true)
-                                    if (!state.aiReady) store.toast("Add an API key to use AI upscaling")
-                                }
-                                // Already the selected mode but nothing to run it with: the card is
-                                // then the shortcut to the key setup instead of a dead tap.
-                                !state.aiReady -> store.push(Route.AiKeys)
-                            }
-                        }
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "AI Upscale Mode",
-                                style = RsType.body(16f, FontWeight.Medium),
-                                color = if (aiOn) c.onInverse else c.ink,
-                            )
-                            RsBadge("API", tone = if (aiOn) RsBadgeTone.Dark else RsBadgeTone.Neutral)
-                        }
-                        Text(
-                            "Your own cloud model rebuilds detail the phone cannot. Needs an API key and the internet.",
-                            style = RsType.body(14f, lineHeightRatio = 1.55f),
-                            color = if (aiOn) c.onInverseSoft else c.muted,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                        if (!state.aiReady) {
-                            Text(
-                                "No API key yet · tap to set one up",
-                                style = RsType.body(13f, FontWeight.Medium, 1.4f),
-                                color = if (aiOn) c.onInverseSoft else c.ink,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
-                        }
-                    }
-                    RadioMark(
-                        checked = aiOn,
-                        modifier = Modifier.padding(top = 2.dp),
-                        borderColor = if (aiOn) c.onInverse else null,
-                        fillColor = if (aiOn) c.onInverse else null,
-                        tint = if (aiOn) c.inverse else null,
-                    )
                 }
 
                 /* 5. App options */
@@ -304,65 +239,8 @@ fun HomeScreen(store: AppStore) {
                             onClick = { store.push(Route.About) },
                         )
                     }
-                    /*
-                     * Round 5, feature 1/2 — the AI section lives at the very bottom of Home: state,
-                     * usage, the on/off switch and the way into the key dashboard. Nothing here is a
-                     * dead end: every row opens either the dashboard or the mode itself.
-                     */
-                    EyebrowLabel(
-                        "AI image upscaling",
-                        Modifier.padding(top = 32.dp, start = 4.dp, bottom = 8.dp),
-                    )
-                    RsGroup {
-                        RsRow(
-                            title = "AI upscaling",
-                            sub = "Bring your own model API: Gemini, OpenAI, Stability or Replicate.",
-                            icon = LucideIcons.Sparkles,
-                            value = when {
-                                state.aiKeys.isEmpty() -> "Not set up"
-                                state.aiKeys.size == 1 -> "1 key"
-                                else -> "${state.aiKeys.size} keys"
-                            },
-                            chevron = true,
-                            topDivider = false,
-                            onClick = { store.push(Route.AiKeys) },
-                        )
-                        RsRow(
-                            title = "This month",
-                            sub = "Images sent to the providers from this app.",
-                            icon = LucideIcons.Activity,
-                            value = "${store.aiUsedThisMonth()}",
-                            onClick = { store.push(Route.AiKeys) },
-                        )
-                        RsSwitchRow(
-                            title = "Start in AI Upscale Mode",
-                            sub = "Picking an image then opens the AI screen instead of the on-device one.",
-                            checked = state.aiMode,
-                            onChange = { on ->
-                                store.setAiMode(on)
-                                if (on && !state.aiReady) store.push(Route.AiKeys)
-                            },
-                        )
-                    }
-                    RsButton(
-                        onClick = { store.push(Route.AiKeys) },
-                        modifier = Modifier.padding(top = 12.dp),
-                        variant = RsButtonVariant.Secondary,
-                        size = RsButtonSize.Md,
-                        full = true,
-                        icon = LucideIcons.KeyRound,
-                        label = if (state.aiKeys.isEmpty()) "Add an API key" else "Manage API keys and limits",
-                    )
                     Text(
-                        "On-device modes never upload anything. AI mode sends one photo per upscale to " +
-                            "the provider whose key you pick, and bills their account, not this app.",
-                        style = RsType.body(12f, lineHeightRatio = 1.5f),
-                        color = c.muted,
-                        modifier = Modifier.padding(top = 12.dp, start = 4.dp, end = 4.dp),
-                    )
-
-                    Text(
-                        "RealScale-Pro 2.3 · On-device, plus optional AI",
+                        "RealScale-Pro · Works fully offline",
                         style = RsType.body(13f),
                         color = c.muted,
                         modifier = Modifier.padding(top = 32.dp).fillMaxWidth(),
@@ -397,20 +275,10 @@ fun HomeScreen(store: AppStore) {
         RsSheet(open = sheet == "more", onClose = { sheet = null }, title = "More ways to import") {
             RsGroup(Modifier.padding(bottom = 8.dp)) {
                 RsRow(
-                    title = "Paste from clipboard",
-                    sub = "Use an image you copied",
-                    icon = LucideIcons.Clipboard,
-                    chevron = true,
-                    topDivider = false,
-                    onClick = {
-                        sheet = null
-                        store.pasteFromClipboard()
-                    },
-                )
-                RsRow(
                     title = "Share from other apps",
                     sub = "In any app: Share → RealScale-Pro. The image opens here for upscaling.",
                     icon = LucideIcons.Share2,
+                    topDivider = false,
                 )
             }
         }

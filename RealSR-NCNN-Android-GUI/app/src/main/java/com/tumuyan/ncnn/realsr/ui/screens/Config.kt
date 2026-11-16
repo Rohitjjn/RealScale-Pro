@@ -185,7 +185,7 @@ fun ConfigScreen(store: AppStore, photoId: String) {
                 /*
                  * 5.1 preview.
                  *
-                 * Round 5, issue 3: this used to be `fillMaxWidth().heightIn(max = 320.dp)`
+                 * This used to be `fillMaxWidth().heightIn(max = 320.dp)`
                  * `.aspectRatio(ratio)`. For a 9:16 photo the width-first measurement produced a
                  * 640 dp height, the height limit then forced the *width* down to ~180 dp, and the
                  * whole screen's content collapsed into a narrow column — the "UI bigad jata hai"
@@ -210,47 +210,24 @@ fun ConfigScreen(store: AppStore, photoId: String) {
                             contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxSize(),
                         )
-                        Row(
-                            Modifier.align(Alignment.BottomEnd).padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(12.dp)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(c.stage.copy(alpha = 0.75f)),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            /*
-                             * Round 5, feature 3: the AI icon sits just left of the fullscreen icon.
-                             * No key yet → the API setup screen; a key → the AI configuration screen.
-                             * Both cases are decided in the store.
-                             */
-                            Box(
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(c.inverse.copy(alpha = 0.9f))
-                                    .clickable { store.openAiUpscale(photo.id) },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    LucideIcons.Sparkles,
-                                    contentDescription = "AI upscale this image",
-                                    tint = c.onInverse,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                            Box(
-                                Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(c.stage.copy(alpha = 0.75f)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(LucideIcons.Expand, contentDescription = null, tint = c.onDark, modifier = Modifier.size(16.dp))
-                            }
+                            Icon(LucideIcons.Expand, contentDescription = null, tint = c.onDark, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
 
                 /*
-                 * Round-4, issue 9: the picked file's name — and "Imported …" for a shared image —
-                 * used to sit under the preview. Round 5, issue 3 adds the rest of the selected-image
-                 * details in one organised block instead of a single crowded line.
+                 * The picked file's name — and "Imported …" for a shared image — used to sit under
+                 * the preview. What belongs here is what the user is about to process, in one
+                 * organised block instead of a single crowded line.
                  */
                 RsGroup(Modifier.padding(top = 14.dp)) {
                     RsRow(

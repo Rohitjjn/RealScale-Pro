@@ -2,6 +2,32 @@
 
 All notable changes to **RealScale-Pro** are documented in this file.
 
+## [2.3.1] - 2026-11-14
+
+Round 5 cleanup: no cloud anything. The app is fully on-device again, and the import screen is back to
+three ways in.
+
+### Removed
+- **AI Upscale Mode is gone, completely.** The third mode card on Home, the AI section at the bottom of
+  Home, the Settings row, the AI icon on the image preview, the API key setup/dashboard, the AI
+  configuration screen (Default / Manual / Advanced), the AI processing screen, `core/ai/*` (catalog,
+  key store, HTTP client, image prep), the `AiKeys` / `AiConfig` / `AiProcessing` routes and
+  `AiCatalogTest`. No API key field, no provider list, no network call, no `INTERNET` use for upscaling.
+- **"Paste from clipboard" is gone.** The fourth tile on Home's *More* sheet, `MediaIntents.pasteImage`
+  and the whole clipboard implementation were removed. *Gallery*, *Files* and *Camera* are the three
+  ways in, and the *More* sheet keeps its "Share from other apps" note.
+
+### Kept
+- **A finished upscale still lands on the Result screen**: no `home()` from Processing, the stack is
+  rewritten even when the job object is already cleared, and a visible Processing screen follows the
+  new creation as soon as its row exists.
+- **The 9:16 configuration screen** keeps its stable full-width preview with a clamped height and the
+  grouped selected-image facts (resolution · size · type · aspect).
+- **The import path** keeps its hard-won robustness: a `file://` uri no longer throws inside
+  `photoFromUri` (guarded query, mime derived from the file name) and one unreadable uri cannot abort a
+  multi-image import.
+- Version **2.3.1** (`61`).
+
 ## [2.3.0] - 2026-11-14
 
 Round 5: the three reports that survived 2.2.2 were reproduced and fixed at their root, and **AI
@@ -13,18 +39,10 @@ Upscale Mode** was added — bring your own model API and upscale with a cloud i
 - **The configuration screen no longer collapses for tall photos.** The preview used `fillMaxWidth().heightIn(max = 320.dp).aspectRatio(ratio)`; for a 9:16 photo the width-first measurement produced a 640 dp height, the height cap then forced the *width* down to ~180 dp and the entire screen's content shrank into a narrow column. The card is now full width with a clamped height and the photo is letterboxed inside it, so nothing moves for any aspect ratio.
 - **Selected-image details are their own block.** Resolution, file size, type and aspect ratio sit in a grouped card under the preview instead of one crowded line.
 
-### Added — AI Upscale Mode
-- **Third mode on Home**, under *Upscale Mode* and *Super Resolution Mode*, with its own card: the photo is sent to a cloud model the user pays for. Picking a local mode leaves AI mode; picking AI mode sends a newly picked image to the AI configuration screen.
-- **API setup and dashboard** (`AI Upscaling`): add keys for **Google Gemini**, **OpenAI**, **Stability AI**, **Replicate** or a **custom OpenAI-compatible endpoint**; several keys per provider, one name per key, masked display, enable/disable, monthly image limits, per-key usage, reset usage, delete with confirmation, links to each provider's key page, and an overview of keys / active keys / images used this month. Keys live in the app's private prefs and are only sent as the request header of the provider that was chosen.
-- **AI icon on the image preview**, immediately left of the fullscreen icon: no key yet → the API setup screen; a key → the **AI Image Upscale configuration** screen.
-- **AI configuration screen** mirroring the on-device one — *Default / Manual / Advanced*:
-  - **Default**: a model is chosen automatically (seeded by the photo, so it is stable on screen) from the saved keys, and the photo is uploaded with the built-in reconstruction prompt.
-  - **Manual**: model, scale (per model), which key, and the prompt.
-  - **Advanced**: everything in Manual plus output format (PNG / JPG / WebP), face enhancement and faithfulness (model-dependent) and the upload size limit.
-- **AI processing screen** with its own animation — a single beam sweeping the whole frame instead of the engine's tile grid — plus the provider stage, elapsed seconds, an estimate, cancel, retry on failure and "continue in background".
-- **AI results are ordinary results**: the same Result screen (before/after slider, share, full screen), saved to the gallery or the chosen SAF folder, listed in *My Upscales* with the model name and an `AI` badge, and charged against the key's monthly limit only after the provider returned an image.
-- Requests are built locally with `HttpURLConnection`: OpenAI `/images/edits` (multipart), Gemini `generateContent` (inline image part), Stability `stable-image/upscale/*`, Replicate `models/{owner}/{name}/predictions` with polling. Uploads are capped and re-encoded, answers are resized to the requested scale (or saved byte-for-byte when too large to decode), and provider errors are translated into one actionable sentence.
-- Version **2.3.0** (`60`).
+### Withdrawn
+- A short-lived 2.3.0 build also carried an **AI Upscale Mode** (bring-your-own cloud model API).
+  It was removed again on request in 2.3.1, together with the *Paste from clipboard* import option.
+  The three fixes above are unaffected.
 
 ## [2.2.2] - 2026-11-14
 

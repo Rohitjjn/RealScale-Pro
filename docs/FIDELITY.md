@@ -61,9 +61,6 @@ visible reads `MaterialTheme.colorScheme`.
 | 10.4 | Help and feedback | `screens/Settings.tsx` | `ui/screens/Settings.kt` (`HelpScreen`) | 67 | `FAQ`, `AppStore.saveFeedback` | — |
 | 10.5 | About | `screens/Settings.tsx` | `ui/screens/Settings.kt` (`AboutScreen`) | 68, 69 | `LICENSES` | — |
 | 4.5 | Quick Upscale sheet (`ACTION_VIEW`) | `components/ui.tsx` + old `QuickUpscaleSheet` | `ui/screens/QuickUpscaleSheet.kt` | — (no prototype state) | engine + manifest catalog | instrumented |
-| 5.9 | AI Upscale config (new) | — (not in the prototype; Round 5) | `ui/screens/AiConfig.kt` | — | `AiPrefs` + `AppStore.aiTarget()` | unit (catalog) |
-| 5.10 | AI key setup / dashboard (new) | — | `ui/screens/AiKeys.kt` + `ui/screens/AiControls.kt` | — | `AiKeyRecord` via `core/ai/AiKeyStore.kt` | unit (`AiCatalogTest`) |
-| 6.6 | AI processing (new) | — | `ui/screens/AiProcessing.kt` | — | `AiJobUi` fed by `AppStore.startAiJob` | — |
 | shell | Toast | `components/ui.tsx` | `design/Sheet.kt` (`RsToastHost`) | 77 | `state.toast` | instrumented (indirectly) |
 | shell | Navigation | `lib/store.tsx` (`nav.push/pop/home`) | `ui/DesignApp.kt` (`Journey`) | — | `state.routes` | instrumented |
 
@@ -255,8 +252,9 @@ Eleven issues, all of them cases where the UI promised something the code never 
   *Save folder* opens `OpenDocumentTree`, persists the grant and sets `EnginePreferences.outputTreeUri`
   (also passed per job from `AppSettings.saveFolderUri`); EXIF copy in `OutputPostProcessor.copyMetadata`;
   `clearTemporaryCache` also drops `crop_preview` and imports older than three days.
-- **Clipboard.** `MediaIntentsHost.pasteImage()` accepts `uri`, a share-intent stream, a raw bitmap and
-  a `content://`/`file://` text; a quiet intake path keeps one paste from stacking error toasts.
+- **Intake robustness.** `MediaLibrary.photoFromUri()` guards its `ContentResolver.query()` (a
+  `file://` uri has no MediaStore row and used to throw) and a multi-image import no longer aborts on
+  one unreadable uri. The clipboard paste option was removed again in 2.3.1.
 - **Super Resolution.** `AppStore.missingHeavyModel` is the planner's `wanted` entry in SUPER mode;
   `startJob` refuses to run and starts the download, the CTA becomes that download, and the model card
   shows the heavy model with a "Download first" badge.
@@ -269,7 +267,7 @@ Eleven issues, all of them cases where the UI promised something the code never 
   copied after that so the tags survive the re-encode.
 - Version 2.2.1 (58) → 2.2.2 (59).
 
-## Round 5 — AI Upscale Mode and three root-cause fixes (2.3.0)
+## Round 5 — three root-cause fixes, and the AI mode that was withdrawn (2.3.1)
 
 - **Result arrival, again.** 2.2.2 fixed the Result screen, not the screen before it. `ProcessingScreen`
   called `store.home()` when the job was null or `photoById` missed (a shared file, a revoked uri — both
@@ -277,24 +275,18 @@ Eleven issues, all of them cases where the UI promised something the code never 
   been cleared, so *no* navigation ran. Now: no `home()` from Processing, the stack is rewritten even
   with `job == null`, and `observeResults` moves a still-visible Processing screen to the Result as soon
   as the row exists. Three independent paths, all idempotent.
-- **Clipboard.** Root cause was in the intake, not the reader: `MediaLibrary.photoFromUri()` called
-  `ContentResolver.query()` unguarded, and the clipboard path hands it a `file://` uri (the clip is
-  copied into `cache/imports` first), which throws `IllegalArgumentException` — the paste died before
-  the screen ever opened. Guarded, mime derived from the name, and `pasteImage()` now reads every clip
-  item and every shape: uri, share-intent stream, `content://` / `file://` / absolute path in the text,
-  and a browser's HTML `<img src>` (downloaded when remote).
 - **Tall images on Config.** `heightIn(max = 320.dp).aspectRatio(ratio)` measured width-first, so a 9:16
   photo produced a 640 dp height, the cap forced the width down to ~180 dp and the whole screen collapsed
   into a column. The preview is a full-width card with `height = (width / ratio).coerceIn(170..320)` and
   `ContentScale.Fit`, and the selected-image facts live in their own `RsGroup` (resolution, size, type,
   aspect).
-- **AI Upscale Mode** is a Round-5 product addition with no prototype state to copy, so it borrows the
-  prototype's *language* rather than its pixels: the same three-level segmented control, `RsGroup` rows,
-  key sheet, `RsBadge`s and the amber sweep (reused from the before/after slider) for the processing
-  beam. The on-device modes never upload anything; only this mode uses the network, and only the photo
-  being upscaled is sent.
-- **Provider transports** are metadata-driven (`core/ai/AiCatalog.kt`) and implemented with
-  `HttpURLConnection` (`core/ai/AiImageClient.kt`): OpenAI-style multipart `/images/edits`, Gemini
-  `generateContent` with an inline image part, Stability `stable-image/upscale/*`, Replicate predictions
-  with polling. Keys are `SharedPreferences` JSON (`core/ai/AiKeyStore.kt`), never uploaded.
-- Version 2.2.2 (59) → 2.3.0 (60).
+- **Import intake.** `MediaLibrary.photoFromUri()` queried the `ContentResolver` unguarded; the import
+  path hands it a `file://` uri (the picked file is copied into `cache/imports` first), which has no
+  MediaStore row and throws `IllegalArgumentException`. Guarded, mime derived from the file name, and a
+  batch no longer aborts on one unreadable uri.
+- **Withdrawn: AI Upscale Mode and the clipboard paste option.** A short-lived 2.3.0 build shipped a
+  bring-your-own-model cloud upscaler (third mode card, API key dashboard, `AiConfig`, `AiProcessing`,
+  `core/ai/*`) plus a fourth import option that read the clipboard. Both were removed in 2.3.1: the app
+  is on-device only again, and *Gallery* / *Files* / *Camera* are the three ways in. No prototype state
+  exists for either, so nothing in the fidelity map changes because of the removal.
+- Version 2.2.2 (59) → 2.3.0 (60, withdrawn) → 2.3.1 (61).

@@ -30,8 +30,6 @@ const NAMES = [
   'Images', 'Info', 'Laptop', 'Layers', 'Lock', 'MemoryStick', 'MessageSquare', 'Minus', 'Pause', 'Play',
   'Plus', 'RefreshCw', 'Replace', 'RotateCcw', 'Settings', 'Share2', 'ShieldCheck', 'Smartphone', 'Tablet',
   'Thermometer', 'Trash2', 'TriangleAlert', 'X', 'Zap',
-  // Round 5 — AI Upscale Mode: the AI badge, keys, usage and the cloud model rows.
-  'Activity', 'Bot', 'CircleDollarSign', 'CreditCard', 'KeyRound', 'Server', 'Sparkles', 'WandSparkles',
 ];
 
 const kebab = (name) =>

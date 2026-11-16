@@ -42,9 +42,6 @@ import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.design.RsTheme
 import com.tumuyan.ncnn.realsr.design.RsToastHost
 import com.tumuyan.ncnn.realsr.ui.screens.AboutScreen
-import com.tumuyan.ncnn.realsr.ui.screens.AiConfigScreen
-import com.tumuyan.ncnn.realsr.ui.screens.AiKeysScreen
-import com.tumuyan.ncnn.realsr.ui.screens.AiProcessingScreen
 import com.tumuyan.ncnn.realsr.ui.screens.ConfigScreen
 import com.tumuyan.ncnn.realsr.ui.screens.GalleryScreen
 import com.tumuyan.ncnn.realsr.ui.screens.HelpScreen
@@ -134,9 +131,6 @@ private fun Screens(store: AppStore, state: AppUiState) {
             is Route.Viewer -> ViewerScreen(store, target.photoId, target.single)
             is Route.Config -> ConfigScreen(store, target.photoId)
             Route.Processing -> ProcessingScreen(store)
-            Route.AiKeys -> AiKeysScreen(store)
-            is Route.AiConfig -> AiConfigScreen(store, target.photoId)
-            Route.AiProcessing -> AiProcessingScreen(store)
             is Route.Result -> ResultScreen(store, target.resultId)
             is Route.ResultFull -> ResultFullscreen(store, target.resultId)
             Route.Upscales -> UpscalesScreen(store)
@@ -153,11 +147,10 @@ private fun Screens(store: AppStore, state: AppUiState) {
 private fun Route.depth(): Int = when (this) {
     Route.Home -> 0
     Route.Upscales, Route.Gallery -> 1
-    Route.Models, Route.Settings, Route.Help, Route.About, Route.AiKeys -> 2
+    Route.Models, Route.Settings, Route.Help, Route.About -> 2
     is Route.Viewer -> 3
     is Route.Config -> 4
-    Route.Processing, Route.AiProcessing -> 5
-    is Route.AiConfig -> 4
+    Route.Processing -> 5
     is Route.Result -> 6
     is Route.ResultFull -> 7
 }

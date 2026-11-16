@@ -1,8 +1,6 @@
 package com.tumuyan.ncnn.realsr.ui
 
 import android.Manifest
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -31,12 +29,6 @@ class MediaIntentsHost(
 ) : MediaIntents {
 
     private val counter = AtomicInteger(0)
-
-    /** `<img src="…">` inside an HTML clipboard item: what a browser puts on the clipboard. */
-    private val IMG_SRC = Regex(
-        """<img[^>]+src\s*=\s*["']([^"']+)["']""",
-        RegexOption.IGNORE_CASE,
-    )
 
     /** Set just before `TakePicture` launches; the contract writes the full image here. */
     private var cameraUri: Uri? = null
@@ -214,153 +206,10 @@ class MediaIntentsHost(
         return true
     }
 
-    /**
-     * Round-4, issue 7: "Paste from clipboard" only looked at `ClipData.Item.uri`. That is one of the
-     * three shapes the platform actually hands out — the others are a *share intent* (whose
-     * `EXTRA_STREAM` is the image, used by Chrome and Files) and plain text that is itself a
-     * `content://` / `file://` uri (used by some galleries). `ClipData.Item` has no bitmap accessor,
-     * so those three cover everything a clipboard can carry, and each one goes through the normal
-     * intake path.
-     */
-    override fun pasteImage(): Boolean {
-        val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        if (clipboard == null) {
-            store.toast("This device has no clipboard")
-            return false
-        }
-        // `primaryClip` throws on some OEM builds when the app is not the focused window yet.
-        val clip = runCatching { clipboard.primaryClip }.getOrNull()
-        if (clip == null || clip.itemCount == 0) {
-            store.toast("The clipboard is empty")
-            return false
-        }
-
-        /*
-         * Round 5, issue 2 — the whole clip is read now, not just item 0, and every shape the platform
-         * can put on it is tried: a uri, a share intent's EXTRA_STREAM, a `content://` / `file://` /
-         * absolute path in the text (a "uri list" is a newline-separated one), and the `<img src>` of
-         * an HTML clip (Chrome and most browsers copy an image as HTML, with no uri at all).
-         */
-        val candidates = mutableListOf<Uri>()
-        val remote = mutableListOf<String>()
-        for (index in 0 until clip.itemCount) {
-            val item = clip.getItemAt(index)
-            item.uri?.let { candidates += it }
-            clipStreamUri(item)?.let { candidates += it }
-            item.text?.toString()?.let { text ->
-                text.split('\n', '\r', ' ')
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
-                    .forEach { token -> uriFromToken(token)?.let { uri -> candidates += uri } }
-            }
-            item.htmlText?.let { html ->
-                IMG_SRC.findAll(html).forEach { match ->
-                    val src = match.groupValues[1].trim()
-                    if (src.startsWith("http://") || src.startsWith("https://")) {
-                        if (remote.none { it == src }) remote += src
-                    } else {
-                        uriFromToken(src)?.let { uri -> candidates += uri }
-                    }
-                }
-            }
-        }
-
-        val distinct = candidates.distinctBy { it.toString() }
-        if (distinct.isNotEmpty() && importQuiet(distinct)) return true
-
-        // Last resort: an image URL copied from a browser. Downloaded on a background thread.
-        if (remote.isNotEmpty()) {
-            store.toast("Downloading the copied image…")
-            importFromUrls(remote)
-            return true
-        }
-
-        val hasImageMime = clip.description?.hasMimeType("image/*") == true
-        store.toast(
-            if (hasImageMime) {
-                "That image could not be read. Copy it again or use Gallery."
-            } else {
-                "No image on the clipboard. Copy an image, then tap Paste."
-            },
-        )
-        return false
-    }
-
-    /** Accepts `content://`, `file://`, `content:/…` and an absolute path to an existing image. */
-    private fun uriFromToken(token: String): Uri? {
-        val clean = token.trim().trim('"', '\'', '<', '>')
-        if (clean.isEmpty()) return null
-        return when {
-            clean.startsWith("content://") || clean.startsWith("file://") ->
-                runCatching { Uri.parse(clean) }.getOrNull()
-
-            clean.startsWith("content:/") -> runCatching {
-                Uri.parse("content://" + clean.removePrefix("content:/").removePrefix("/"))
-            }.getOrNull()
-
-            clean.startsWith("/") -> runCatching { File(clean) }.getOrNull()
-                ?.takeIf { it.isFile }
-                ?.let { Uri.fromFile(it) }
-
-            else -> null
-        }
-    }
-
-    /** Downloads a copied http(s) image into the cache, then runs it through the normal intake. */
-    private fun importFromUrls(urls: List<String>) {
-        Thread {
-            val files = urls.mapNotNull { url -> downloadToCache(url) }
-            activity.runOnUiThread {
-                if (files.isEmpty()) {
-                    store.toast("The copied image could not be downloaded")
-                } else {
-                    importQuiet(files.map { Uri.fromFile(it) })
-                }
-            }
-        }.start()
-    }
-
-    private fun downloadToCache(url: String): File? = runCatching {
-        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-        connection.connectTimeout = 15_000
-        connection.readTimeout = 30_000
-        connection.instanceFollowRedirects = true
-        connection.setRequestProperty("User-Agent", "RealScale-Pro")
-        try {
-            connection.inputStream.use { input ->
-                val dir = File(activity.cacheDir, "imports").apply { mkdirs() }
-                val type = connection.contentType?.substringBefore(';')?.substringAfterLast('/')
-                val ext = type?.takeIf { it in setOf("jpeg", "jpg", "png", "webp") } ?: "jpg"
-                val target = File(dir, "import-${System.currentTimeMillis()}-${counter.incrementAndGet()}.$ext")
-                target.outputStream().use { output -> input.copyTo(output) }
-                if (target.length() < 512L) {
-                    target.delete()
-                    null
-                } else {
-                    target
-                }
-            }
-        } finally {
-            connection.disconnect()
-        }
-    }.getOrNull()
-
     override fun pickSaveFolder() {
         runCatching { pickFolder.launch(null) }.onFailure {
             store.toast("No folder picker on this device")
         }
-    }
-
-    /** A clip item may carry a share intent (Chrome, Files) whose stream is the image. */
-    private fun clipStreamUri(item: ClipData.Item): Uri? {
-        val intent = item.intent ?: return null
-        val stream: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
-        }
-        return stream ?: intent.data
     }
 
     /** Import one image that arrived from another app. */
@@ -376,7 +225,7 @@ class MediaIntentsHost(
         return imported
     }
 
-    /** Same intake without the failure toast, so a clipboard with four candidate shapes stays quiet. */
+    /** Same intake without the failure toast, so a batch keeps one message at most. */
     private fun importQuiet(uris: List<Uri>): Boolean {
         if (uris.isEmpty()) return false
         // One unreadable uri must not abort a batch that also contains a good image.

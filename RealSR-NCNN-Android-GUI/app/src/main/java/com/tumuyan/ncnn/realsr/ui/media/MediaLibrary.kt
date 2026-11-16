@@ -87,10 +87,9 @@ class MediaLibrary(private val context: Context) {
     fun photoFromUri(uri: Uri): PhotoItem? {
         val resolver = context.contentResolver
         /*
-         * Round 5, issue 2: a `file://` uri has no MediaStore row, and `ContentResolver.query` throws
-         * IllegalArgumentException for it instead of returning null. "Paste from clipboard" is the one
-         * entry point that hands this function a `file://` uri (it copies the clip into the app cache
-         * first), which is why the fourth import option never worked while the pickers did.
+         * A `file://` uri has no MediaStore row and `ContentResolver.query` throws
+         * IllegalArgumentException for it instead of returning null — and the import path hands this
+         * function exactly that shape after copying a picked image into the app cache.
          */
         val name = runCatching {
             resolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use { c ->
