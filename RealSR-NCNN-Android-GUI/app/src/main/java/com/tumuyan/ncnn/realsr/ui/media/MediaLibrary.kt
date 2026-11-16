@@ -125,7 +125,7 @@ class MediaLibrary(private val context: Context) {
         )
     }
 
-    /** `image/*` for a file name, used when the resolver has no mime (a `file://` uri). */
+    /** The image mime type for a file name, used when the resolver has no mime (a `file://` uri). */
     private fun mimeFromExtension(name: String): String =
         when (name.substringAfterLast('.', "").lowercase(Locale.US)) {
             "png" -> "image/png"

@@ -135,7 +135,7 @@ fun AiKeysScreen(store: AppStore) {
             ) {
                 Stat("Keys", keys.size.toString(), Modifier.weight(1f))
                 Stat("Active", state.aiActiveKeys.size.toString(), Modifier.weight(1f))
-                Stat("This month", state.aiUsedThisMonth().toString(), Modifier.weight(1f))
+                Stat("This month", store.aiUsedThisMonth().toString(), Modifier.weight(1f))
             }
 
             if (keys.isEmpty()) {

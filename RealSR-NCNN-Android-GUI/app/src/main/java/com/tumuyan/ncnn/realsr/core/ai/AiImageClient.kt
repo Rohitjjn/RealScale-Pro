@@ -217,7 +217,7 @@ object AiImageClient {
 
     /* ------------------------------------------------------------------ Replicate */
 
-    private fun replicateRun(request: AiRequest, onStage: (String) -> Unit): AiRawResult {
+    private suspend fun replicateRun(request: AiRequest, onStage: (String) -> Unit): AiRawResult {
         val b64 = Base64.encodeToString(request.imageBytes, Base64.NO_WRAP)
         val payload = buildJsonObject {
             putJsonObject("input") {

@@ -42,6 +42,9 @@ import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.design.RsTheme
 import com.tumuyan.ncnn.realsr.design.RsToastHost
 import com.tumuyan.ncnn.realsr.ui.screens.AboutScreen
+import com.tumuyan.ncnn.realsr.ui.screens.AiConfigScreen
+import com.tumuyan.ncnn.realsr.ui.screens.AiKeysScreen
+import com.tumuyan.ncnn.realsr.ui.screens.AiProcessingScreen
 import com.tumuyan.ncnn.realsr.ui.screens.ConfigScreen
 import com.tumuyan.ncnn.realsr.ui.screens.GalleryScreen
 import com.tumuyan.ncnn.realsr.ui.screens.HelpScreen
