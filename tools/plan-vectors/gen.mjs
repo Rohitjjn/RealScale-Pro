@@ -136,10 +136,11 @@ const FORMATS = ['default', 'jpeg', 'png', 'webp'];
 const COMPRESSION = ['auto', 'off', 'custom'];
 const TTA = [false, true];
 const PRECISION = ['auto', 'fp16', 'fp32'];
-const MODEL_CHOICES = ['auto', 'esrgan-general-v3', 'anime4k-x4', 'esrgan-nomos8ksc'];
+// Round-4: the ghost Anime4K catalog rows are gone, so the manual-model vectors use real ones.
+const MODEL_CHOICES = ['auto', 'esrgan-general-v3', 'esrgan-remacri', 'esrgan-nomos8ksc'];
 const INSTALLED_SETS = [
   { name: 'all', ids: modelTable.map((m) => m.id) },
-  { name: 'starter', ids: ['esrgan-general-v3', 'waifu2x-anime', 'srmd-x2', 'anime4k-x2'] },
+  { name: 'starter', ids: ['esrgan-general-v3', 'waifu2x-anime', 'srmd-x2', 'df2k'] },
   { name: 'none', ids: [] },
   { name: 'partial', ids: ['esrgan-general-v3'] },
 ];
