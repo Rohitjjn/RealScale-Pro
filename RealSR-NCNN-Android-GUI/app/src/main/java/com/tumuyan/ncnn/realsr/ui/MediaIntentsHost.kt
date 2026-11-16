@@ -32,6 +32,12 @@ class MediaIntentsHost(
 
     private val counter = AtomicInteger(0)
 
+    /** `<img src="…">` inside an HTML clipboard item: what a browser puts on the clipboard. */
+    private val IMG_SRC = Regex(
+        """<img[^>]+src\s*=\s*["']([^"']+)["']""",
+        RegexOption.IGNORE_CASE,
+    )
+
     /** Set just before `TakePicture` launches; the contract writes the full image here. */
     private var cameraUri: Uri? = null
 
@@ -217,20 +223,127 @@ class MediaIntentsHost(
      * intake path.
      */
     override fun pasteImage(): Boolean {
-        val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return false
-        val clip = clipboard.primaryClip ?: return false
-        if (clip.itemCount == 0) return false
-        val item = clip.getItemAt(0)
+        val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        if (clipboard == null) {
+            store.toast("This device has no clipboard")
+            return false
+        }
+        // `primaryClip` throws on some OEM builds when the app is not the focused window yet.
+        val clip = runCatching { clipboard.primaryClip }.getOrNull()
+        if (clip == null || clip.itemCount == 0) {
+            store.toast("The clipboard is empty")
+            return false
+        }
 
-        item.uri?.let { uri -> if (importQuiet(listOf(uri))) return true }
-        clipStreamUri(item)?.let { uri -> if (importQuiet(listOf(uri))) return true }
-        item.text?.toString()?.trim()?.let { text ->
-            if (text.startsWith("content://") || text.startsWith("file://")) {
-                if (importQuiet(listOf(Uri.parse(text)))) return true
+        /*
+         * Round 5, issue 2 — the whole clip is read now, not just item 0, and every shape the platform
+         * can put on it is tried: a uri, a share intent's EXTRA_STREAM, a `content://` / `file://` /
+         * absolute path in the text (a "uri list" is a newline-separated one), and the `<img src>` of
+         * an HTML clip (Chrome and most browsers copy an image as HTML, with no uri at all).
+         */
+        val candidates = mutableListOf<Uri>()
+        val remote = mutableListOf<String>()
+        for (index in 0 until clip.itemCount) {
+            val item = clip.getItemAt(index)
+            item.uri?.let { candidates += it }
+            clipStreamUri(item)?.let { candidates += it }
+            item.text?.toString()?.let { text ->
+                text.split('\n', '\r', ' ')
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .forEach { token -> uriFromToken(token)?.let { uri -> candidates += uri } }
+            }
+            item.htmlText?.let { html ->
+                IMG_SRC.findAll(html).forEach { match ->
+                    val src = match.groupValues[1].trim()
+                    if (src.startsWith("http://") || src.startsWith("https://")) {
+                        if (remote.none { it == src }) remote += src
+                    } else {
+                        uriFromToken(src)?.let { uri -> candidates += uri }
+                    }
+                }
             }
         }
+
+        val distinct = candidates.distinctBy { it.toString() }
+        if (distinct.isNotEmpty() && importQuiet(distinct)) return true
+
+        // Last resort: an image URL copied from a browser. Downloaded on a background thread.
+        if (remote.isNotEmpty()) {
+            store.toast("Downloading the copied image…")
+            importFromUrls(remote)
+            return true
+        }
+
+        val hasImageMime = clip.description?.hasMimeType("image/*") == true
+        store.toast(
+            if (hasImageMime) {
+                "That image could not be read. Copy it again or use Gallery."
+            } else {
+                "No image on the clipboard. Copy an image, then tap Paste."
+            },
+        )
         return false
     }
+
+    /** Accepts `content://`, `file://`, `content:/…` and an absolute path to an existing image. */
+    private fun uriFromToken(token: String): Uri? {
+        val clean = token.trim().trim('"', '\'', '<', '>')
+        if (clean.isEmpty()) return null
+        return when {
+            clean.startsWith("content://") || clean.startsWith("file://") ->
+                runCatching { Uri.parse(clean) }.getOrNull()
+
+            clean.startsWith("content:/") -> runCatching {
+                Uri.parse("content://" + clean.removePrefix("content:/").removePrefix("/"))
+            }.getOrNull()
+
+            clean.startsWith("/") -> runCatching { File(clean) }.getOrNull()
+                ?.takeIf { it.isFile }
+                ?.let { Uri.fromFile(it) }
+
+            else -> null
+        }
+    }
+
+    /** Downloads a copied http(s) image into the cache, then runs it through the normal intake. */
+    private fun importFromUrls(urls: List<String>) {
+        Thread {
+            val files = urls.mapNotNull { url -> downloadToCache(url) }
+            activity.runOnUiThread {
+                if (files.isEmpty()) {
+                    store.toast("The copied image could not be downloaded")
+                } else {
+                    importQuiet(files.map { Uri.fromFile(it) })
+                }
+            }
+        }.start()
+    }
+
+    private fun downloadToCache(url: String): File? = runCatching {
+        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 15_000
+        connection.readTimeout = 30_000
+        connection.instanceFollowRedirects = true
+        connection.setRequestProperty("User-Agent", "RealScale-Pro")
+        try {
+            connection.inputStream.use { input ->
+                val dir = File(activity.cacheDir, "imports").apply { mkdirs() }
+                val type = connection.contentType?.substringBefore(';')?.substringAfterLast('/')
+                val ext = type?.takeIf { it in setOf("jpeg", "jpg", "png", "webp") } ?: "jpg"
+                val target = File(dir, "import-${System.currentTimeMillis()}-${counter.incrementAndGet()}.$ext")
+                target.outputStream().use { output -> input.copyTo(output) }
+                if (target.length() < 512L) {
+                    target.delete()
+                    null
+                } else {
+                    target
+                }
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }.getOrNull()
 
     override fun pickSaveFolder() {
         runCatching { pickFolder.launch(null) }.onFailure {
@@ -266,7 +379,10 @@ class MediaIntentsHost(
     /** Same intake without the failure toast, so a clipboard with four candidate shapes stays quiet. */
     private fun importQuiet(uris: List<Uri>): Boolean {
         if (uris.isEmpty()) return false
-        val imported = uris.mapNotNull { uri -> copyToCache(uri)?.let { media.photoFromUri(it) } }
+        // One unreadable uri must not abort a batch that also contains a good image.
+        val imported = uris.mapNotNull { uri ->
+            runCatching { copyToCache(uri)?.let { media.photoFromUri(it) } }.getOrNull()
+        }
         if (imported.isEmpty()) return false
         imported.forEachIndexed { index, photo ->
             if (index == 0) store.onImportedPhoto(photo) else store.addImportedPhoto(photo)
@@ -283,12 +399,23 @@ class MediaIntentsHost(
             it in setOf("jpeg", "jpg", "png", "webp", "heic")
         } ?: "jpg"
         val target = File(dir, "import-${System.currentTimeMillis()}-${counter.incrementAndGet()}.$ext")
-        return runCatching {
+        val copied = runCatching {
             activity.contentResolver.openInputStream(uri)?.use { input ->
                 target.outputStream().use { output -> input.copyTo(output) }
-            } ?: return null
-            // MediaStore needs a real row; a file in the app cache is already readable.
-            Uri.fromFile(target)
-        }.getOrNull()
+            } != null
+        }.getOrDefault(false) || runCatching {
+            // Some OEM providers refuse openInputStream but still hand out a readable descriptor.
+            activity.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                java.io.FileInputStream(pfd.fileDescriptor).use { input ->
+                    target.outputStream().use { output -> input.copyTo(output) }
+                }
+            } != null
+        }.getOrDefault(false)
+        if (!copied || !target.exists() || target.length() == 0L) {
+            target.delete()
+            return null
+        }
+        // MediaStore needs a real row; a file in the app cache is already readable.
+        return Uri.fromFile(target)
     }
 }

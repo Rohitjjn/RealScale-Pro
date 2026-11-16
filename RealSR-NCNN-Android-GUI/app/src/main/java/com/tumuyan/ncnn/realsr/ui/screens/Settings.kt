@@ -90,6 +90,7 @@ private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun SettingsScreen(store: AppStore) {
     val c = LocalRsColors.current
+    val aiKeys = store.rememberState().aiKeys
     val state = store.rememberState()
     val settings = state.settings
     var sheet by remember { mutableStateOf<String?>(null) }
@@ -203,6 +204,30 @@ fun SettingsScreen(store: AppStore) {
                     sub = "Date, camera and location.",
                     checked = settings.keepMeta,
                     onChange = { store.updateSettings { s -> s.copy(keepMeta = it) } },
+                )
+            }
+
+            /* Round 5: the AI dashboard is reachable from Settings too, not only from Home. */
+            SectionLabel("AI upscaling")
+            RsGroup {
+                RsRow(
+                    title = "API keys and usage",
+                    sub = "Bring your own model for AI Upscale Mode.",
+                    icon = LucideIcons.Sparkles,
+                    value = when {
+                        aiKeys.isEmpty() -> "Not set up"
+                        aiKeys.size == 1 -> "1 key"
+                        else -> "${aiKeys.size} keys"
+                    },
+                    chevron = true,
+                    topDivider = false,
+                    onClick = { store.push(Route.AiKeys) },
+                )
+                RsRow(
+                    title = "Images sent this month",
+                    icon = LucideIcons.Activity,
+                    value = "${store.aiUsedThisMonth()}",
+                    onClick = { store.push(Route.AiKeys) },
                 )
             }
 
@@ -351,7 +376,7 @@ private fun <T> OptionList(options: List<Pair<T, Pair<String, String?>>>, select
 
 /** Where the feedback form sends the message. */
 internal const val FEEDBACK_EMAIL = "userrohitai@gmail.com"
-private const val VERSION_LABEL = "2.2.2 (59)"
+private const val VERSION_LABEL = "2.3.0 (60)"
 
 private val FAQ = listOf(
     "Why is upscaling slow on my phone?" to
@@ -530,7 +555,7 @@ fun AboutScreen(store: AppStore) {
             Column(Modifier.padding(top = 16.dp)) {
                 Mark(size = 80.dp)
                 Text("RealScale-Pro", style = RsType.display(36f), color = c.ink, modifier = Modifier.padding(top = 16.dp))
-                Text("Version 2.0 · Image upscaling", style = RsType.body(14f), color = c.muted, modifier = Modifier.padding(top = 6.dp))
+                Text("Version 2.3 · Image upscaling, on-device or AI", style = RsType.body(14f), color = c.muted, modifier = Modifier.padding(top = 6.dp))
                 Text(
                     "An offline, on-device AI image upscaler. Pick a photo, tap Upscale and get a sharper, bigger image with no account and no upload.",
                     style = RsType.body(15f, lineHeightRatio = 1.6f),

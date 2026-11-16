@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -64,6 +65,7 @@ import com.tumuyan.ncnn.realsr.design.RsButtonVariant
 import com.tumuyan.ncnn.realsr.design.RsChip
 import com.tumuyan.ncnn.realsr.design.RsField
 import com.tumuyan.ncnn.realsr.design.RsGroup
+import com.tumuyan.ncnn.realsr.design.RsRow
 import com.tumuyan.ncnn.realsr.design.RsProgressBar
 import com.tumuyan.ncnn.realsr.design.RsRadius
 import com.tumuyan.ncnn.realsr.design.RsSegmented
@@ -180,45 +182,90 @@ fun ConfigScreen(store: AppStore, photoId: String) {
                     .verticalScroll(scroll)
                     .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
-                /* 5.1 preview */
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 320.dp)
-                        .aspectRatio((photo.width.toFloat() / photo.height).coerceIn(0.4f, 2.5f))
-                        .clip(RoundedCornerShape(RsRadius.lg.dp))
-                        .background(c.card)
-                        .clickable { store.push(Route.Viewer(photo.id, single = true)) },
-                ) {
-                    AsyncImage(
-                        model = photo.uri,
-                        contentDescription = "Open ${photo.name} in full view",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                /*
+                 * 5.1 preview.
+                 *
+                 * Round 5, issue 3: this used to be `fillMaxWidth().heightIn(max = 320.dp)`
+                 * `.aspectRatio(ratio)`. For a 9:16 photo the width-first measurement produced a
+                 * 640 dp height, the height limit then forced the *width* down to ~180 dp, and the
+                 * whole screen's content collapsed into a narrow column — the "UI bigad jata hai"
+                 * in the report. The card now has a stable full width and a clamped height, and the
+                 * photo is fitted (letterboxed) inside it, so nothing moves for any aspect ratio.
+                 */
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    val width = maxWidth
+                    val ratio = (photo.width.toFloat() / photo.height).coerceIn(0.35f, 3f)
+                    val previewHeight = (width / ratio).coerceIn(170.dp, 320.dp)
                     Box(
                         Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(12.dp)
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(c.stage.copy(alpha = 0.75f)),
-                        contentAlignment = Alignment.Center,
+                            .fillMaxWidth()
+                            .height(previewHeight)
+                            .clip(RoundedCornerShape(RsRadius.lg.dp))
+                            .background(c.card)
+                            .clickable { store.push(Route.Viewer(photo.id, single = true)) },
                     ) {
-                        Icon(LucideIcons.Expand, contentDescription = null, tint = c.onDark, modifier = Modifier.size(16.dp))
+                        AsyncImage(
+                            model = photo.uri,
+                            contentDescription = "Open ${photo.name} in full view",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        Row(
+                            Modifier.align(Alignment.BottomEnd).padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            /*
+                             * Round 5, feature 3: the AI icon sits just left of the fullscreen icon.
+                             * No key yet → the API setup screen; a key → the AI configuration screen.
+                             * Both cases are decided in the store.
+                             */
+                            Box(
+                                Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(c.inverse.copy(alpha = 0.9f))
+                                    .clickable { store.openAiUpscale(photo.id) },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    LucideIcons.Sparkles,
+                                    contentDescription = "AI upscale this image",
+                                    tint = c.onInverse,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                            Box(
+                                Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(c.stage.copy(alpha = 0.75f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(LucideIcons.Expand, contentDescription = null, tint = c.onDark, modifier = Modifier.size(16.dp))
+                            }
+                        }
                     }
                 }
+
                 /*
                  * Round-4, issue 9: the picked file's name — and "Imported …" for a shared image —
-                 * used to sit under the preview. What the user needs here is the size, not the
-                 * temporary file name the picker happened to give us.
+                 * used to sit under the preview. Round 5, issue 3 adds the rest of the selected-image
+                 * details in one organised block instead of a single crowded line.
                  */
-                Text(
-                    "${fmtDims(photo.width, photo.height)} · ${fmtMB(photo.sizeMB)}",
-                    style = RsType.body(13f).copy(fontFeatureSettings = "tnum"),
-                    color = c.muted,
-                    modifier = Modifier.padding(top = 10.dp),
-                )
+                RsGroup(Modifier.padding(top = 14.dp)) {
+                    RsRow(
+                        title = "Resolution",
+                        value = fmtDims(photo.width, photo.height),
+                        icon = LucideIcons.ImageUpscale,
+                        topDivider = false,
+                    )
+                    RsRow(title = "File size", value = fmtMB(photo.sizeMB))
+                    RsRow(
+                        title = "Type",
+                        value = if (photo.type == ImageType.Anime) "Anime / art" else "Photo",
+                    )
+                    RsRow(title = "Aspect", value = aspectLabelOf(photo.width, photo.height))
+                }
 
                 if (mode == ModeId.SUPER) {
                     Row(
@@ -676,4 +723,19 @@ private fun ManualSections(
             }
         }
     }
+}
+
+/** "9:16" when the numbers are small enough to read, otherwise a decimal ratio. */
+private fun aspectLabelOf(width: Int, height: Int): String {
+    if (width <= 0 || height <= 0) return "—"
+    var a = width
+    var b = height
+    while (b != 0) {
+        val t = a % b
+        a = b
+        b = t
+    }
+    val w = width / a
+    val h = height / a
+    return if (w <= 40 && h <= 40) "$w:$h" else String.format(java.util.Locale.US, "%.2f : 1", width.toDouble() / height)
 }

@@ -8,6 +8,8 @@ import com.tumuyan.ncnn.realsr.core.plan.Plan
 import com.tumuyan.ncnn.realsr.core.plan.PlanLevel
 import com.tumuyan.ncnn.realsr.core.plan.OutputFormatPref
 import com.tumuyan.ncnn.realsr.core.plan.TilePreset
+import com.tumuyan.ncnn.realsr.core.ai.AiKeyRecord
+import com.tumuyan.ncnn.realsr.core.ai.AiPrefs
 import kotlinx.serialization.Serializable
 
 /** Navigation targets, one to one with the prototype's `Route` union. */
@@ -40,6 +42,18 @@ sealed interface Route {
 
     @Serializable
     data object Models : Route
+
+    /** API keys and usage for AI Upscale Mode (Round 5). */
+    @Serializable
+    data object AiKeys : Route
+
+    /** The Default / Manual / Advanced screen for one photo, with AI models instead of tiles. */
+    @Serializable
+    data class AiConfig(val photoId: String) : Route
+
+    /** Upload → reconstruct → download, with its own animation. */
+    @Serializable
+    data object AiProcessing : Route
 
     @Serializable
     data object Settings : Route
@@ -153,6 +167,38 @@ data class JobUi(
 
 enum class JobStatus { Running, Done, Failed, Cancelled }
 
+/**
+ * The AI job as the UI needs it: which model and key are being used, how long it has been running
+ * and what the provider is doing right now. Deliberately separate from [JobUi] — the local engine
+ * has plans, tiles and per-tile progress; a cloud model has one request and one answer.
+ */
+@Immutable
+data class AiJobUi(
+    val photoId: String,
+    val modelId: String,
+    val modelLabel: String,
+    val providerName: String,
+    val keyLabel: String,
+    val scale: Int,
+    val stageLabel: String = "Preparing image",
+    /** 0..1, driven by the stage, not by fake stitching. */
+    val progress: Float = 0.04f,
+    val status: JobStatus = JobStatus.Running,
+    val elapsedSec: Int = 0,
+    val etaSec: Int = 0,
+    val error: String? = null,
+    val resultId: String? = null,
+)
+
+/** The key + model + scale a job will actually use, resolved by `AppStore.aiTarget()`. */
+@Immutable
+data class AiTarget(
+    val key: AiKeyRecord,
+    val model: com.tumuyan.ncnn.realsr.core.ai.AiModel,
+    val provider: com.tumuyan.ncnn.realsr.core.ai.AiProvider,
+    val scale: Int,
+)
+
 @Immutable
 data class ToastMessage(val id: Long, val text: String)
 
@@ -191,6 +237,12 @@ data class AppUiState(
     val lastResultId: String? = null,
     val photosLoading: Boolean = false,
     val job: JobUi? = null,
+    /* ----------------------------- Round 5: AI Upscale Mode ----------------------------- */
+    /** Home's third mode card. When on, picking an image goes straight to [Route.AiConfig]. */
+    val aiMode: Boolean = false,
+    val aiKeys: List<AiKeyRecord> = emptyList(),
+    val aiPrefs: AiPrefs = AiPrefs(),
+    val aiJob: AiJobUi? = null,
     val toast: ToastMessage? = null,
     val downloads: Map<String, ModelDownloadUi> = emptyMap(),
     val selectedUpscales: Set<String> = emptySet(),
@@ -204,6 +256,12 @@ data class AppUiState(
 ) {
     val route: Route get() = routes.last()
     val canGoBack: Boolean get() = routes.size > 1
+
+    /** Keys that may actually be used right now: enabled, with quota left. */
+    val aiActiveKeys: List<AiKeyRecord>
+        get() = aiKeys.filter { it.enabled && !it.quotaReached }
+
+    val aiReady: Boolean get() = aiActiveKeys.isNotEmpty()
 
     fun prefsFor(modeId: ModeId): JobPrefs = prefs[modeId] ?: defaultPrefsFor(modeId)
 

@@ -4,6 +4,16 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.SystemClock
+import com.tumuyan.ncnn.realsr.core.ai.AiCatalog
+import com.tumuyan.ncnn.realsr.core.ai.AiClientException
+import com.tumuyan.ncnn.realsr.core.ai.AiImageClient
+import com.tumuyan.ncnn.realsr.core.ai.AiImagePrep
+import com.tumuyan.ncnn.realsr.core.ai.AiKeyRecord
+import com.tumuyan.ncnn.realsr.core.ai.AiKeyStore
+import com.tumuyan.ncnn.realsr.core.ai.AiModel
+import com.tumuyan.ncnn.realsr.core.ai.AiPrefs
+import com.tumuyan.ncnn.realsr.core.ai.AiRequest
+import com.tumuyan.ncnn.realsr.core.ai.AiProvider
 import com.tumuyan.ncnn.realsr.core.database.ModelInstallStatus
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
 import com.tumuyan.ncnn.realsr.core.device.DeviceProfile
@@ -17,6 +27,7 @@ import com.tumuyan.ncnn.realsr.core.engine.EngineState
 import com.tumuyan.ncnn.realsr.core.engine.ExecutionBackend
 import com.tumuyan.ncnn.realsr.core.engine.ModelExecutionSpec
 import com.tumuyan.ncnn.realsr.core.engine.OutputFormat
+import com.tumuyan.ncnn.realsr.core.engine.OutputNameFormatter
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest
 import com.tumuyan.ncnn.realsr.core.plan.ImageType
@@ -30,6 +41,7 @@ import com.tumuyan.ncnn.realsr.core.plan.PlanInput
 import com.tumuyan.ncnn.realsr.core.plan.PlanLevel
 import com.tumuyan.ncnn.realsr.core.plan.fmtMB
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
+import com.tumuyan.ncnn.realsr.ui.MediaExportHelper
 import com.tumuyan.ncnn.realsr.ui.media.MediaLibrary
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +97,12 @@ class AppStore(
     private var toastJob: Job? = null
     private var resultsJob: Job? = null
     private var jobStartedAt = 0L
+
+    /* Round 5: AI Upscale Mode keeps its own store, its own clock and its own job. */
+    private val aiKeyStore = AiKeyStore(context)
+    private var aiJobTask: Job? = null
+    private var aiJobStartedAt = 0L
+    private var aiTickJob: Job? = null
     private var benchmarkSamples = mutableListOf<Pair<String, Double>>()
 
     init {
@@ -105,8 +123,10 @@ class AppStore(
             runCatching { json.decodeFromString(PersistedState.serializer(), it) }.getOrNull()
         }
         val base = AppUiState()
+        val keys = aiKeyStore.keys()
+        val aiPrefs = aiKeyStore.loadPrefs()
         if (saved == null) {
-            _state.value = base.copy(phase = Phase.Splash)
+            _state.value = base.copy(phase = Phase.Splash, aiKeys = keys, aiPrefs = aiPrefs)
             return
         }
         _state.value = base.copy(
@@ -120,6 +140,9 @@ class AppStore(
             superIntroSeen = saved.superIntroSeen,
             settings = saved.settings,
             prefs = saved.prefs,
+            aiMode = saved.aiMode,
+            aiKeys = keys,
+            aiPrefs = aiPrefs,
         )
     }
 
@@ -136,6 +159,7 @@ class AppStore(
             superIntroSeen = s.superIntroSeen,
             settings = s.settings,
             prefs = s.prefs,
+            aiMode = s.aiMode,
         )
         prefsStore.edit().putString(KEY_STATE, json.encodeToString(PersistedState.serializer(), saved)).apply()
     }
@@ -336,9 +360,19 @@ class AppStore(
         if (mediaIntents == null) toast("No camera available") else mediaIntents?.takePhoto()
     }
 
+    /**
+     * Round 5, issue 2: the host now reports its own reason (empty clip, unreadable image, a
+     * browser's HTML clip being downloaded), so this only has to make sure an exception can never
+     * escape into the composition and leave the sheet looking broken.
+     */
     fun pasteFromClipboard() {
-        val pasted = mediaIntents?.pasteImage() ?: false
-        if (!pasted) toast("No image on the clipboard")
+        val intents = mediaIntents
+        if (intents == null) {
+            toast("The clipboard is not available")
+            return
+        }
+        runCatching { intents.pasteImage() }
+            .onFailure { toast("That clipboard image could not be opened") }
     }
 
     /**
@@ -361,6 +395,15 @@ class AppStore(
             return
         }
         toast("${photo.name} added")
+        /*
+         * Round 5: when Home is on the AI mode card, the picked image goes to the AI configuration
+         * screen — or to the key setup first when no key exists yet (the same two cases as the AI
+         * icon on the configuration screen).
+         */
+        if (_state.value.aiMode) {
+            if (_state.value.aiReady) push(Route.AiConfig(photo.id)) else push(Route.AiKeys)
+            return
+        }
         push(Route.Config(photo.id))
     }
 
@@ -404,7 +447,17 @@ class AppStore(
             container.database.recentCreationDao().observeRecent(200).collect { rows ->
                 val mapped = rows.map(::toResultItem)
                 val ids = mapped.map { it.id }
-                update { it.copy(results = mapped) }
+                update { state -> state.copy(results = mapped) }
+                /*
+                 * Round 5, issue 1: a second net. If the engine finished while this screen was the
+                 * visible one and the stack rewrite above could not run (job already cleared, or the
+                 * row arrived a frame later), the row appearing here is the moment to move on. It
+                 * only ever acts from the processing screen, never against the user's navigation.
+                 */
+                val last = _state.value.lastResultId
+                if (last != null && last in ids && _state.value.route is Route.Processing) {
+                    replaceTop(Route.Result(last))
+                }
                 // A saved or deleted upscale changes the "Recent creations" widget.
                 if (ids != lastResultIds) {
                     lastResultIds = ids
@@ -416,7 +469,12 @@ class AppStore(
 
     private fun toResultItem(row: RecentCreationEntity): ResultItem {
         // `nameFor` also knows the ids that left the catalog, so an old Anime4K creation keeps its name.
-        val modelName = ModelCatalog.nameFor(row.modelId)
+        // AI creations are stored as `ai:<catalog id>` because they never touched the local catalog.
+        val modelName = if (row.modelId.startsWith("ai:")) {
+            AiCatalog.labelFor(row.modelId.removePrefix("ai:"))
+        } else {
+            ModelCatalog.nameFor(row.modelId)
+        }
         return ResultItem(
             id = row.id.toString(),
             photoId = row.sourceUri,
@@ -821,40 +879,38 @@ class AppStore(
                 }
                 val finishedId = first?.id?.toString()
                 update { state ->
-                    val job = state.job
-                    if (job == null) {
-                        state
-                    } else {
-                        /*
-                         * Land on the result. The job used to finish and quietly drop the user back
-                         * on Home — the finished upscale was only reachable through My Upscales.
-                         * The stack is rewritten (not pushed) so back from the result goes to where
-                         * the job was started, and the id is checked so a second emission cannot
-                         * stack a duplicate screen.
-                         */
-                        val routes = if (finishedId != null && state.phase == Phase.App) {
-                            val withoutJobScreens = state.routes.filterNot {
-                                it is Route.Processing || it is Route.Result || it is Route.ResultFull
-                            }
-                            withoutJobScreens + Route.Result(finishedId)
-                        } else {
-                            state.routes
+                    /*
+                     * Land on the result. The job used to finish and quietly drop the user back on
+                     * Home — the finished upscale was only reachable through My Upscales.
+                     *
+                     * Round 5, issue 1: this block used to bail out entirely when `job == null`, so
+                     * any `clearJob()` racing the engine's Completed meant "no navigation at all".
+                     * The stack is rewritten (not pushed) so back from the result goes to where the
+                     * job was started, and the id is checked so a second emission cannot stack a
+                     * duplicate screen.
+                     */
+                    val routes = if (finishedId != null && state.phase == Phase.App) {
+                        val withoutJobScreens = state.routes.filterNot {
+                            it is Route.Processing || it is Route.Result || it is Route.ResultFull
                         }
-                        state.copy(
-                            job = job.copy(
-                                progress = 1f,
-                                status = JobStatus.Done,
-                                resultId = finishedId,
-                                elapsedSec = elapsed,
-                                remainingSec = 0,
-                                stageLabel = "Saved",
-                            ),
-                            /* Kept after `clearJob()`, so the Result screen can still resolve the
-                             * fresh creation while the Room flow catches up (Round-4, issue 1). */
-                            lastResultId = finishedId ?: state.lastResultId,
-                            routes = routes,
-                        )
+                        withoutJobScreens + Route.Result(finishedId)
+                    } else {
+                        state.routes
                     }
+                    state.copy(
+                        job = state.job?.copy(
+                            progress = 1f,
+                            status = JobStatus.Done,
+                            resultId = finishedId,
+                            elapsedSec = elapsed,
+                            remainingSec = 0,
+                            stageLabel = "Saved",
+                        ),
+                        /* Kept after `clearJob()`, so the Result screen can still resolve the
+                         * fresh creation while the Room flow catches up (Round-4, issue 1). */
+                        lastResultId = finishedId ?: state.lastResultId,
+                        routes = routes,
+                    )
                 }
                 container.engine.updatePreferences { prefs -> prefs.copy(lastUsedScale = prefs.lastUsedScale) }
             }
@@ -1010,6 +1066,418 @@ class AppStore(
         container.engine.acknowledgeTerminalState()
     }
 
+    /* ------------------------------------------------------------------ AI Upscale Mode */
+
+    /** Home's third mode card, and the Settings row, both land here. */
+    fun setAiMode(on: Boolean) {
+        if (_state.value.aiMode == on) return
+        haptic(HapticKind.Light)
+        update { it.copy(aiMode = on) }
+    }
+
+    /** The dashboard: keys, usage, limits. */
+    fun openAiKeys() = push(Route.AiKeys)
+
+    /** Opens a provider's key page in the browser. Used by the AI setup screen. */
+    fun openLink(url: String) {
+        if (url.isBlank()) return
+        runCatching {
+            context.startActivity(
+                android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url))
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }.onFailure { toast("No browser available") }
+    }
+
+    fun updateAiPrefs(block: (AiPrefs) -> AiPrefs) {
+        val next = block(_state.value.aiPrefs)
+        if (next == _state.value.aiPrefs) return
+        aiKeyStore.savePrefs(next)
+        update { it.copy(aiPrefs = next) }
+    }
+
+    private fun saveAiKeys(next: List<AiKeyRecord>) {
+        aiKeyStore.saveKeys(next)
+        update { it.copy(aiKeys = next) }
+    }
+
+    /** Keys that can be used right now (enabled and under their monthly limit). */
+    fun aiUsableKeys(): List<AiKeyRecord> = _state.value.aiActiveKeys
+
+    /**
+     * Saves a key. The format is checked locally — never by making a paid call — so a typo is caught
+     * before the user waits for a 401.
+     */
+    fun addAiKey(
+        providerId: String,
+        label: String,
+        key: String,
+        baseUrl: String? = null,
+        modelId: String? = null,
+        monthlyLimit: Int = 0,
+    ): Boolean {
+        val trimmed = key.trim()
+        val provider = AiCatalog.provider(providerId)
+        if (trimmed.length < 8) {
+            toast("That key looks too short")
+            return false
+        }
+        if (provider.keyPrefix != null && !trimmed.startsWith(provider.keyPrefix)) {
+            toast("${provider.name} keys start with ${provider.keyPrefix}")
+            return false
+        }
+        if (provider.allowsCustomBaseUrl && !baseUrl.orEmpty().startsWith("http")) {
+            toast("Add the gateway base URL (https://…)")
+            return false
+        }
+        if (provider.allowsCustomModel && modelId.isNullOrBlank()) {
+            toast("Add the model id your gateway expects")
+            return false
+        }
+        val record = AiKeyRecord(
+            id = "k" + System.currentTimeMillis().toString(36) + (100..999).random(),
+            providerId = providerId,
+            label = label.trim().ifEmpty { provider.name },
+            key = trimmed,
+            baseUrl = baseUrl?.trim()?.takeIf { it.isNotEmpty() },
+            modelId = modelId?.trim()?.takeIf { it.isNotEmpty() },
+            monthlyLimit = monthlyLimit.coerceAtLeast(0),
+            used = 0,
+            usedMonth = AiKeyStore.currentMonth(),
+            enabled = true,
+            createdAt = System.currentTimeMillis(),
+        )
+        saveAiKeys(_state.value.aiKeys + record)
+        haptic(HapticKind.Success)
+        toast("${record.label} added")
+        return true
+    }
+
+    fun updateAiKey(id: String, block: (AiKeyRecord) -> AiKeyRecord) {
+        saveAiKeys(_state.value.aiKeys.map { if (it.id == id) block(it) else it })
+    }
+
+    fun setAiKeyEnabled(id: String, enabled: Boolean) {
+        updateAiKey(id) { it.copy(enabled = enabled) }
+        haptic(HapticKind.Light)
+    }
+
+    fun resetAiKeyUsage(id: String) {
+        updateAiKey(id) { it.copy(used = 0, usedMonth = AiKeyStore.currentMonth()) }
+        toast("Usage reset")
+    }
+
+    fun deleteAiKey(id: String) {
+        val removed = _state.value.aiKeys.firstOrNull { it.id == id }
+        saveAiKeys(_state.value.aiKeys.filterNot { it.id == id })
+        if (_state.value.aiPrefs.keyId == id) updateAiPrefs { it.copy(keyId = null) }
+        removed?.let { toast("${it.label} removed") }
+    }
+
+    /** Total images used this month across every key. */
+    fun aiUsedThisMonth(): Int = _state.value.aiKeys.sumOf { it.used }
+
+    /** Every model the saved keys can reach, for the Manual picker. */
+    fun aiAvailableModels(): List<AiModel> {
+        val providers = _state.value.aiActiveKeys.map { it.providerId }.toSet()
+        val catalog = AiCatalog.modelsForProviders(providers)
+        val custom = _state.value.aiActiveKeys
+            .filter { it.providerId == "custom" }
+            .map { customModelFor(it) }
+        return catalog + custom
+    }
+
+    private fun customModelFor(key: AiKeyRecord): AiModel = AiModel(
+        id = "custom:" + (key.modelId ?: key.id),
+        providerId = "custom",
+        label = key.modelId ?: "Custom model",
+        desc = "Your own endpoint, speaking the OpenAI image-edits dialect.",
+        scales = listOf(2, 4),
+        maxInputMP = 4,
+        approxSec = 30,
+        badge = "Custom",
+        requestId = key.modelId ?: "",
+    )
+
+    /**
+     * Which key and model this job will use.
+     *
+     * Default level is *random but stable*: the choice is seeded by the photo id, so the screen the
+     * user is looking at does not change its mind on every recomposition, while two different photos
+     * genuinely load-balance across the keys and models that are available.
+     */
+    fun aiTarget(photoId: String? = null): AiTarget? {
+        val state = _state.value
+        val active = state.aiActiveKeys
+        if (active.isEmpty()) return null
+        val prefs = state.aiPrefs
+        val pinned = prefs.keyId?.let { id -> active.firstOrNull { it.id == id } }
+        val wantedModel = if (prefs.modelId != "auto") AiCatalog.model(prefs.modelId) else null
+
+        /*
+         * The key and the model have to belong to the same provider, so a pinned key loses to an
+         * explicitly chosen model, and an explicitly chosen model pulls in a key from its provider.
+         */
+        val key = pinned?.takeIf { wantedModel == null || it.providerId == wantedModel.providerId }
+            ?: wantedModel?.let { model -> active.firstOrNull { it.providerId == model.providerId } }
+            ?: pinned
+            ?: if (photoId != null) {
+                active[(photoId.hashCode().toLong().let { if (it < 0) -it else it } % active.size).toInt()]
+            } else {
+                active.first()
+            }
+
+        val models = if (key.providerId == "custom") listOf(customModelFor(key)) else AiCatalog.modelsFor(key.providerId)
+        if (models.isEmpty()) return null
+        val model = when {
+            wantedModel != null -> models.firstOrNull { it.id == wantedModel.id } ?: models.first()
+            else -> {
+                // Default level: a stable pseudo-random model per photo (and per key when there is none).
+                val seed = (photoId ?: key.id).hashCode().toLong().let { if (it < 0) -it else it }
+                models[((seed / 7) % models.size).toInt()]
+            }
+        }
+        val scale = if (prefs.scale in model.scales) prefs.scale else model.scales.last()
+        return AiTarget(key = key, model = model, provider = AiCatalog.provider(key.providerId), scale = scale)
+    }
+
+    /**
+     * The AI icon on the configuration screen: no key yet means the setup screen, a key means the AI
+     * configuration screen. Exactly the two cases from the request.
+     */
+    fun openAiUpscale(photoId: String) {
+        haptic(HapticKind.Light)
+        if (!_state.value.aiReady) {
+            toast("Add an API key to use AI upscaling")
+            push(Route.AiKeys)
+            return
+        }
+        push(Route.AiConfig(photoId))
+    }
+
+    /**
+     * Upload, reconstruct, download, save — the whole AI job.
+     *
+     * The state machine is deliberately small: one request, one answer. [AiJobUi.progress] follows
+     * the real stages (prepare → upload → provider → download → save) instead of a spinner, and the
+     * key's monthly counter is charged only after the provider actually returned an image.
+     */
+    fun startAiJob(photoId: String) {
+        if (_state.value.aiJob?.status == JobStatus.Running) {
+            toast("An AI upscale is already running")
+            return
+        }
+        val photo = photoById(photoId)
+        if (photo == null) {
+            toast("That image is no longer available")
+            return
+        }
+        val target = aiTarget(photoId)
+        if (target == null) {
+            toast("Add an API key to use AI upscaling")
+            push(Route.AiKeys)
+            return
+        }
+        val prefs = _state.value.aiPrefs
+        val settings = _state.value.settings
+        val scale = target.scale
+        val prompt = AiCatalog.promptFor(prefs.prompt)
+        val format = prefs.format.lowercase().let { if (it == "jpeg") "jpg" else it }
+        val started = SystemClock.elapsedRealtime()
+
+        aiJobStartedAt = started
+        update { state ->
+            state.copy(
+                aiMode = true,
+                aiJob = AiJobUi(
+                    photoId = photo.id,
+                    modelId = target.model.id,
+                    modelLabel = target.model.label,
+                    providerName = target.provider.name,
+                    keyLabel = target.key.label,
+                    scale = scale,
+                    stageLabel = "Preparing image",
+                    progress = 0.04f,
+                    status = JobStatus.Running,
+                    etaSec = target.model.approxSec,
+                ),
+                routes = state.routes.filterNot { it is Route.AiProcessing } + Route.AiProcessing,
+            )
+        }
+        haptic(HapticKind.Medium)
+        startAiTicker()
+
+        aiJobTask?.cancel()
+        aiJobTask = scope.launch {
+            try {
+                val payload = withContext(Dispatchers.IO) {
+                    AiImagePrep.prepare(context, Uri.parse(photo.uri), minOf(prefs.maxInputMP, target.model.maxInputMP))
+                }
+                aiStage("Sending to ${target.provider.name}…", 0.16f)
+                val creationsDir = File(context.filesDir, "creations").apply { mkdirs() }
+                val stamp = System.currentTimeMillis()
+                val beforeFile = withContext(Dispatchers.IO) {
+                    AiImagePrep.saveBeforeCopy(payload, creationsDir, "ai_before_$stamp.jpg")
+                }
+                val raw = AiImageClient.generate(
+                    AiRequest(
+                        key = target.key,
+                        provider = target.provider,
+                        model = target.model,
+                        imageBytes = payload.bytes,
+                        mime = payload.mime,
+                        prompt = prompt,
+                        scale = scale,
+                        format = format,
+                        faceEnhance = prefs.faceEnhance,
+                        strength = prefs.strength,
+                    ),
+                ) { line -> aiStage(line, null) }
+
+                aiStage("Finishing and saving…", 0.88f)
+                val output = withContext(Dispatchers.IO) {
+                    val bitmap = AiImagePrep.decodeResult(raw.bytes)
+                    val bytes = if (bitmap != null) {
+                        val fitted = AiImagePrep.fit(bitmap, payload.width * scale, payload.height * scale)
+                        AiImagePrep.encode(fitted, format).also { if (!fitted.isRecycled) fitted.recycle() }
+                    } else {
+                        // Too large to decode: keep the provider's bytes exactly as they came.
+                        raw.bytes
+                    }
+                    val file = File(creationsDir, "ai_result_$stamp.$format")
+                    file.outputStream().use { it.write(bytes) }
+                    payload.bitmap?.let { if (!it.isRecycled) it.recycle() }
+                    file
+                }
+                val (outW, outH) = withContext(Dispatchers.IO) { AiImagePrep.boundsOf(output) }
+                val galleryName = OutputNameFormatter.buildGalleryFileName(photo.name, scale, format)
+                val savedUri = withContext(Dispatchers.IO) {
+                    MediaExportHelper.saveToGalleryOrFolder(context, output, settings.saveFolderUri, galleryName)
+                        .getOrNull()?.toString()
+                }
+                val elapsedMs = (SystemClock.elapsedRealtime() - started).coerceAtLeast(1L)
+                val inserted = withContext(Dispatchers.IO) {
+                    container.database.recentCreationDao().insert(
+                        RecentCreationEntity(
+                            sourceUri = photo.uri,
+                            beforeImagePath = beforeFile.absolutePath,
+                            outputPath = output.absolutePath,
+                            savedUri = savedUri,
+                            presetId = "AI",
+                            presetLabel = "${target.model.label} · ${scale}×",
+                            modelId = "ai:${target.model.id}",
+                            scale = scale,
+                            inputWidth = payload.width,
+                            inputHeight = payload.height,
+                            outputWidth = outW,
+                            outputHeight = outH,
+                            durationMs = elapsedMs,
+                            createdAtEpochMs = System.currentTimeMillis(),
+                        ),
+                    )
+                }
+                chargeAiKey(target.key.id)
+                val finishedId = inserted.toString()
+                val elapsed = (elapsedMs / 1000).toInt().coerceAtLeast(1)
+                aiTickJob?.cancel()
+                update { state ->
+                    state.copy(
+                        aiJob = state.aiJob?.copy(
+                            status = JobStatus.Done,
+                            progress = 1f,
+                            stageLabel = "Saved",
+                            elapsedSec = elapsed,
+                            etaSec = 0,
+                            resultId = finishedId,
+                        ),
+                        lastResultId = finishedId,
+                        routes = if (state.phase == Phase.App) {
+                            state.routes.filterNot {
+                                it is Route.AiProcessing || it is Route.Result || it is Route.ResultFull
+                            } + Route.Result(finishedId)
+                        } else {
+                            state.routes
+                        },
+                    )
+                }
+                haptic(HapticKind.Success)
+                toast("AI upscale saved")
+                com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater.refreshSoon(context)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                aiTickJob?.cancel()
+                update { state ->
+                    state.copy(
+                        aiJob = state.aiJob?.copy(status = JobStatus.Cancelled, stageLabel = "Cancelled"),
+                        routes = state.routes.filterNot { it is Route.AiProcessing },
+                    )
+                }
+                throw e
+            } catch (e: Throwable) {
+                aiTickJob?.cancel()
+                val message = (e as? AiClientException)?.message
+                    ?: e.message
+                    ?: "AI upscale failed. Try another model or key."
+                update { state ->
+                    state.copy(aiJob = state.aiJob?.copy(status = JobStatus.Failed, stageLabel = "Failed", error = message))
+                }
+                haptic(HapticKind.Warning)
+                toast(message)
+            }
+        }
+    }
+
+    private fun aiStage(label: String, progress: Float?) {
+        update { state ->
+            val job = state.aiJob ?: return@update state
+            state.copy(aiJob = job.copy(stageLabel = label, progress = progress ?: job.progress))
+        }
+    }
+
+    /** Counts the elapsed seconds; the ETA is the model's own estimate minus what already ran. */
+    private fun startAiTicker() {
+        aiTickJob?.cancel()
+        aiTickJob = scope.launch {
+            while (true) {
+                delay(500)
+                val job = _state.value.aiJob ?: break
+                if (job.status != JobStatus.Running) break
+                val elapsed = ((SystemClock.elapsedRealtime() - aiJobStartedAt) / 1000).toInt()
+                update { state ->
+                    val current = state.aiJob ?: return@update state
+                    // The ticker runs twice a second; the ETA only moves when the second does.
+                    val eta = if (elapsed > current.elapsedSec) {
+                        (current.etaSec - (elapsed - current.elapsedSec)).coerceAtLeast(0)
+                    } else {
+                        current.etaSec
+                    }
+                    state.copy(aiJob = current.copy(elapsedSec = elapsed, etaSec = eta))
+                }
+            }
+        }
+    }
+
+    private fun chargeAiKey(id: String) {
+        updateAiKey(id) { key -> key.copy(used = key.used + 1, usedMonth = AiKeyStore.currentMonth()) }
+    }
+
+    fun cancelAiJob() {
+        aiJobTask?.cancel()
+        aiJobTask = null
+        aiTickJob?.cancel()
+        update { state ->
+            state.copy(
+                aiJob = state.aiJob?.copy(status = JobStatus.Cancelled, stageLabel = "Cancelled"),
+                routes = state.routes.filterNot { it is Route.AiProcessing },
+            )
+        }
+        haptic(HapticKind.Warning)
+    }
+
+    fun clearAiJob() {
+        aiTickJob?.cancel()
+        update { it.copy(aiJob = null) }
+    }
+
     /* ------------------------------------------------------------------ helpers */
 
     private fun update(block: (AppUiState) -> AppUiState) {
@@ -1020,7 +1488,8 @@ class AppStore(
             if (after.phase != before.phase || after.routes != before.routes || after.settings != before.settings ||
                 after.prefs != before.prefs || after.mode != before.mode || after.onboarded != before.onboarded ||
                 after.photoAccess != before.photoAccess || after.notificationsAsked != before.notificationsAsked ||
-                after.cameraAsked != before.cameraAsked || after.superIntroSeen != before.superIntroSeen
+                after.cameraAsked != before.cameraAsked || after.superIntroSeen != before.superIntroSeen ||
+                after.aiMode != before.aiMode
             ) {
                 persist()
             }
@@ -1088,4 +1557,6 @@ data class PersistedState(
     val superIntroSeen: Boolean = false,
     val settings: AppSettings = AppSettings(),
     val prefs: Map<ModeId, JobPrefs> = emptyMap(),
+    /** Round 5: is Home on the AI Upscale mode card? */
+    val aiMode: Boolean = false,
 )

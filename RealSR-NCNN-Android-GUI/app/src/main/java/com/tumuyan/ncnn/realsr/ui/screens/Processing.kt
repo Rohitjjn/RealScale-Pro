@@ -181,14 +181,30 @@ fun ProcessingScreen(store: AppStore) {
         }
     }
 
+    /*
+     * Round 5, issue 1 (still reproducible in 2.2.2): this screen used to send the user Home in two
+     * places — no job, or a photo that is no longer in the list. Both are transient states while the
+     * engine finishes, and "Home" is exactly where the finished upscale must not end up. The job is
+     * only missing after the store already rewrote the stack, so the only thing to do here is to
+     * follow it to the result; the photo may legitimately be gone (a shared file, a revoked URI)
+     * and that must not change where the screen goes.
+     */
     if (job == null) {
-        LaunchedEffect(Unit) { store.home() }
+        val lastId = state.lastResultId
+        LaunchedEffect(lastId) {
+            val route = store.state.value.route
+            if (lastId != null && route !is Route.Result && route !is Route.ResultFull) {
+                store.replaceTop(Route.Result(lastId))
+            } else if (route is Route.Processing) {
+                store.home()
+            }
+        }
         return
     }
     val photo = store.photoById(job.photoId)
     if (photo == null) {
-        LaunchedEffect(Unit) { store.home() }
-        return
+        // Keep the screen: the job is still running, only the library row is gone.
+        LaunchedEffect(job.photoId) { store.refreshPhotos() }
     }
 
     // Hand over to the result as soon as the job is saved. The store already rewrites the stack, so
@@ -254,7 +270,7 @@ fun ProcessingScreen(store: AppStore) {
     val active = if (tileProgress < 1f) doneCells else -1
     val left = plan.etaSec * (1 - p).toDouble()
     val throttled = throttleReason != null
-    val aspect = (photo.width.toFloat() / photo.height).coerceIn(0.4f, 2.5f)
+    val aspect = photo?.let { (it.width.toFloat() / it.height).coerceIn(0.4f, 2.5f) } ?: 1f
 
     Column(Modifier.fillMaxSize().background(c.canvas)) {
         RsTopBar(title = "Upscaling")
@@ -270,7 +286,7 @@ fun ProcessingScreen(store: AppStore) {
              */
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 TileFill(
-                    photoUri = photo.uri,
+                    photoUri = photo?.uri ?: "",
                     cols = cols,
                     rows = rows,
                     done = doneCells,
@@ -390,7 +406,7 @@ fun ProcessingScreen(store: AppStore) {
             confirm = false
             store.cancelJob()
             store.clearJob()
-            store.replaceTop(Route.Config(photo.id))
+            store.replaceTop(photo?.let { Route.Config(it.id) } ?: Route.Home)
             store.toast("Upscale cancelled. Temporary files removed.")
         },
     )

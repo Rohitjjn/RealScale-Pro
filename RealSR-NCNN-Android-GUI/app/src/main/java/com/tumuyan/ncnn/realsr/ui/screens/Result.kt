@@ -417,12 +417,29 @@ fun ResultScreen(store: AppStore, resultId: String) {
                     icon = LucideIcons.Check,
                     modifier = Modifier.padding(top = 16.dp),
                 )
+                if (result.modelId.startsWith("ai:")) {
+                    RsBadge(
+                        "AI Upscale",
+                        tone = RsBadgeTone.Dark,
+                        icon = LucideIcons.Sparkles,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
             }
 
             Column(Modifier.padding(top = 20.dp)) {
                 com.tumuyan.ncnn.realsr.design.HairlineDivider()
                 DetailRow("Model", result.modelName)
-                DetailRow("Mode", if (result.mode == ModeId.SUPER) "Super Resolution" else "Upscale Mode")
+                // Round 5: AI results are ordinary creations with an `ai:` model id, so the row
+                // says which kind of upscale produced them.
+                DetailRow(
+                    "Mode",
+                    when {
+                        result.modelId.startsWith("ai:") -> "AI Upscale · cloud model"
+                        result.mode == ModeId.SUPER -> "Super Resolution"
+                        else -> "Upscale Mode"
+                    },
+                )
                 DetailRow("Format", result.format)
             }
         }

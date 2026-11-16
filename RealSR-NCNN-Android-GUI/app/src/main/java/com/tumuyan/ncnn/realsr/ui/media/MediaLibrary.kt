@@ -86,10 +86,19 @@ class MediaLibrary(private val context: Context) {
     /** Reads the metadata of a single (possibly freshly imported) document. */
     fun photoFromUri(uri: Uri): PhotoItem? {
         val resolver = context.contentResolver
-        val name = resolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-            if (c.moveToFirst()) c.getString(0) else null
-        } ?: uri.lastPathSegment?.substringAfterLast('/') ?: "photo.jpg"
-        val mime = resolver.getType(uri) ?: "image/jpeg"
+        /*
+         * Round 5, issue 2: a `file://` uri has no MediaStore row, and `ContentResolver.query` throws
+         * IllegalArgumentException for it instead of returning null. "Paste from clipboard" is the one
+         * entry point that hands this function a `file://` uri (it copies the clip into the app cache
+         * first), which is why the fourth import option never worked while the pickers did.
+         */
+        val name = runCatching {
+            resolver.query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        }.getOrNull() ?: uri.lastPathSegment?.substringAfterLast('/') ?: "photo.jpg"
+        val mime = runCatching { resolver.getType(uri) }.getOrNull()
+            ?: mimeFromExtension(name)
         val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
         val sizeBytes = runCatching {
             resolver.openAssetFileDescriptor(uri, "r")?.use { it.length }.takeIf { it != null && it > 0 }
@@ -115,6 +124,16 @@ class MediaLibrary(private val context: Context) {
             dateTaken = System.currentTimeMillis(),
         )
     }
+
+    /** `image/*` for a file name, used when the resolver has no mime (a `file://` uri). */
+    private fun mimeFromExtension(name: String): String =
+        when (name.substringAfterLast('.', "").lowercase(Locale.US)) {
+            "png" -> "image/png"
+            "webp" -> "image/webp"
+            "heic", "heif" -> "image/heic"
+            "bmp" -> "image/bmp"
+            else -> "image/jpeg"
+        }
 
     private fun extensionOf(name: String, mime: String): String {
         val fromName = name.substringAfterLast('.', "").lowercase(Locale.US)
