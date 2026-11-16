@@ -5,7 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import androidx.activity.ComponentActivity
@@ -210,11 +209,12 @@ class MediaIntentsHost(
     }
 
     /**
-     * Round-4, issue 7: "Paste from clipboard" only looked at `ClipData.Item.uri`, so the three
-     * shapes Android actually puts on the clipboard were all rejected — a `content://` uri from
-     * Gallery (works), a `share` intent from some browsers, and a raw bitmap (screenshots). All four
-     * shapes are handled now; the bitmap is written to the import cache and goes through the same
-     * intake as a shared photo.
+     * Round-4, issue 7: "Paste from clipboard" only looked at `ClipData.Item.uri`. That is one of the
+     * three shapes the platform actually hands out — the others are a *share intent* (whose
+     * `EXTRA_STREAM` is the image, used by Chrome and Files) and plain text that is itself a
+     * `content://` / `file://` uri (used by some galleries). `ClipData.Item` has no bitmap accessor,
+     * so those three cover everything a clipboard can carry, and each one goes through the normal
+     * intake path.
      */
     override fun pasteImage(): Boolean {
         val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return false
@@ -224,23 +224,6 @@ class MediaIntentsHost(
 
         item.uri?.let { uri -> if (importQuiet(listOf(uri))) return true }
         clipStreamUri(item)?.let { uri -> if (importQuiet(listOf(uri))) return true }
-        clipboardBitmap(item)?.let { bitmap ->
-            val dir = File(activity.cacheDir, "imports").apply { mkdirs() }
-            val file = File(dir, "clipboard-${System.currentTimeMillis()}-${counter.incrementAndGet()}.png")
-            val written = runCatching {
-                file.outputStream().use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) }
-            }.getOrDefault(false)
-            bitmap.recycle()
-            if (written && file.length() > 0L) {
-                val photo = media.photoFromUri(Uri.fromFile(file))
-                if (photo != null) {
-                    store.onImportedPhoto(photo)
-                    store.haptic(HapticKind.Light)
-                    return true
-                }
-            }
-            file.delete()
-        }
         item.text?.toString()?.trim()?.let { text ->
             if (text.startsWith("content://") || text.startsWith("file://")) {
                 if (importQuiet(listOf(Uri.parse(text)))) return true
@@ -266,9 +249,6 @@ class MediaIntentsHost(
         }
         return stream ?: intent.data
     }
-
-    private fun clipboardBitmap(item: ClipData.Item): Bitmap? =
-        runCatching { item.bitmap }.getOrNull()
 
     /** Import one image that arrived from another app. */
     fun importFromUri(uri: Uri): Boolean = importUris(listOf(uri))

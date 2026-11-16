@@ -97,7 +97,6 @@ object OutputPostProcessor {
         ExifInterface.TAG_DATETIME_DIGITIZED,
         ExifInterface.TAG_MAKE,
         ExifInterface.TAG_MODEL,
-        ExifInterface.TAG_LENS_MODEL,
         ExifInterface.TAG_F_NUMBER,
         ExifInterface.TAG_EXPOSURE_TIME,
         ExifInterface.TAG_ISO_SPEED_RATINGS,
