@@ -14,6 +14,9 @@ interface DownloadedModelDao {
     @Query("SELECT * FROM downloaded_models WHERE status = 'INSTALLED' ORDER BY displayName ASC")
     fun observeInstalled(): Flow<List<DownloadedModelEntity>>
 
+    @Query("SELECT * FROM downloaded_models")
+    suspend fun getAll(): List<DownloadedModelEntity>
+
     @Query("SELECT * FROM downloaded_models WHERE modelId = :modelId LIMIT 1")
     suspend fun getById(modelId: String): DownloadedModelEntity?
 

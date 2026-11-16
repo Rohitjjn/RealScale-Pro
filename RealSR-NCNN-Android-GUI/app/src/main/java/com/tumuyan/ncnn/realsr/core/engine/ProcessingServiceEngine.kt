@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.graphics.BitmapFactory
+import kotlin.math.abs
 import android.net.Uri
 import android.os.IBinder
 import androidx.documentfile.provider.DocumentFile
@@ -13,6 +14,7 @@ import com.tumuyan.ncnn.realsr.ProcessingService
 import com.tumuyan.ncnn.realsr.ProgressLogHelper
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationDao
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
+import com.tumuyan.ncnn.realsr.core.device.ThermalGuard
 import com.tumuyan.ncnn.realsr.ui.MediaExportHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -126,6 +128,12 @@ class ProcessingServiceEngine(
             .putBoolean(KEY_KEEP_SCREEN_ON, updated.keepScreenOnDuringEnhance)
             .putBoolean(KEY_HAPTICS_ENABLED, updated.hapticsEnabled)
             .putBoolean(KEY_WIFI_ONLY_DOWNLOADS, updated.wifiOnlyDownloads)
+            .putBoolean(KEY_TTA, updated.tta)
+            .putString(KEY_COMPRESSION, updated.compression)
+            .putInt(KEY_COMPRESSION_QUALITY, updated.compressionQuality)
+            .putInt(KEY_OUTPUT_QUALITY, updated.outputQuality)
+            .putBoolean(KEY_KEEP_METADATA, updated.keepMetadata)
+            .putBoolean(KEY_THROTTLE, updated.throttleWhenHot)
             .apply()
     }
 
@@ -380,7 +388,17 @@ class ProcessingServiceEngine(
                 val entry = lease.entry
                 val pos = lease.positionInSession
                 val total = lease.totalInSession
-                val prefs = _preferences.value
+                /*
+                 * Round-4: "Slow down when hot or low on battery" (Settings → General). The guard
+                 * keeps the model and the factor and only shrinks the tile / thread budget, so the
+                 * job still finishes with the same output size instead of overheating the phone.
+                 */
+                val requested = _preferences.value
+                val throttleReason = if (requested.throttleWhenHot) ThermalGuard.reason(appContext) else null
+                val prefs = if (throttleReason != null) ThermalGuard.throttle(requested) else requested
+                if (throttleReason != null && !requested.hideProgramOutput) {
+                    appendLog("Thermal guard: $throttleReason — tile ${prefs.tileSize} px")
+                }
                 val itemStartMs = System.currentTimeMillis()
                 cancelCurrentItemOnly = false
 
@@ -426,9 +444,24 @@ class ProcessingServiceEngine(
                     continue
                 }
 
-                val (inW, inH) = decodeDimensions(beforeFile)
+                /*
+                 * "Image compression" (Config → Input and output): the network reads a re-encoded
+                 * copy, the picked photo on disk is never modified. `engineInput` is the same
+                 * before/after source only when the copy would not be smaller.
+                 */
+                val inputPolicy = OutputPostProcessor.inputPolicy(
+                    preference = prefs.compression,
+                    quality = prefs.compressionQuality,
+                    sizeBytes = beforeFile.length(),
+                )
+                val engineInput = OutputPostProcessor.applyInputCompression(beforeFile, creationsDir, inputPolicy)
+                if (engineInput.absolutePath != beforeFile.absolutePath && !prefs.hideProgramOutput) {
+                    appendLog("Compressed copy: ${engineInput.length() / 1024} KB at ${inputPolicy.quality}%")
+                }
+
+                val (inW, inH) = decodeDimensions(engineInput)
                 val outExt = prefs.outputFormat.extension
-                val outputFile = File(
+                var outputFile = File(
                     creationsDir,
                     "RealScale_${itemStartMs}_${pos}_${entry.preset.id.name.lowercase(Locale.US)}_${entry.scale}x.$outExt"
                 )
@@ -436,7 +469,7 @@ class ProcessingServiceEngine(
                 val command = PresetCommandResolver.buildUpscaleCommand(
                     preset = entry.preset,
                     scale = entry.scale,
-                    inputPath = beforeFile.absolutePath,
+                    inputPath = engineInput.absolutePath,
                     outputPath = outputFile.absolutePath,
                     preferences = prefs,
                     modelOverride = entry.modelSpec,
@@ -553,8 +586,54 @@ class ProcessingServiceEngine(
                     continue
                 }
 
+                /*
+                 * Exact output size — this is what makes 3× and 5× real.
+                 *
+                 * Every model has a native factor (waifu2x/SRMD 2×, Real-ESRGAN 4×, Anime4K 2/4×), so
+                 * asking a 4× model for a 3× result used to hand `-s 3` to a network that can only do
+                 * 4×: the job "finished" with the wrong dimensions. The engine's own output is
+                 * measured here and, when it is not the size the plan promised, one Lanczos pass
+                 * corrects it. Same code path fixes 5×, and any model/scale combination.
+                 */
+                if (cmdResult.success && outputFile.exists() && outputFile.length() > 0L && inW > 0 && inH > 0) {
+                    val targetW = inW * entry.scale
+                    val targetH = inH * entry.scale
+                    val (madeW, madeH) = decodeDimensions(outputFile)
+                    if (madeW > 0 && madeH > 0 && (abs(madeW - targetW) > 2 || abs(madeH - targetH) > 2)) {
+                        val factor = targetW.toDouble() / madeW.toDouble()
+                        val fitted = File(
+                            creationsDir,
+                            "RealScale_${itemStartMs}_${pos}_fit_${entry.scale}x.$outExt"
+                        )
+                        _state.update { prev ->
+                            if (prev is EngineState.Running && prev.currentItemId == entry.id) {
+                                prev.copy(stage = ProcessingStage.ENHANCING, latestStatusLine = "Fitting to ${entry.scale}×")
+                            } else {
+                                prev
+                            }
+                        }
+                        val fitCommand = com.tumuyan.ncnn.realsr.core.engine.PresetCommandResolver
+                            .buildResizeCommand(outputFile.absolutePath, fitted.absolutePath, factor)
+                        if (!prefs.hideProgramOutput) appendLog("$ $fitCommand")
+                        val fitResult = runServiceCommand(
+                            service = service,
+                            command = fitCommand,
+                            workingDir = realsrDir.absolutePath
+                        ) { line ->
+                            if (!prefs.hideProgramOutput) appendLog(line)
+                        }
+                        if (fitResult.success && fitted.exists() && fitted.length() > 0L) {
+                            outputFile.delete()
+                            outputFile = fitted
+                        } else {
+                            fitted.delete()
+                        }
+                    }
+                }
+
                 if (!cmdResult.success || !outputFile.exists() || outputFile.length() == 0L) {
                     beforeFile.delete()
+                    if (engineInput.absolutePath != beforeFile.absolutePath) engineInput.delete()
                     outputFile.delete()
                     val retryReq = UpscaleRequest(
                         inputUris = listOf(entry.uri),
@@ -584,6 +663,16 @@ class ProcessingServiceEngine(
                     continue
                 }
 
+                /*
+                 * Output quality and "Keep photo metadata". The re-encode runs first: a JPEG pass
+                 * drops the tags, so they are copied onto the file that is actually saved.
+                 */
+                OutputPostProcessor.reencodeOutput(outputFile, prefs.outputFormat, prefs.outputQuality)
+                if (prefs.keepMetadata) {
+                    val copiedMeta = OutputPostProcessor.copyMetadata(beforeFile, outputFile)
+                    if (copiedMeta && !prefs.hideProgramOutput) appendLog("Metadata copied from the original photo")
+                }
+
                 // Stage 3: Saving (write to Pictures/RealScale-Pro with <originalName>_x2/_x4)
                 _state.update { prev ->
                     if (prev is EngineState.Running && prev.currentItemId == entry.id) {
@@ -595,7 +684,9 @@ class ProcessingServiceEngine(
                         prev
                     }
                 }
-                service.updateStructuredProgress(notifTitle, "Saving to Gallery…", 99)
+                // No extra notification for the save step: it posted a second, never-cleared row
+                // that stayed at 99 % after the job finished. The in-app stage text covers it.
+                service.updateStructuredProgress(notifTitle, "Saving", 100)
 
                 val galleryFileName = OutputNameFormatter.buildGalleryFileName(
                     originalDisplayName = entry.fileNameHint,
@@ -612,6 +703,8 @@ class ProcessingServiceEngine(
                 } else {
                     null
                 }
+
+                if (engineInput.absolutePath != beforeFile.absolutePath) engineInput.delete()
 
                 val (outW, outH) = decodeDimensions(outputFile)
                 val fileDuration = (System.currentTimeMillis() - itemStartMs).coerceAtLeast(1L)
@@ -657,6 +750,7 @@ class ProcessingServiceEngine(
             }
 
             refreshQueueSnapshot()
+            runCatching { boundService?.finishSession() }
             if (sessionCreations.isNotEmpty()) {
                 val totalDuration = (System.currentTimeMillis() - sessionStartMs).coerceAtLeast(1L)
                 _state.value = EngineState.Completed(
@@ -671,8 +765,10 @@ class ProcessingServiceEngine(
                 _state.value = EngineState.Cancelled
             }
         } catch (_: CancellationException) {
+            runCatching { boundService?.finishSession() }
             _state.value = EngineState.Cancelled
         } catch (t: Throwable) {
+            runCatching { boundService?.finishSession() }
             jobQueue.clearAll()
             refreshQueueSnapshot()
             _state.value = EngineState.Failed(
@@ -850,7 +946,13 @@ class ProcessingServiceEngine(
             defaultPresetId = defaultPreset,
             keepScreenOnDuringEnhance = prefsStore.getBoolean(KEY_KEEP_SCREEN_ON, true),
             hapticsEnabled = prefsStore.getBoolean(KEY_HAPTICS_ENABLED, true),
-            wifiOnlyDownloads = prefsStore.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, false)
+            wifiOnlyDownloads = prefsStore.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, false),
+            tta = prefsStore.getBoolean(KEY_TTA, false),
+            compression = prefsStore.getString(KEY_COMPRESSION, "auto") ?: "auto",
+            compressionQuality = prefsStore.getInt(KEY_COMPRESSION_QUALITY, 90),
+            outputQuality = prefsStore.getInt(KEY_OUTPUT_QUALITY, 95),
+            keepMetadata = prefsStore.getBoolean(KEY_KEEP_METADATA, true),
+            throttleWhenHot = prefsStore.getBoolean(KEY_THROTTLE, true)
         )
     }
 
@@ -869,6 +971,12 @@ class ProcessingServiceEngine(
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_HAPTICS_ENABLED = "haptics_enabled"
         private const val KEY_WIFI_ONLY_DOWNLOADS = "wifi_only_downloads"
+        private const val KEY_TTA = "tta"
+        private const val KEY_COMPRESSION = "compression"
+        private const val KEY_COMPRESSION_QUALITY = "compression_quality"
+        private const val KEY_OUTPUT_QUALITY = "output_quality"
+        private const val KEY_KEEP_METADATA = "keep_metadata"
+        private const val KEY_THROTTLE = "throttle"
         private const val NOTIFY_DETAILED_AUTO_DISMISS = 3
         private const val MAX_LOG_CHARS = 24_000
         private val PERCENT_REGEX = Regex("""(\d{1,3}(?:\.\d+)?)%""")

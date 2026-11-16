@@ -1,0 +1,65 @@
+name: Model facts
+
+# Joins the two authoritative sources of model truth:
+#   1. the upstream assets archive (what actually has to sit on disk for the engine to run), and
+#   2. the Hugging Face API tree for tumuyan2/realsr-models (download paths, byte sizes and, for
+#      LFS files, the SHA-256 the downloader must verify).
+# The result is relayed to the CI bridge issue because the agent sandbox cannot read Actions logs
+# or artifacts (blob storage is egress-blocked).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/model-facts.yml'
+      - '.github/scripts/model-facts.py'
+      - '.github/scripts/check-model-manifest.py'
+      - '.github/scripts/relay-model-facts.py'
+      - 'RealSR-NCNN-Android-GUI/app/src/main/assets/model_manifest.json'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: model-facts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  facts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the scripts and the model manifest
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            .github
+            RealSR-NCNN-Android-GUI/app/src/main/assets
+
+      - name: Download the upstream assets archive (models + engines, 1.13.0)
+        run: |
+          curl -fL --retry 3 -o /tmp/assets.zip \
+            https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.13.0/assets.zip
+          ls -l /tmp/assets.zip
+          mkdir -p /tmp/assets
+          unzip -q /tmp/assets.zip -d /tmp/assets
+
+      - name: Fetch the Hugging Face model tree (paths, sizes, LFS sha256)
+        run: |
+          curl -fsSL --retry 3 \
+            "https://huggingface.co/api/models/tumuyan2/realsr-models/tree/main?recursive=true" \
+            -o /tmp/hf-tree.json
+          python3 -c "import json;d=json.load(open('/tmp/hf-tree.json'));print(len(d),'entries');print([e['path'] for e in d[:5]])"
+
+      - name: Join local assets with the remote tree
+        run: |
+          python3 .github/scripts/model-facts.py
+
+      - name: Check every manifest URL against the mirror
+        run: python3 .github/scripts/check-model-manifest.py
+
+      - name: Relay the facts to the CI bridge issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/relay-model-facts.py

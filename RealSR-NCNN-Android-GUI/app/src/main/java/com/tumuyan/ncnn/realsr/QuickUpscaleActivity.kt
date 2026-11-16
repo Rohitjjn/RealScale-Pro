@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -32,11 +33,13 @@ import com.tumuyan.ncnn.realsr.core.engine.StagedInputPhoto
 import com.tumuyan.ncnn.realsr.core.engine.UpscalePreset
 import com.tumuyan.ncnn.realsr.core.engine.UpscaleRequest
 import com.tumuyan.ncnn.realsr.core.model.CatalogModelState
+import com.tumuyan.ncnn.realsr.core.plan.ModelCatalog
 import com.tumuyan.ncnn.realsr.ui.MediaExportHelper
 import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
 import com.tumuyan.ncnn.realsr.ui.screens.QuickUpscaleSheet
-import com.tumuyan.ncnn.realsr.ui.theme.RealScaleTheme
-import com.tumuyan.ncnn.realsr.ui.theme.ThemeMode
+import com.tumuyan.ncnn.realsr.design.RsTheme
+import com.tumuyan.ncnn.realsr.ui.state.AppStore
+import com.tumuyan.ncnn.realsr.ui.state.ThemePref
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -115,9 +118,13 @@ class QuickUpscaleActivity : ComponentActivity() {
             val catalogModels by container.modelRepository.catalogModels.collectAsStateWithLifecycle(
                 initialValue = emptyList()
             )
-            val themeMode = loadThemeMode()
+            val dark = when (AppStore.persistedTheme(this)) {
+                ThemePref.System -> isSystemInDarkTheme()
+                ThemePref.Light -> false
+                ThemePref.Dark -> true
+            }
 
-            RealScaleTheme(themeMode = themeMode) {
+            RsTheme(darkTheme = dark) {
                 QuickUpscaleSheet(
                     stagedPhoto = stagedPhotoState,
                     intakeErrorMessage = intakeErrorState,
@@ -143,8 +150,12 @@ class QuickUpscaleActivity : ComponentActivity() {
                         preflightAdvisoryState = null
                     },
                     onDownloadModel = { modelId ->
-                        lifecycleScope.launch {
-                            container.modelRepository.startOrResumeDownload(modelId)
+                        // The sheet speaks catalog slugs; the downloader speaks HF directory ids.
+                        val manifestId = ModelCatalog.byId(modelId).manifestId
+                        if (manifestId != null) {
+                            lifecycleScope.launch {
+                                container.modelRepository.startOrResumeDownload(manifestId)
+                            }
                         }
                     },
                     onEnhance = {
@@ -362,11 +373,6 @@ class QuickUpscaleActivity : ComponentActivity() {
             incoming.getParcelableExtra(Intent.EXTRA_STREAM)
         }
     }
-
-    private fun loadThemeMode(): ThemeMode =
-        runCatching {
-            ThemeMode.valueOf(uiPrefs.getString("theme_mode", ThemeMode.SYSTEM.name)!!)
-        }.getOrDefault(ThemeMode.SYSTEM)
 
     companion object {
         const val EXTRA_FORCE_QUICK_SHEET = "com.tumuyan.ncnn.realsr.EXTRA_FORCE_QUICK_SHEET"

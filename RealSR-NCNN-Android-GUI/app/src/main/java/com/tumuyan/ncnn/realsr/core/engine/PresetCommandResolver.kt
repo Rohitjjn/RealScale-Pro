@@ -18,6 +18,32 @@ object PresetCommandResolver {
         return if (isSimpleSafe) path else ShellUtils.escapeShellArgument(path)
     }
 
+    /**
+     * Exact-size finishing pass: `resize-ncnn` with the Lanczos (AVIR) filter.
+     *
+     * Used after a model whose native factor is not the factor the user asked for (3× on a 4× model,
+     * 5× anywhere). [factor] may be fractional, e.g. 1.25 for 5× from a 4× model.
+     */
+    fun buildResizeCommand(
+        inputPath: String,
+        outputPath: String,
+        factor: Double,
+    ): String {
+        val rounded = kotlin.math.round(factor * 10_000.0) / 10_000.0
+        val text = if (rounded == kotlin.math.floor(rounded)) {
+            rounded.toInt().toString()
+        } else {
+            String.format(java.util.Locale.US, "%.4f", rounded).trimEnd('0').trimEnd('.')
+        }
+        return CommandBuilder()
+            .append("./resize-ncnn")
+            .append("-i", safeShellArg(inputPath))
+            .append("-o", safeShellArg(outputPath))
+            .append("-m", "avir-lancir")
+            .append("-s", text)
+            .build()
+    }
+
     fun buildUpscaleCommand(
         preset: UpscalePreset,
         scale: Int,
@@ -41,7 +67,8 @@ object PresetCommandResolver {
         }
 
         val tool = modelOverride?.engineTool ?: preset.engineTool
-        val effectiveScale = modelOverride?.scale ?: scale
+        // The binary gets the factor its weights can run at; the engine resizes afterwards.
+        val effectiveScale = modelOverride?.modelScale ?: scale
         val denoise = modelOverride?.denoiseLevel ?: preset.denoiseLevel
         val modelPath = modelOverride?.modelPath ?: run {
             requireNotNull(modelsRootDir) { "modelsRootDir required when modelOverride is null" }
@@ -107,6 +134,12 @@ object PresetCommandResolver {
                 }
                 if (preferences.threadCount.isNotBlank()) {
                     builder.append("-j", preferences.threadCount.trim())
+                }
+                // "Enhanced quality (TTA)": all four ncnn tools accept upstream's `-x`, which runs
+                // the network 8 ways and averages. mnnsr-ncnn has no such flag (it is commented out
+                // in MNN-SR/main.cpp), so the MNN branch above deliberately ignores it.
+                if (preferences.tta) {
+                    builder.append("-x")
                 }
                 // srmd-ncnn is Vulkan GPU-only in upstream main.cpp; others accept -g -1 for CPU
                 if (preferences.backend == ExecutionBackend.CPU && tool != "srmd-ncnn") {

@@ -1,35 +1,92 @@
 package com.tumuyan.ncnn.realsr
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.tumuyan.ncnn.realsr.ui.RealScaleApp
-import com.tumuyan.ncnn.realsr.ui.RealScaleViewModel
+import androidx.lifecycle.lifecycleScope
+import com.tumuyan.ncnn.realsr.ui.MediaIntentsHost
+import com.tumuyan.ncnn.realsr.ui.RealScaleAppContainer
+import com.tumuyan.ncnn.realsr.ui.RealScaleDesignApp
+import com.tumuyan.ncnn.realsr.ui.state.AppStore
+import com.tumuyan.ncnn.realsr.ui.state.ThemePref
+import com.tumuyan.ncnn.realsr.widget.RealScaleWidgetsUpdater
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
+/**
+ * The one activity of the redesigned app: it owns the store, the system dialogs that the store asks
+ * for through [AppStore.permissionRequester] and [AppStore.mediaIntents], and the incoming-image
+ * intents (Open with / share target / widget / notification).
+ */
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: RealScaleViewModel by viewModels {
-        RealScaleViewModel.Factory(application)
-    }
+    private lateinit var container: RealScaleAppContainer
+    private lateinit var store: AppStore
+    private lateinit var intents: MediaIntentsHost
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        applyEdgeToEdge()
 
-        if (savedInstanceState == null) {
-            consumeIncomingIntent(intent)
-        }
+        container = RealScaleAppContainer.getInstance(this)
+        store = AppStore(this, container)
+        intents = MediaIntentsHost(this, container, store)
 
-        setContent {
-            RealScaleApp(viewModel = viewModel)
+        // Rotations and process death restore the Compose tree, not a new activity instance.
+        if (savedInstanceState == null) consumeIncomingIntent(intent)
+
+        setContent { RealScaleDesignApp(store) }
+
+        lifecycleScope.launch {
+            store.state
+                .map { appIsDark(it.settings.theme) }
+                .distinctUntilChanged()
+                .collect { applyEdgeToEdge(it) }
         }
+    }
+
+    /**
+     * System bars follow the app's own theme, not the system one: with Settings forced to Dark on a
+     * light system (or the reverse) the status bar used to be tinted for the wrong theme, which
+     * reads as a dark strip across the top of every screen.
+     */
+    private fun systemIsDark(): Boolean =
+        (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+
+    private fun appIsDark(pref: ThemePref): Boolean = when (pref) {
+        ThemePref.Dark -> true
+        ThemePref.Light -> false
+        ThemePref.System -> systemIsDark()
+    }
+
+    private fun applyEdgeToEdge() = applyEdgeToEdge(appIsDark(AppStore.persistedTheme(this)))
+
+    /**
+     * System bars follow the app's own theme, and they are re-applied whenever that theme changes.
+     *
+     * `enableEdgeToEdge` only sets the icon colour once: switching Settings → Dark left dark icons
+     * on a dark status bar, so the clock and the notification icons disappeared until the activity
+     * was recreated. The store's theme is collected below and the bar style is re-applied in place.
+     */
+    private fun applyEdgeToEdge(appDark: Boolean) {
+        val transparent = android.graphics.Color.TRANSPARENT
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(transparent, transparent) { appDark },
+            navigationBarStyle = SystemBarStyle.auto(transparent, transparent) { appDark },
+        )
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -38,41 +95,58 @@ class MainActivity : ComponentActivity() {
         consumeIncomingIntent(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (store.state.value.photoAccess) store.refreshPhotos()
+        store.refreshDevice()
+        // Keep the home-screen widgets in step with the app: the recent-creations widget shows the
+        // last three results, so it has to be redrawn whenever the app comes back to the front.
+        RealScaleWidgetsUpdater.refreshSoon(this)
+    }
+
     private fun consumeIncomingIntent(incoming: Intent?) {
         if (incoming == null) return
 
         if (incoming.getBooleanExtra(EXTRA_OPEN_PHOTO_PICKER, false)) {
             incoming.removeExtra(EXTRA_OPEN_PHOTO_PICKER)
-            viewModel.requestOpenPhotoPicker()
+            /*
+             * The widget can ask for a specific factor: the picked image then starts upscaling on
+             * its own, so a widget tap is one tap and not "pick, then find the button".
+             */
+            val scale = incoming.getIntExtra(EXTRA_AUTO_SCALE, 0)
+            incoming.removeExtra(EXTRA_AUTO_SCALE)
+            store.pendingAutoScale = scale.takeIf { it in 2..5 }
+            intents.pickDocument()
             return
+        }
+
+        // A tap on the ongoing progress notification lands on the live upscaling screen.
+        if (incoming.getBooleanExtra(ProcessingService.EXTRA_OPEN_PROCESSING, false)) {
+            incoming.removeExtra(ProcessingService.EXTRA_OPEN_PROCESSING)
+            store.openProcessing()
+            if (store.state.value.job?.status == com.tumuyan.ncnn.realsr.ui.state.JobStatus.Running) return
         }
 
         val creationId = incoming.getLongExtra(ProcessingService.EXTRA_OPEN_CREATION_ID, -1L)
         if (creationId > 0L) {
             incoming.removeExtra(ProcessingService.EXTRA_OPEN_CREATION_ID)
-            viewModel.openCreationById(creationId)
+            lifecycleScope.launch {
+                val row = runCatching { container.database.recentCreationDao().getById(creationId) }.getOrNull()
+                if (row != null) store.openResult(row.id.toString()) else store.toast("That result is no longer available")
+            }
             return
         }
 
-        when (incoming.action) {
-            Intent.ACTION_VIEW -> {
-                val dataUri = incoming.data
-                if (dataUri != null && dataUri.scheme != "realscale") {
-                    viewModel.onExternalPhotosReceived(listOf(dataUri))
-                }
-            }
-            Intent.ACTION_SEND -> {
-                val single = extractParcelableUri(incoming) ?: incoming.data
-                if (single != null) {
-                    viewModel.onExternalPhotosReceived(listOf(single))
-                }
-            }
-            Intent.ACTION_SEND_MULTIPLE -> {
-                val list = extractParcelableUriList(incoming)
-                if (list.isNotEmpty()) {
-                    viewModel.onExternalPhotosReceived(list)
-                }
-            }
+        val uris = when (incoming.action) {
+            Intent.ACTION_VIEW -> listOfNotNull(incoming.data)
+            Intent.ACTION_SEND -> listOfNotNull(extractParcelableUri(incoming) ?: incoming.data)
+            Intent.ACTION_SEND_MULTIPLE -> extractParcelableUriList(incoming)
+            else -> emptyList()
+        }.filter { it.scheme != "realscale" }
+        if (uris.isEmpty()) return
+
+        lifecycleScope.launch {
+            uris.forEach { uri -> runCatching { intents.importFromUri(uri) } }
         }
     }
 
@@ -94,7 +168,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Test seam for the instrumentation smoke test. */
+    internal fun storeForTest(): AppStore = store
+
+    /** True when the current photo permission grants access to the whole library. */
+    fun hasPhotoAccess(): Boolean {
+        val permission = photoPermission()
+        return ContextCompat.checkSelfPermission(this, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    fun photoPermission(): String =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.READ_MEDIA_IMAGES
+        else Manifest.permission.READ_EXTERNAL_STORAGE
+
+    @Suppress("unused")
+    private fun systemPickVisual(): PickVisualMediaRequest =
+        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+
     companion object {
         const val EXTRA_OPEN_PHOTO_PICKER = "com.tumuyan.ncnn.realsr.EXTRA_OPEN_PHOTO_PICKER"
+
+        /** 2, 3, 4 or 5: start upscaling as soon as the picked image is imported. */
+        const val EXTRA_AUTO_SCALE = "com.tumuyan.ncnn.realsr.EXTRA_AUTO_SCALE"
     }
 }

@@ -32,6 +32,9 @@ public class ProcessingService extends Service {
     public static final String ACTION_STOP_TASK = "com.tumuyan.ncnn.realsr.ACTION_STOP_TASK";
     public static final String EXTRA_OPEN_CREATION_ID = "com.tumuyan.ncnn.realsr.EXTRA_OPEN_CREATION_ID";
 
+    /** Set on the ongoing notification: open the Processing screen instead of Home. */
+    public static final String EXTRA_OPEN_PROCESSING = "com.tumuyan.ncnn.realsr.EXTRA_OPEN_PROCESSING";
+
     private final IBinder binder = new LocalBinder();
     private ImageProcessor imageProcessor;
     private NotificationManager notificationManager;
@@ -138,13 +141,11 @@ public class ProcessingService extends Service {
 
             @Override
             public void onCompleted(String result, boolean success) {
-                boolean removeNotification = (notifySetting == 0 || notifySetting == 3);
-                stopForeground(removeNotification);
-                if (!removeNotification) {
-                    forceUpdateNotification(success ?
-                            getString(R.string.done) :
-                            getString(R.string.notification_fail));
-                }
+                // Always drop the ongoing notification: a per-command "Done" used to linger in the
+                // shade (and was later overwritten by "Saving to Gallery… 99%" and never removed).
+                // The session-level completion notification is posted separately.
+                stopForeground(true);
+                notificationManager.cancel(NOTIFICATION_ID);
                 if (callback != null) {
                     callback.onCompleted(result, success);
                 }
@@ -152,16 +153,27 @@ public class ProcessingService extends Service {
 
             @Override
             public void onError(String error) {
-                boolean removeNotification = (notifySetting == 0 || notifySetting == 3);
-                stopForeground(removeNotification);
-                if (!removeNotification) {
-                    forceUpdateNotification(getString(R.string.notification_fail));
-                }
+                stopForeground(true);
+                notificationManager.cancel(NOTIFICATION_ID);
                 if (callback != null) {
                     callback.onError(error);
                 }
             }
         });
+    }
+
+    /**
+     * Called once the whole batch is finished (every queued photo saved or failed). Removes the
+     * foreground notification for good and stops the service, so the shade never keeps a stale
+     * "Saving to Gallery… 99 %" row.
+     */
+    public void finishSession() {
+        if (imageProcessor != null) {
+            imageProcessor.cancelCurrentTask();
+        }
+        stopForeground(true);
+        notificationManager.cancel(NOTIFICATION_ID);
+        stopSelf();
     }
 
     public void cancelTask() {
@@ -235,20 +247,12 @@ public class ProcessingService extends Service {
         notificationManager.notify(notifId, builder.build());
     }
 
-    private void forceUpdateNotification(String text) {
-        if (notifySetting == 0) return;
-        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return;
-        lastNotificationUpdateTime = System.currentTimeMillis();
-        notificationManager.notify(
-                NOTIFICATION_ID,
-                buildProgressNotification(getString(R.string.app_name), text, -1)
-        );
-    }
-
     private Notification buildProgressNotification(String title, String statusText, int determinatePercent) {
         String channelId = (notifySetting == 2 || notifySetting == 3) ? CHANNEL_ID_PROGRESS : CHANNEL_ID_ALIVE;
 
         Intent openIntent = new Intent(this, MainActivity.class);
+        // Tap on the ongoing notification = back to the live progress screen, not the home tab.
+        openIntent.putExtra(EXTRA_OPEN_PROCESSING, true);
         openIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         int piFlags = PendingIntent.FLAG_UPDATE_CURRENT
                 | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);

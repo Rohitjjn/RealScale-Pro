@@ -16,10 +16,29 @@ android {
         minSdk = 24
         // Keep targetSdk = 28 so extracted native CLI binaries in cache/realsr remain executable on Android 10+
         targetSdk = 28
-        versionCode = 54
-        versionName = "2.1.0"
+        versionCode = 61
+        versionName = "2.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    /**
+     * One stable signing key for every build, checked into the repo on purpose.
+     *
+     * Both variants used to be signed with the runner's auto-generated debug keystore, which is
+     * different on every CI run: Android then refuses "Install" over an existing copy with
+     * "App not installed / package conflicts with an existing package". Shipping one PKCS#12 key
+     * (side-load distribution, not Play) makes every APK from this repository update the previous
+     * one in place.
+     */
+    signingConfigs {
+        create("realscale") {
+            storeFile = rootProject.file("keystore/realscale.p12")
+            storeType = "PKCS12"
+            storePassword = "realscale2026"
+            keyAlias = "realscale"
+            keyPassword = "realscale2026"
+        }
     }
 
     buildTypes {
@@ -31,12 +50,13 @@ android {
                 "proguard-rules.pro"
             )
             resValue("string", "app_name", "RealScale-Pro")
+            signingConfig = signingConfigs.getByName("realscale")
         }
 
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("realscale")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -127,7 +147,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.coil.compose)
 
     implementation(libs.kotlinx.coroutines.core)
@@ -138,11 +157,13 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.room.testing)
-    testImplementation(libs.androidx.work.testing)
     testImplementation(libs.robolectric)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    // Declares androidx.activity.ComponentActivity for composeRule; without it createComposeRule()
+    // cannot resolve the host activity ("Unable to resolve activity").
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

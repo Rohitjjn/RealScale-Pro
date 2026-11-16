@@ -1,0 +1,5 @@
+# Prototype-only stubs (never committed): regenerate with tools/ui-capture/gen-stub-assets.mjs
+node_modules/
+dist/
+src/assets/logo.jpg
+src/assets/photos/

@@ -282,6 +282,11 @@ Even if this feature is disabled, you can still select multiple images from othe
     <string name="command_warn">⚠️Commands entered here will be executed directly with shell permissions. Please ensure you understand the command\'s purpose. You are fully responsible for your actions.</string>
     <string name="widget_enhance_desc">Quickly pick and enhance a photo offline in RealScale-Pro.</string>
     <string name="widget_recent_desc">Browse and open your latest enhanced creations from RealScale-Pro.</string>
+    <string name="widget_enhance_label">Enhance a photo</string>
+    <string name="widget_recent_label">Recent creations</string>
+    <string name="widget_enhance_cta">Enhance a photo</string>
+    <string name="widget_enhance_hint">Pick a photo and upscale it offline</string>
+    <string name="widget_recent_empty">Tap Enhance to upscale your first photo offline</string>
     <string name="ui_nav_studio">Studio</string>
     <string name="ui_nav_library">Library</string>
     <string name="ui_nav_models">Models</string>

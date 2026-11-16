@@ -1,0 +1,359 @@
+@import "tailwindcss";
+
+/* Framed "phone" presentation only when there is room for it (desktop preview). */
+@custom-variant desk (@media (min-width: 560px) and (min-height: 620px));
+
+/* ---------- Fonts (self-hosted, latin subset) ----------
+   DESIGN.md: Copernicus / Tiempos Headline for display, StyreneB for body.
+   Documented open substitutes: Cormorant Garamond (display) and Inter (body). */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../node_modules/@fontsource/cormorant-garamond/files/cormorant-garamond-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+}
+
+/* ---------- Design tokens (DESIGN.md) ---------- */
+:root {
+  color-scheme: light;
+
+  --f-sans: "StyreneB", "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --f-serif: Copernicus, "Tiempos Headline", "Cormorant Garamond", "EB Garamond", Garamond, "Times New Roman", serif;
+  --f-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --spring: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* surfaces */
+  --c-canvas: #faf9f5;
+  --c-soft: #f5f0e8;
+  --c-card: #efe9de;
+  --c-strong: #e8e0d2;
+  /* text */
+  --c-ink: #141413;
+  --c-body-strong: #252523;
+  --c-body: #3d3d3a;
+  --c-muted: #6c6a64;
+  --c-muted-soft: #8e8b82;
+  /* lines */
+  --c-hairline: #e6dfd8;
+  --c-hairline-soft: #ebe6df;
+  /* dark product surfaces */
+  --c-dark: #181715;
+  --c-dark-elevated: #252320;
+  --c-dark-soft: #1f1e1b;
+  /* "featured" flip: dark on cream */
+  --c-inverse: #181715;
+  --c-on-inverse: #faf9f5;
+  --c-on-inverse-soft: #a09d96;
+  /* coral as text: one step deeper than primary-active so it stays AA on canvas and on cream cards */
+  --c-link: #9c4f36;
+  --c-error: #c64545;
+  --c-disabled: #e6dfd8;
+  --c-on-disabled: #6c6a64;
+  --c-backdrop: #e8e0d2;
+  --c-stage: #181715;
+  --c-scrim: rgba(20, 20, 19, 0.44);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-canvas: #181715;
+  --c-soft: #1f1e1b;
+  --c-card: #252320;
+  --c-strong: #322f2b;
+  --c-ink: #faf9f5;
+  --c-body-strong: #ece8e1;
+  --c-body: #d3cfc7;
+  --c-muted: #a09d96;
+  --c-muted-soft: #7f7c75;
+  --c-hairline: #35322d;
+  --c-hairline-soft: #2b2926;
+  --c-dark: #252320;
+  --c-dark-elevated: #322f2b;
+  --c-dark-soft: #2b2926;
+  --c-inverse: #f5f0e8;
+  --c-on-inverse: #141413;
+  --c-on-inverse-soft: #6c6a64;
+  --c-link: #dd8f74;
+  --c-error: #e58585;
+  --c-disabled: #322f2b;
+  --c-on-disabled: #8e8b82;
+  --c-backdrop: #2b2926;
+  --c-stage: #0f0e0d;
+  --c-scrim: rgba(0, 0, 0, 0.6);
+}
+
+@theme inline {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-canvas: var(--c-canvas);
+  --color-soft: var(--c-soft);
+  --color-card: var(--c-card);
+  --color-strong: var(--c-strong);
+  --color-ink: var(--c-ink);
+  --color-body-strong: var(--c-body-strong);
+  --color-body: var(--c-body);
+  --color-muted: var(--c-muted);
+  --color-muted-soft: var(--c-muted-soft);
+  --color-hairline: var(--c-hairline);
+  --color-hairline-soft: var(--c-hairline-soft);
+  --color-dark: var(--c-dark);
+  --color-dark-elevated: var(--c-dark-elevated);
+  --color-dark-soft: var(--c-dark-soft);
+  --color-on-dark: #faf9f5;
+  --color-on-dark-soft: #a09d96;
+  --color-inverse: var(--c-inverse);
+  --color-on-inverse: var(--c-on-inverse);
+  --color-on-inverse-soft: var(--c-on-inverse-soft);
+  --color-primary: #cc785c;
+  --color-primary-active: #a9583e;
+  --color-on-primary: #ffffff;
+  --color-link: var(--c-link);
+  --color-teal: #5db8a6;
+  --color-amber: #e8a55a;
+  --color-on-accent: #141413;
+  --color-success: #5db872;
+  --color-warning: #d4a017;
+  --color-error: var(--c-error);
+  --color-disabled: var(--c-disabled);
+  --color-on-disabled: var(--c-on-disabled);
+  --color-backdrop: var(--c-backdrop);
+  --color-stage: var(--c-stage);
+  --color-scrim: var(--c-scrim);
+
+  --font-sans: var(--f-sans);
+  --font-serif: var(--f-serif);
+  --font-mono: var(--f-mono);
+
+  /* DESIGN.md radius scale: 8 buttons and inputs, 12 cards, 16 hero containers */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+
+  /* The one shadow the system allows, used rarely */
+  --shadow-soft: 0 1px 3px rgba(20, 20, 19, 0.08);
+
+  --ease-spring: var(--spring);
+}
+
+/* ---------- Base ---------- */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--c-backdrop);
+    color: var(--c-ink);
+    font-family: var(--f-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  button,
+  a,
+  label,
+  summary,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--c-ink);
+    outline-offset: 2px;
+  }
+  .chrome :focus-visible,
+  .chrome:focus-visible {
+    outline-color: #faf9f5;
+  }
+  ::selection {
+    background: color-mix(in srgb, #cc785c 28%, transparent);
+  }
+  img {
+    -webkit-user-drag: none;
+  }
+}
+
+/* ---------- Type utilities ---------- */
+@utility display {
+  font-family: var(--f-serif);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  font-variant-numeric: lining-nums;
+}
+@utility eyebrow {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: 0.125em;
+  text-transform: uppercase;
+}
+@utility tnum {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+@utility safe-t {
+  padding-top: env(safe-area-inset-top);
+}
+@utility safe-b {
+  padding-bottom: max(0.875rem, var(--safe-b, env(safe-area-inset-bottom)));
+}
+
+/* ---------- Motion ---------- */
+@keyframes push-in {
+  from { transform: translateX(28px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes pop-in {
+  from { transform: translateX(-28px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-out {
+  to { opacity: 0; }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+@keyframes sheet-out {
+  to { transform: translateY(100%); }
+}
+@keyframes pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes tile-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes sweep-clip {
+  from { clip-path: inset(0 22% 0 0); }
+  to { clip-path: inset(0 78% 0 0); }
+}
+@keyframes sweep-line {
+  from { left: 78%; }
+  to { left: 22%; }
+}
+
+@utility anim-push { animation: push-in 0.3s var(--spring) both; }
+@utility anim-pop { animation: pop-in 0.3s var(--spring) both; }
+@utility anim-fade { animation: fade-in 0.26s ease both; }
+@utility anim-fade-out { animation: fade-out 0.2s ease forwards; }
+@utility anim-rise { animation: rise-in 0.45s var(--spring) both; }
+@utility anim-sheet-in { animation: sheet-in 0.36s var(--spring) backwards; }
+@utility anim-sheet-out { animation: sheet-out 0.22s ease-in forwards; }
+@utility anim-pop-in { animation: pop 0.5s var(--spring) both; }
+@utility anim-tile { animation: tile-pulse 0.9s ease-in-out infinite; }
+@utility anim-sweep-clip { animation: sweep-clip 3.2s ease-in-out infinite alternate; }
+@utility anim-sweep-line { animation: sweep-line 3.2s ease-in-out infinite alternate; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--c-card) 25%, var(--c-soft) 40%, var(--c-card) 60%);
+  background-size: 300% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ---------- Range input ---------- */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2.75rem;
+  background: transparent;
+  cursor: pointer;
+  --track: color-mix(in srgb, var(--c-muted-soft) 45%, transparent);
+}
+.range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, var(--c-ink) var(--p, 0%), var(--track) var(--p, 0%));
+}
+.range::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, var(--c-ink) var(--p, 0%), var(--track) var(--p, 0%));
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -10px;
+  border-radius: 9999px;
+  background: var(--c-canvas);
+  border: 2px solid var(--c-ink);
+}
+.range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--c-canvas);
+  border: 2px solid var(--c-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
