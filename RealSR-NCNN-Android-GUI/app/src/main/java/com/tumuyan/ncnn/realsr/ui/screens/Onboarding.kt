@@ -496,7 +496,13 @@ private fun Primer(store: AppStore, photos: Boolean) {
             RsButton(
                 onClick = {
                     store.haptic(HapticKind.Light)
-                    if (photos) store.requestPhotoPermission() else store.finishNotifications(accepted = true)
+                    /*
+                     * Round-4, issue 2: the primer only recorded "asked" and moved on, so Android's
+                     * POST_NOTIFICATIONS dialog never appeared and every "upscale finished" alert was
+                     * silently dropped. The launcher answers through `onPermissionResult`, which
+                     * calls `finishNotifications(granted)`.
+                     */
+                    if (photos) store.requestPhotoPermission() else store.requestNotificationPermission()
                 },
                 variant = RsButtonVariant.Primary,
                 size = RsButtonSize.Lg,

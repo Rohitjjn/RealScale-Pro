@@ -44,7 +44,19 @@ data class EnginePreferences(
     val defaultPresetId: PresetId? = null,
     val keepScreenOnDuringEnhance: Boolean = true,
     val hapticsEnabled: Boolean = true,
-    val wifiOnlyDownloads: Boolean = false
+    val wifiOnlyDownloads: Boolean = false,
+    /* Round-4 job knobs. The store pushes these from the Config screen's Advanced prefs before
+     * every job, so the engine no longer has to ignore what the switches promised. */
+    /** Enhanced quality (TTA): the ncnn tools' `-x` flag. */
+    val tta: Boolean = false,
+    /** "auto" (over 2 MB), "off" or "custom" — the input copy the model actually reads. */
+    val compression: String = "auto",
+    val compressionQuality: Int = 90,
+    /** JPEG/WebP quality of the saved result; 100 keeps the network's own output. */
+    val outputQuality: Int = 95,
+    val keepMetadata: Boolean = true,
+    /** Slow down (smaller tiles) when the phone is hot or nearly empty. */
+    val throttleWhenHot: Boolean = true
 )
 
 data class ModelExecutionSpec(

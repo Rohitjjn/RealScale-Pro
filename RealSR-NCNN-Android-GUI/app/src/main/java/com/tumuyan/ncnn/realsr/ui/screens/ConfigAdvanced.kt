@@ -194,7 +194,11 @@ fun AdvancedSections(
         RsGroup {
             RsSwitchRow(
                 title = "Enhanced quality (TTA)",
-                sub = "Runs the image several ways and averages. Up to 8× slower.",
+                sub = if (plan.model.engineTool == "mnnsr-ncnn") {
+                    "This model's engine has no TTA. Pick an ncnn model to use it."
+                } else {
+                    "Runs the model eight ways and averages the result (`-x`). Up to 8× slower."
+                },
                 checked = prefs.tta,
                 onChange = { setPrefs { prefs2 -> prefs2.copy(tta = it) } },
             )
@@ -203,7 +207,10 @@ fun AdvancedSections(
         Text("Input and output", style = RsType.display(26f), color = c.ink)
 
         if (!isSuper) {
-            RsField(label = "Image compression", hint = "Auto re-encodes files over 2 MB at 90% quality into a temporary copy.") {
+            RsField(
+                label = "Image compression",
+                hint = "Auto re-encodes files over 2 MB at 90% quality into a temporary copy; the original on your phone is never changed.",
+            ) {
                 RsSegmented(
                     label = "Image compression",
                     value = prefs.compression,

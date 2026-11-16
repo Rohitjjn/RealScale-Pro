@@ -14,6 +14,7 @@ import com.tumuyan.ncnn.realsr.ProcessingService
 import com.tumuyan.ncnn.realsr.ProgressLogHelper
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationDao
 import com.tumuyan.ncnn.realsr.core.database.RecentCreationEntity
+import com.tumuyan.ncnn.realsr.core.device.ThermalGuard
 import com.tumuyan.ncnn.realsr.ui.MediaExportHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -127,6 +128,12 @@ class ProcessingServiceEngine(
             .putBoolean(KEY_KEEP_SCREEN_ON, updated.keepScreenOnDuringEnhance)
             .putBoolean(KEY_HAPTICS_ENABLED, updated.hapticsEnabled)
             .putBoolean(KEY_WIFI_ONLY_DOWNLOADS, updated.wifiOnlyDownloads)
+            .putBoolean(KEY_TTA, updated.tta)
+            .putString(KEY_COMPRESSION, updated.compression)
+            .putInt(KEY_COMPRESSION_QUALITY, updated.compressionQuality)
+            .putInt(KEY_OUTPUT_QUALITY, updated.outputQuality)
+            .putBoolean(KEY_KEEP_METADATA, updated.keepMetadata)
+            .putBoolean(KEY_THROTTLE, updated.throttleWhenHot)
             .apply()
     }
 
@@ -381,7 +388,17 @@ class ProcessingServiceEngine(
                 val entry = lease.entry
                 val pos = lease.positionInSession
                 val total = lease.totalInSession
-                val prefs = _preferences.value
+                /*
+                 * Round-4: "Slow down when hot or low on battery" (Settings → General). The guard
+                 * keeps the model and the factor and only shrinks the tile / thread budget, so the
+                 * job still finishes with the same output size instead of overheating the phone.
+                 */
+                val requested = _preferences.value
+                val throttleReason = if (requested.throttleWhenHot) ThermalGuard.reason(appContext) else null
+                val prefs = if (throttleReason != null) ThermalGuard.throttle(requested) else requested
+                if (throttleReason != null && !requested.hideProgramOutput) {
+                    appendLog("Thermal guard: $throttleReason — tile ${prefs.tileSize} px")
+                }
                 val itemStartMs = System.currentTimeMillis()
                 cancelCurrentItemOnly = false
 
@@ -427,7 +444,22 @@ class ProcessingServiceEngine(
                     continue
                 }
 
-                val (inW, inH) = decodeDimensions(beforeFile)
+                /*
+                 * "Image compression" (Config → Input and output): the network reads a re-encoded
+                 * copy, the picked photo on disk is never modified. `engineInput` is the same
+                 * before/after source only when the copy would not be smaller.
+                 */
+                val inputPolicy = OutputPostProcessor.inputPolicy(
+                    preference = prefs.compression,
+                    quality = prefs.compressionQuality,
+                    sizeBytes = beforeFile.length(),
+                )
+                val engineInput = OutputPostProcessor.applyInputCompression(beforeFile, creationsDir, inputPolicy)
+                if (engineInput.absolutePath != beforeFile.absolutePath && !prefs.hideProgramOutput) {
+                    appendLog("Compressed copy: ${engineInput.length() / 1024} KB at ${inputPolicy.quality}%")
+                }
+
+                val (inW, inH) = decodeDimensions(engineInput)
                 val outExt = prefs.outputFormat.extension
                 var outputFile = File(
                     creationsDir,
@@ -437,7 +469,7 @@ class ProcessingServiceEngine(
                 val command = PresetCommandResolver.buildUpscaleCommand(
                     preset = entry.preset,
                     scale = entry.scale,
-                    inputPath = beforeFile.absolutePath,
+                    inputPath = engineInput.absolutePath,
                     outputPath = outputFile.absolutePath,
                     preferences = prefs,
                     modelOverride = entry.modelSpec,
@@ -601,6 +633,7 @@ class ProcessingServiceEngine(
 
                 if (!cmdResult.success || !outputFile.exists() || outputFile.length() == 0L) {
                     beforeFile.delete()
+                    if (engineInput.absolutePath != beforeFile.absolutePath) engineInput.delete()
                     outputFile.delete()
                     val retryReq = UpscaleRequest(
                         inputUris = listOf(entry.uri),
@@ -628,6 +661,16 @@ class ProcessingServiceEngine(
                     jobQueue.markActiveFinished()
                     refreshQueueSnapshot()
                     continue
+                }
+
+                /*
+                 * Output quality and "Keep photo metadata". The re-encode runs first: a JPEG pass
+                 * drops the tags, so they are copied onto the file that is actually saved.
+                 */
+                OutputPostProcessor.reencodeOutput(outputFile, prefs.outputFormat, prefs.outputQuality)
+                if (prefs.keepMetadata) {
+                    val copiedMeta = OutputPostProcessor.copyMetadata(beforeFile, outputFile)
+                    if (copiedMeta && !prefs.hideProgramOutput) appendLog("Metadata copied from the original photo")
                 }
 
                 // Stage 3: Saving (write to Pictures/RealScale-Pro with <originalName>_x2/_x4)
@@ -660,6 +703,8 @@ class ProcessingServiceEngine(
                 } else {
                     null
                 }
+
+                if (engineInput.absolutePath != beforeFile.absolutePath) engineInput.delete()
 
                 val (outW, outH) = decodeDimensions(outputFile)
                 val fileDuration = (System.currentTimeMillis() - itemStartMs).coerceAtLeast(1L)
@@ -901,7 +946,13 @@ class ProcessingServiceEngine(
             defaultPresetId = defaultPreset,
             keepScreenOnDuringEnhance = prefsStore.getBoolean(KEY_KEEP_SCREEN_ON, true),
             hapticsEnabled = prefsStore.getBoolean(KEY_HAPTICS_ENABLED, true),
-            wifiOnlyDownloads = prefsStore.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, false)
+            wifiOnlyDownloads = prefsStore.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, false),
+            tta = prefsStore.getBoolean(KEY_TTA, false),
+            compression = prefsStore.getString(KEY_COMPRESSION, "auto") ?: "auto",
+            compressionQuality = prefsStore.getInt(KEY_COMPRESSION_QUALITY, 90),
+            outputQuality = prefsStore.getInt(KEY_OUTPUT_QUALITY, 95),
+            keepMetadata = prefsStore.getBoolean(KEY_KEEP_METADATA, true),
+            throttleWhenHot = prefsStore.getBoolean(KEY_THROTTLE, true)
         )
     }
 
@@ -920,6 +971,12 @@ class ProcessingServiceEngine(
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_HAPTICS_ENABLED = "haptics_enabled"
         private const val KEY_WIFI_ONLY_DOWNLOADS = "wifi_only_downloads"
+        private const val KEY_TTA = "tta"
+        private const val KEY_COMPRESSION = "compression"
+        private const val KEY_COMPRESSION_QUALITY = "compression_quality"
+        private const val KEY_OUTPUT_QUALITY = "output_quality"
+        private const val KEY_KEEP_METADATA = "keep_metadata"
+        private const val KEY_THROTTLE = "throttle"
         private const val NOTIFY_DETAILED_AUTO_DISMISS = 3
         private const val MAX_LOG_CHARS = 24_000
         private val PERCENT_REGEX = Regex("""(\d{1,3}(?:\.\d+)?)%""")

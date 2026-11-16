@@ -122,6 +122,13 @@ fun ConfigScreen(store: AppStore, photoId: String) {
     var paused by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
     val busy = state.job?.status == com.tumuyan.ncnn.realsr.ui.state.JobStatus.Running
+    /*
+     * Round-4, issue 8: in Super Resolution the planner's `wanted` entry is the heavy model that is
+     * *not installed yet*. The old screen still offered "Upscale" and quietly ran the small fallback.
+     * Now the heavy model has to arrive first: the button below turns into its download.
+     */
+    val requiredModel = if (mode == ModeId.SUPER) plan.wanted else null
+    val requiredDownload = requiredModel?.let { state.downloads[it.id] }
     val blockedReason = when {
         detecting -> "Analyzing photo…"
         busy -> "Another upscale is running"
@@ -139,6 +146,11 @@ fun ConfigScreen(store: AppStore, photoId: String) {
 
     fun start(force: Boolean) {
         if (blockedReason != null) return
+        if (requiredModel != null) {
+            store.haptic(HapticKind.Warning)
+            if (requiredDownload == null) store.downloadModel(requiredModel.id)
+            return
+        }
         if (!force && plan.check !is PlanCheck.Green) {
             store.haptic(HapticKind.Warning)
             sheet = "check"
@@ -196,14 +208,17 @@ fun ConfigScreen(store: AppStore, photoId: String) {
                         Icon(LucideIcons.Expand, contentDescription = null, tint = c.onDark, modifier = Modifier.size(16.dp))
                     }
                 }
-                Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(photo.name, style = RsType.mono(13f), color = c.ink, maxLines = 1, modifier = Modifier.weight(1f))
-                    Text(
-                        "${fmtDims(photo.width, photo.height)} · ${fmtMB(photo.sizeMB)}",
-                        style = RsType.body(13f).copy(fontFeatureSettings = "tnum"),
-                        color = c.muted,
-                    )
-                }
+                /*
+                 * Round-4, issue 9: the picked file's name — and "Imported …" for a shared image —
+                 * used to sit under the preview. What the user needs here is the size, not the
+                 * temporary file name the picker happened to give us.
+                 */
+                Text(
+                    "${fmtDims(photo.width, photo.height)} · ${fmtMB(photo.sizeMB)}",
+                    style = RsType.body(13f).copy(fontFeatureSettings = "tnum"),
+                    color = c.muted,
+                    modifier = Modifier.padding(top = 10.dp),
+                )
 
                 if (mode == ModeId.SUPER) {
                     Row(
@@ -261,27 +276,71 @@ fun ConfigScreen(store: AppStore, photoId: String) {
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .padding(horizontal = 20.dp, vertical = 12.dp),
             ) {
-                RsButton(
-                    onClick = { start(false) },
-                    variant = RsButtonVariant.Primary,
-                    size = RsButtonSize.Lg,
-                    full = true,
-                    enabled = blockedReason == null,
-                    content = { _ ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (requiredModel != null) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                            .clip(RoundedCornerShape(RsRadius.md.dp))
+                            .background(c.card)
+                            .padding(14.dp),
+                    ) {
+                        Text(
+                            "Super Resolution needs ${requiredModel.name}",
+                            style = RsType.body(14f, FontWeight.Medium, 1.3f),
+                            color = c.ink,
+                        )
+                        Text(
+                            if (requiredDownload != null) {
+                                "${(requiredDownload.progress * 100).toInt()}% of ${fmtMB(requiredModel.sizeMB)}"
+                            } else {
+                                "This mode never uses a light fallback. ${fmtMB(requiredModel.sizeMB)} — the download obeys your Wi-Fi only setting."
+                            },
+                            style = RsType.body(13f, lineHeightRatio = 1.35f),
+                            color = c.muted,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                        if (requiredDownload != null) {
+                            RsProgressBar(requiredDownload.progress, "Downloading ${requiredModel.name}", Modifier.padding(top = 8.dp))
+                        }
+                    }
+                    RsButton(
+                        onClick = { store.downloadModel(requiredModel.id) },
+                        variant = RsButtonVariant.Primary,
+                        size = RsButtonSize.Lg,
+                        full = true,
+                        enabled = requiredDownload == null && blockedReason == null,
+                        content = { _ ->
                             Text(
-                                blockedReason ?: "Upscale",
+                                if (requiredDownload != null) "Downloading ${requiredModel.name}…"
+                                else "Download ${requiredModel.name} · ${fmtMB(requiredModel.sizeMB)}",
                                 style = RsType.body(17f, FontWeight.SemiBold, 1.2f),
                             )
-                            if (blockedReason == null) {
+                        },
+                    )
+                } else {
+                    RsButton(
+                        onClick = { start(false) },
+                        variant = RsButtonVariant.Primary,
+                        size = RsButtonSize.Lg,
+                        full = true,
+                        enabled = blockedReason == null,
+                        content = { _ ->
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    "${fmtDims(plan.outW, plan.outH)} · about ${fmtEta(plan.etaSec)}",
-                                    style = RsType.body(13f, FontWeight.Medium, 1.2f),
+                                    blockedReason ?: "Upscale",
+                                    style = RsType.body(17f, FontWeight.SemiBold, 1.2f),
                                 )
+                                if (blockedReason == null) {
+                                    Text(
+                                        "${fmtDims(plan.outW, plan.outH)} · about ${fmtEta(plan.etaSec)}",
+                                        style = RsType.body(13f, FontWeight.Medium, 1.2f),
+                                    )
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         }
 
@@ -380,12 +439,27 @@ private fun DefaultCard(store: AppStore, photo: PhotoItem, plan: Plan, detecting
                     .padding(top = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                PlanLine("Model", plan.model.name)
+                PlanLine(
+                    "Model",
+                    if (plan.wanted != null && store.rememberState().mode == ModeId.SUPER) {
+                        "${plan.wanted.name} · needs download"
+                    } else {
+                        plan.model.name
+                    },
+                )
                 PlanLine("Tiles", "${plan.tilePx} px · ${plan.compute}")
                 PlanLine("Input", plan.inputNote)
                 PlanLine("Output", "${fmtDims(plan.outW, plan.outH)} · ${plan.format}")
             }
-            plan.wanted?.let { wanted -> WantedHint(store, wanted.id, plan.model.name, Modifier.padding(top = 12.dp)) }
+            plan.wanted?.let { wanted ->
+                WantedHint(
+                    store = store,
+                    wantedId = wanted.id,
+                    currentName = plan.model.name,
+                    modifier = Modifier.padding(top = 12.dp),
+                    blocksJob = store.rememberState().mode == ModeId.SUPER,
+                )
+            }
         }
     }
 }
@@ -400,7 +474,14 @@ private fun PlanLine(key: String, value: String) {
 }
 
 @Composable
-private fun WantedHint(store: AppStore, wantedId: String, currentName: String, modifier: Modifier = Modifier) {
+private fun WantedHint(
+    store: AppStore,
+    wantedId: String,
+    currentName: String,
+    modifier: Modifier = Modifier,
+    /** Super Resolution: nothing starts until this download finishes. */
+    blocksJob: Boolean = false,
+) {
     val c = LocalRsColors.current
     val wanted = ModelCatalog.byId(wantedId)
     val download = store.rememberState().downloads[wanted.id]
@@ -415,7 +496,11 @@ private fun WantedHint(store: AppStore, wantedId: String, currentName: String, m
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                if (download != null) "Downloading ${wanted.name}" else "${wanted.name} is recommended here",
+                when {
+                    download != null -> "Downloading ${wanted.name}"
+                    blocksJob -> "${wanted.name} is required here"
+                    else -> "${wanted.name} is recommended here"
+                },
                 style = RsType.body(14f, FontWeight.Medium, 1.3f),
                 color = c.ink,
             )
@@ -429,7 +514,11 @@ private fun WantedHint(store: AppStore, wantedId: String, currentName: String, m
                 RsProgressBar(download.progress, "Downloading ${wanted.name}", Modifier.padding(top = 8.dp))
             } else {
                 Text(
-                    "Using $currentName until it is installed.",
+                    if (blocksJob) {
+                        "Super Resolution waits for this download; it never runs the light fallback."
+                    } else {
+                        "Using $currentName until it is installed."
+                    },
                     style = RsType.body(12f, lineHeightRatio = 1.3f),
                     color = c.muted,
                     modifier = Modifier.padding(top = 2.dp),
@@ -460,10 +549,11 @@ private fun ManualSections(
     setPrefs: ((JobPrefs) -> JobPrefs) -> Unit,
 ) {
     val c = LocalRsColors.current
-    val recommended = com.tumuyan.ncnn.realsr.core.plan.PipelinePlanner.recommendedId(
-        store.rememberState().mode,
-        plan.type,
-    )
+    val mode = store.rememberState().mode
+    val recommended = com.tumuyan.ncnn.realsr.core.plan.PipelinePlanner.recommendedId(mode, plan.type)
+    // Super Resolution shows the heavy model it is waiting for, not the light fallback it will
+    // never run (Round-4, issue 8).
+    val shownModel = if (mode == ModeId.SUPER) plan.wanted ?: plan.model else plan.model
     Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         if (plan.overLimit) {
             Column(
@@ -527,16 +617,17 @@ private fun ManualSections(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(plan.model.name, style = RsType.body(15f, FontWeight.Medium, 1.3f), color = c.ink)
+                    Text(shownModel.name, style = RsType.body(15f, FontWeight.Medium, 1.3f), color = c.ink)
                     Text(
-                        "${plan.model.desc} · ${plan.model.badge}",
+                        "${shownModel.desc} · ${shownModel.badge}",
                         style = RsType.body(13f, lineHeightRatio = 1.3f),
                         color = c.muted,
                         modifier = Modifier.padding(top = 2.dp),
                     )
                     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (plan.isAuto) RsBadge("Automatic")
-                        if (plan.model.id == recommended) RsBadge("Recommended", tone = RsBadgeTone.Amber)
+                        if (shownModel.id == recommended) RsBadge("Recommended", tone = RsBadgeTone.Amber)
+                        if (shownModel.id !in store.rememberState().installed) RsBadge("Download first")
                     }
                 }
                 Icon(LucideIcons.ChevronRight, contentDescription = null, tint = c.muted, modifier = Modifier.size(20.dp))
@@ -550,7 +641,12 @@ private fun ManualSections(
                         .background(c.card)
                         .padding(bottom = 4.dp),
                 ) {
-                    WantedHint(store, wanted.id, plan.model.name)
+                    WantedHint(
+                        store = store,
+                        wantedId = wanted.id,
+                        currentName = plan.model.name,
+                        blocksJob = mode == ModeId.SUPER,
+                    )
                 }
             }
         }

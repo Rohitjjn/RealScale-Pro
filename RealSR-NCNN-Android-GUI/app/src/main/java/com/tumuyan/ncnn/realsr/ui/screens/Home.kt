@@ -116,7 +116,7 @@ fun HomeScreen(store: AppStore) {
                  * More keeps only the clipboard and the share-target note.
                  */
                 Text(
-                    "Choose Another Image To Upscale",
+                    "Choose An Image To Upscale",
                     style = RsType.display(30f),
                     color = c.ink,
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp),

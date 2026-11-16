@@ -72,7 +72,6 @@ enum class FormatSetting { Auto, Jpeg, Png, Webp }
 @Serializable
 data class AppSettings(
     val theme: ThemePref = ThemePref.System,
-    val dynamicColor: Boolean = false,
     val haptics: Boolean = true,
     val launchMode: LaunchMode = LaunchMode.Last,
     val compute: ComputePref = ComputePref.Auto,
@@ -83,6 +82,10 @@ data class AppSettings(
     val wifiOnly: Boolean = false,
     val analytics: Boolean = false,
     val crashReports: Boolean = false,
+    /** SAF tree the user picked in Settings → Output → Save folder. Null = Pictures/RealScale-Pro. */
+    val saveFolderUri: String? = null,
+    /** Human label of [saveFolderUri] (the folder's display name). */
+    val saveFolderLabel: String? = null,
 )
 
 /** A photo as the UI needs it: MediaStore row, or a file the user opened with the app. */
@@ -180,6 +183,12 @@ data class AppUiState(
     val installed: List<String> = emptyList(),
     val photos: List<PhotoItem> = emptyList(),
     val results: List<ResultItem> = emptyList(),
+    /**
+     * Id of the creation the last finished job produced. The Room flow behind [results] re-emits one
+     * frame later than the engine's Completed, so the Result screen uses this to tell "still loading"
+     * apart from "deleted" and never bounces the user Home (Round-4, issue 1).
+     */
+    val lastResultId: String? = null,
     val photosLoading: Boolean = false,
     val job: JobUi? = null,
     val toast: ToastMessage? = null,

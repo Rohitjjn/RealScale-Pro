@@ -135,6 +135,12 @@ object PresetCommandResolver {
                 if (preferences.threadCount.isNotBlank()) {
                     builder.append("-j", preferences.threadCount.trim())
                 }
+                // "Enhanced quality (TTA)": all four ncnn tools accept upstream's `-x`, which runs
+                // the network 8 ways and averages. mnnsr-ncnn has no such flag (it is commented out
+                // in MNN-SR/main.cpp), so the MNN branch above deliberately ignores it.
+                if (preferences.tta) {
+                    builder.append("-x")
+                }
                 // srmd-ncnn is Vulkan GPU-only in upstream main.cpp; others accept -g -1 for CPU
                 if (preferences.backend == ExecutionBackend.CPU && tool != "srmd-ncnn") {
                     builder.append("-g", "-1")

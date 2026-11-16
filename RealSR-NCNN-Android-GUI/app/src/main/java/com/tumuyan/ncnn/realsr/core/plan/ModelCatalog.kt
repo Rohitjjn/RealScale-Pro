@@ -184,22 +184,6 @@ object ModelCatalog {
             entryFile = "RealESRGAN_x4plus_anime_6B-x4.mnn",
             manifestId = "models-MNN-RealESRGAN_x4plus_anime_6B",
         ),
-
-        /* ---- Bundled: shaders inside the Anime4k binary, nothing to download ---- */
-        ModelEntry(
-            id = "anime4k-x2", name = "Anime4K 2×",
-            desc = "Anime, the fastest option there is. No download.", kind = ImageType.Anime,
-            scales = listOf(2), engine = "ncnn", sizeMB = 0.0, speed = "Very fast", badge = "Fast",
-            minTier = 0, pack = "catalog", license = "MIT", secPerMP = 1.6,
-            engineTool = "Anime4k", sourceDir = "",
-        ),
-        ModelEntry(
-            id = "anime4k-x4", name = "Anime4K 4×",
-            desc = "Anime at 4× from the bundled shaders. No download.", kind = ImageType.Anime,
-            scales = listOf(4), engine = "ncnn", sizeMB = 0.0, speed = "Very fast", badge = "Fast",
-            minTier = 0, pack = "catalog", license = "MIT", secPerMP = 2.2,
-            engineTool = "Anime4k", sourceDir = "",
-        ),
     )
 
     /** The models the app installs on first run: one photo model and one anime model. */
@@ -218,11 +202,29 @@ object ModelCatalog {
 
     fun byId(id: String): ModelEntry = MODELS.firstOrNull { it.id == id } ?: MODELS.first()
 
+    /**
+     * Round-4, issue 4: `anime4k-x2` / `anime4k-x4` were rows with `sizeMB = 0.0` and no manifest,
+     * i.e. permanently "installed", impossible to delete and impossible to download. They are gone
+     * from [MODELS]; creations made by an older build keep a readable label through this map.
+     */
+    private val LEGACY_IDS: Map<String, String> = mapOf(
+        "anime4k-x2" to "Anime4K 2×",
+        "anime4k-x4" to "Anime4K 4×",
+    )
+
+    /** Display name for a stored model id, including ids that are no longer in the catalog. */
+    fun nameFor(id: String): String = LEGACY_IDS[id] ?: byId(id).name
+
     /** The catalog entry that a manifest id (an HF directory) installs into. */
     fun byManifestId(manifestId: String): ModelEntry? =
         MODELS.firstOrNull { it.manifestId == manifestId }
 
-    /** Ids the planner can treat as installed without a download (Anime4K ships its shaders). */
+    /**
+     * Ids the planner can treat as installed without a download.
+     *
+     * Empty since Round-4 (issue 4): the only entries without a manifest were the two ghost Anime4K
+     * rows, which are no longer in the catalog. Kept so the planner's contract stays explicit.
+     */
     val BUNDLED_IDS: List<String> = MODELS.filter { it.manifestId == null && it.blocked == null }.map { it.id }
 
     fun packOf(id: String): Pack = PACKS.firstOrNull { it.id == id } ?: PACKS.first()

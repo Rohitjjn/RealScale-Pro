@@ -10,6 +10,7 @@ import com.tumuyan.ncnn.realsr.core.device.DeviceProfile
 import com.tumuyan.ncnn.realsr.core.device.DeviceProfiler
 import com.tumuyan.ncnn.realsr.core.device.HapticKind
 import com.tumuyan.ncnn.realsr.core.device.Haptics
+import com.tumuyan.ncnn.realsr.core.device.ThermalGuard
 import com.tumuyan.ncnn.realsr.core.engine.EnginePreferences
 import com.tumuyan.ncnn.realsr.core.engine.ImageIntakeManager
 import com.tumuyan.ncnn.realsr.core.engine.EngineState
@@ -22,6 +23,7 @@ import com.tumuyan.ncnn.realsr.core.plan.ImageType
 import com.tumuyan.ncnn.realsr.core.plan.JobPrefs
 import com.tumuyan.ncnn.realsr.core.plan.ModeId
 import com.tumuyan.ncnn.realsr.core.plan.ModelCatalog
+import com.tumuyan.ncnn.realsr.core.plan.ModelEntry
 import com.tumuyan.ncnn.realsr.core.plan.PipelinePlanner
 import com.tumuyan.ncnn.realsr.core.plan.Plan
 import com.tumuyan.ncnn.realsr.core.plan.PlanInput
@@ -87,6 +89,9 @@ class AppStore(
 
     init {
         restore()
+        container.engine.updatePreferences {
+            it.copy(outputTreeUri = _state.value.settings.saveFolderUri)
+        }
         observeResults()
         observeCatalog()
         observeEngine()
@@ -410,7 +415,8 @@ class AppStore(
     }
 
     private fun toResultItem(row: RecentCreationEntity): ResultItem {
-        val model = ModelCatalog.byId(row.modelId)
+        // `nameFor` also knows the ids that left the catalog, so an old Anime4K creation keeps its name.
+        val modelName = ModelCatalog.nameFor(row.modelId)
         return ResultItem(
             id = row.id.toString(),
             photoId = row.sourceUri,
@@ -420,7 +426,7 @@ class AppStore(
             mode = if (row.presetId == "MAXIMUM") ModeId.SUPER else ModeId.UPSCALE,
             scale = row.scale,
             modelId = row.modelId,
-            modelName = model.name,
+            modelName = modelName,
             outW = row.outputWidth,
             outH = row.outputHeight,
             sizeMB = runCatching { File(row.outputPath).length() / 1048576.0 }.getOrDefault(0.0),
@@ -632,6 +638,34 @@ class AppStore(
         }
     }
 
+    /**
+     * The reason the engine is running with smaller tiles (hot phone / low battery), or null.
+     * Both the engine and the Processing banner read [ThermalGuard] so the message cannot lie.
+     */
+    fun throttleReason(): String? =
+        if (_state.value.settings.throttle) ThermalGuard.reason(context) else null
+
+    /* ------------------------------------------------------------------ save folder */
+
+    /**
+     * Settings → Output → Save folder. The row used to be a dead label: the engine already honoured
+     * `prefs.outputTreeUri`, but nothing ever set it. The system picker (SAF) hands us a tree we can
+     * keep writing to across reboots.
+     */
+    fun pickSaveFolder() {
+        val intents = mediaIntents
+        if (intents == null) toast("No folder picker available") else intents.pickSaveFolder()
+    }
+
+    fun onSaveFolderPicked(treeUri: String?, label: String?) {
+        update { it.copy(settings = it.settings.copy(saveFolderUri = treeUri, saveFolderLabel = label)) }
+        container.engine.updatePreferences { it.copy(outputTreeUri = treeUri) }
+        toast(
+            if (treeUri == null) "Saving to Pictures/RealScale-Pro"
+            else "Saving to ${label ?: "the selected folder"}",
+        )
+    }
+
     /** Feedback is stored locally; there is no backend and no upload. */
     /**
      * "Send feedback": the message is written to a local copy *and* handed to the user's mail app
@@ -815,6 +849,9 @@ class AppStore(
                                 remainingSec = 0,
                                 stageLabel = "Saved",
                             ),
+                            /* Kept after `clearJob()`, so the Result screen can still resolve the
+                             * fresh creation while the Room flow catches up (Round-4, issue 1). */
+                            lastResultId = finishedId ?: state.lastResultId,
                             routes = routes,
                         )
                     }
@@ -838,12 +875,27 @@ class AppStore(
     }
 
     /**
+     * Super Resolution runs on heavy models only: the planner's `wanted` entry is exactly the
+     * recommended heavy model when it is *not* installed. Instead of quietly upscaling with the
+     * small fallback (Round-4, issue 8) the job is refused and the download is started.
+     */
+    fun missingHeavyModel(plan: Plan, mode: ModeId = _state.value.mode): ModelEntry? =
+        if (mode == ModeId.SUPER) plan.wanted else null
+
+    /**
      * Starts the job described by [plan]. The command itself is built by the untouched engine layer
      * (`PresetCommandResolver` + upstream `CommandBuilder`); this only translates the plan into the
      * engine's request shape.
      */
     fun startJob(photo: PhotoItem, plan: Plan, mode: ModeId = _state.value.mode) {
         val settings = _state.value.settings
+        val missing = missingHeavyModel(plan, mode)
+        if (missing != null) {
+            haptic(HapticKind.Warning)
+            toast("${missing.name} is required for Super Resolution · downloading")
+            downloadModel(missing.id)
+            return
+        }
         val entry = plan.model
         val modelDir = File(container.modelRepository.modelsRootDir, entry.manifestId ?: entry.id)
         val modelPath = entry.entryFile?.let { File(modelDir, it).absolutePath } ?: modelDir.absolutePath
@@ -870,6 +922,21 @@ class AppStore(
                 keepScreenOnDuringEnhance = settings.keepAwake,
                 hapticsEnabled = settings.haptics,
                 wifiOnlyDownloads = settings.wifiOnly,
+                outputTreeUri = settings.saveFolderUri,
+                tta = plan.level == PlanLevel.ADVANCED && prefsFor(mode).tta,
+                /*
+                 * Super Resolution is the "keep everything" mode: its copy promises the original
+                 * file, so the input is never re-encoded there.
+                 */
+                compression = when {
+                    mode == ModeId.SUPER -> "off"
+                    plan.level == PlanLevel.ADVANCED -> prefsFor(mode).compression
+                    else -> "auto"
+                },
+                compressionQuality = prefsFor(mode).compressionQ,
+                outputQuality = if (plan.level == PlanLevel.ADVANCED) prefsFor(mode).formatQ else 95,
+                keepMetadata = settings.keepMeta && prefsFor(mode).keepMeta,
+                throttleWhenHot = settings.throttle,
             )
         }
 
@@ -898,7 +965,8 @@ class AppStore(
                 scale = plan.scale,
                 modelSpec = spec,
                 autoSaveToGallery = true,
-                notifyOnCompletion = settings.haptics && _state.value.notificationsAsked,
+                // The finished-job notification is about notifications, not about the haptic motor.
+                notifyOnCompletion = _state.value.notificationsAsked,
             ),
         )
     }
@@ -1000,6 +1068,9 @@ interface MediaIntents {
 
     /** Returns true when a bitmap was found on the clipboard and imported. */
     fun pasteImage(): Boolean
+
+    /** System folder picker for Settings → Output → Save folder (SAF tree). */
+    fun pickSaveFolder()
 
     /** Opens the user's mail app with the feedback text ready to send. False when none exists. */
     fun sendFeedbackMail(subject: String, body: String): Boolean

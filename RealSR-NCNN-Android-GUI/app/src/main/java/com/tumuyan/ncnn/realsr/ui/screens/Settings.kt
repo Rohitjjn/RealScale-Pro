@@ -131,12 +131,6 @@ fun SettingsScreen(store: AppStore) {
                     )
                 }
                 RsSwitchRow(
-                    title = "Dynamic color",
-                    sub = "Android 12 and later. Follows your wallpaper.",
-                    checked = settings.dynamicColor,
-                    onChange = { store.updateSettings { s -> s.copy(dynamicColor = it) } },
-                )
-                RsSwitchRow(
                     title = "Haptics",
                     sub = "Light feedback on taps and switches.",
                     checked = settings.haptics,
@@ -177,11 +171,27 @@ fun SettingsScreen(store: AppStore) {
 
             SectionLabel("Output")
             RsGroup {
+                /*
+                 * Round-4, issue 6: this row was a label. It now opens the system folder picker
+                 * (SAF tree), and the engine writes every result there — the same `outputTreeUri`
+                 * the background service already honoured.
+                 */
                 RsRow(
                     title = "Save folder",
-                    sub = "Pictures/RealScale-Pro · Can be changed on desktop.",
+                    sub = settings.saveFolderLabel?.let { "$it · chosen by you" }
+                        ?: "Pictures/RealScale-Pro · default",
+                    chevron = true,
                     topDivider = false,
+                    onClick = { store.pickSaveFolder() },
                 )
+                if (settings.saveFolderUri != null) {
+                    RsRow(
+                        title = "Use the default folder again",
+                        sub = "Pictures/RealScale-Pro",
+                        chevron = true,
+                        onClick = { store.onSaveFolderPicked(null, null) },
+                    )
+                }
                 RsRow(
                     title = "Default output format",
                     value = formatLabel(settings.format),
@@ -341,7 +351,7 @@ private fun <T> OptionList(options: List<Pair<T, Pair<String, String?>>>, select
 
 /** Where the feedback form sends the message. */
 internal const val FEEDBACK_EMAIL = "userrohitai@gmail.com"
-private const val VERSION_LABEL = "2.2.0 · Images"
+private const val VERSION_LABEL = "2.2.2 (59)"
 
 private val FAQ = listOf(
     "Why is upscaling slow on my phone?" to

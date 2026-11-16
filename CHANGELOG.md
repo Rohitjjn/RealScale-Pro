@@ -2,6 +2,30 @@
 
 All notable changes to **RealScale-Pro** are documented in this file.
 
+## [2.2.2] - 2026-11-14
+
+Round 4: everything the previous build only *looked* like it did now actually does something.
+
+### Fixed
+- **A finished upscale lands on the Result screen.** Two separate emitters (the engine's `Completed` and the Room flow behind `results`) race by a frame; in that frame the Result screen found no row and offered "Back to Home", so the job ended on Home. The store now remembers `lastResultId`, the Result screen waits for its own row instead of declaring it deleted, and the Processing hand-over no longer falls back to Home while an id exists.
+- **Notification permission is asked.** The notification slide of the guide recorded "asked" and moved on, so Android's POST_NOTIFICATIONS dialog never appeared and no "upscale finished" alert could ever be posted. The slide now launches the real system request.
+- **`Choose An Image To Upscale`** on Home (was "Choose Another Image To Upscale"); the instrumented smoke test asserts the same string.
+- **Ghost Anime4K rows are gone.** *Anime4K 2× / 4×* sat in the Model Manager at `0.0 MB`, counted as installed and impossible to delete or download. Both entries are removed from the catalog (Anime4K still runs through its preset); creations saved by an older build keep a readable label.
+- **Delete asks first.** The model sheet deleted the weights and *then* opened "Delete model?"; it now only arms the confirmation and the deletion happens on confirm.
+- **Haptics work.** The `VIBRATE` permission was missing, so every `vibrate()` call threw inside a `runCatching` and the switch was silent.
+- **Keep screen awake works.** The pref reached `EnginePreferences` but no window ever set `keepScreenOn`; the Processing screen now holds the screen awake while a job runs and releases it on the way out.
+- **Slow down when hot or low on battery works.** New `ThermalGuard` reads the platform thermal status and the battery broadcast; the engine runs the same model with a smaller tile and a smaller thread budget, and the Processing banner shows the real reason instead of a guess derived from the estimate.
+- **Save folder works.** The row was a label; it now opens the system folder picker, persists the SAF grant and the engine writes results there (with a way back to `Pictures/RealScale-Pro`).
+- **Keep photo metadata works.** EXIF (date, camera, lens, exposure, location) is copied from the picked photo onto the saved result.
+- **Clear cache clears something.** It also drops crop previews and imported copies older than three days; the current session's imports stay.
+- **Download on Wi-Fi only** was verified end-to-end (pref → `ModelRepository.hasUsableNetwork`), and *Dynamic color* was removed from Settings because no dynamic colour scheme exists in the design system.
+- **Paste from clipboard works.** Only `ClipData.Item.uri` was read; the clipboard now also accepts a share intent, a raw bitmap (screenshots) and a `content://` / `file://` text, all through the normal intake.
+- **Super Resolution never runs on a light model.** When its heavy model was not installed the planner fell back to the small model and the job ran anyway. The screen now shows the required model with its size and a **Download** button, and `startJob` refuses to start without it.
+- **No file name on the configuration screen.** The picked image's name (and "Imported …" for shared files) is no longer shown under the preview — only the size facts.
+- **Enhanced quality (TTA) works.** The switch is wired to the ncnn tools' `-x` flag (`realsr`, `waifu2x`, `srmd`, `realcugan`); the MNN engine has no TTA and says so.
+- **Image compression and output quality work.** The engine re-encodes the input copy per the Auto / Off / Custom policy (never above 24 MP, never turning PNG into JPEG) and applies the JPEG/WebP quality slider to the saved file, with metadata copied afterwards.
+- Version **2.2.2** (`59`).
+
 ## [2.2.1] - 2026-11-15
 
 ### Fixed

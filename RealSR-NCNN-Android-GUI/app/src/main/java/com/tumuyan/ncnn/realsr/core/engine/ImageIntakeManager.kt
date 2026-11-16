@@ -287,11 +287,34 @@ object ImageIntakeManager {
         }
     }
 
+    /**
+     * Files "Clear cache" is allowed to touch.
+     *
+     * - `cacheDir/intake`, `cacheDir/shared`, the engine's transient images: always.
+     * - `cacheDir/crop_preview`: previews of the crop tool, always (they are rebuilt on demand).
+     * - `cacheDir/imports`: images the user shared/opened with the app. They are what Home and the
+     *   results refer to, so only copies older than [IMPORT_RETENTION_MS] are removed — otherwise
+     *   clearing the cache would blank the photos of the current session.
+     */
+    private fun disposableCacheDirs(context: Context): List<File> = listOf(
+        File(context.cacheDir, "intake"),
+        File(context.cacheDir, "shared"),
+        File(context.cacheDir, "crop_preview"),
+    )
+
+    private fun staleImports(context: Context): List<File> {
+        val cutoff = System.currentTimeMillis() - IMPORT_RETENTION_MS
+        return File(context.cacheDir, "imports").listFiles()
+            ?.filter { it.isFile && it.lastModified() < cutoff }
+            .orEmpty()
+    }
+
     fun measureTemporaryCacheBytes(context: Context): Long {
         var total = 0L
-        listOf(File(context.cacheDir, "intake"), File(context.cacheDir, "shared")).forEach { dir ->
+        disposableCacheDirs(context).forEach { dir ->
             dir.listFiles()?.forEach { f -> if (f.isFile) total += f.length() }
         }
+        staleImports(context).forEach { total += it.length() }
         File(context.cacheDir, "realsr").listFiles()?.forEach { f ->
             if (f.isFile && isTransientEngineImageFile(f.name)) {
                 total += f.length()
@@ -302,13 +325,17 @@ object ImageIntakeManager {
 
     suspend fun clearTemporaryCache(context: Context): Long = withContext(Dispatchers.IO) {
         var freed = 0L
-        listOf(File(context.cacheDir, "intake"), File(context.cacheDir, "shared")).forEach { dir ->
+        disposableCacheDirs(context).forEach { dir ->
             dir.listFiles()?.forEach { f ->
                 if (f.isFile) {
                     val len = f.length()
                     if (f.delete()) freed += len
                 }
             }
+        }
+        staleImports(context).forEach { f ->
+            val len = f.length()
+            if (f.delete()) freed += len
         }
         File(context.cacheDir, "realsr").listFiles()?.forEach { f ->
             if (f.isFile && isTransientEngineImageFile(f.name)) {
@@ -329,4 +356,7 @@ object ImageIntakeManager {
             lower.startsWith("raw_") ||
             lower.startsWith("norm_")
     }
+
+    /** Imported copies live in the cache, so "Clear cache" only drops the ones from older days. */
+    private const val IMPORT_RETENTION_MS = 3L * 24 * 3600_000L
 }

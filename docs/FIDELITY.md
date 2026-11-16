@@ -230,3 +230,39 @@ time) is now the sort key, newest first, left to right.
   `45:C3:D0:AA:1E:31:53:AC:4C:C6:18:54:36:EB:9C:1C:F0:5C:18:2B:D1:7A:78:CE:5D:07:83:9E:3B:F8:C7:BD`)
   is used by both build types, and CI fails if the two APKs disagree or the certificate changes.
 - Version 2.2.0 (57) → 2.2.1 (58).
+
+## Round 4 fixes (2.2.2)
+
+Eleven issues, all of them cases where the UI promised something the code never did.
+
+- **Result, not Home.** `AppUiState.lastResultId` keeps the finished creation id after `clearJob()`;
+  `ResultScreen` shows "Preparing your result…" for up to 1.2 s while the Room flow catches up and
+  only reports "no longer available" for ids that are genuinely gone. `ProcessingScreen` no longer
+  calls `home()` while an id exists.
+- **Notification permission.** `Primer(photos = false)` calls `store.requestNotificationPermission()`
+  instead of `finishNotifications(accepted = true)`; `MediaIntentsHost.requestNotifications()` answers
+  through `onPermissionResult`.
+- **Catalog.** `anime4k-x2` / `anime4k-x4` (0 MB, no manifest, therefore "installed" and undeletable)
+  are removed from `ModelCatalog.MODELS`; `ModelCatalog.nameFor` keeps old creations readable.
+- **Delete confirmation.** `ModelDetailsSheet` only calls `onDelete()`; `ModelsScreen`'s
+  `RsConfirmSheet` performs the deletion.
+- **Settings that do something.** `dynamicColor` deleted; `VIBRATE` permission added (haptics);
+  `LocalView.keepScreenOn` wired to *Keep screen awake*; `ThermalGuard` (thermal status + battery
+  broadcast) drives both `ProcessingServiceEngine` tile/thread throttling and the Processing banner;
+  *Save folder* opens `OpenDocumentTree`, persists the grant and sets `EnginePreferences.outputTreeUri`
+  (also passed per job from `AppSettings.saveFolderUri`); EXIF copy in `OutputPostProcessor.copyMetadata`;
+  `clearTemporaryCache` also drops `crop_preview` and imports older than three days.
+- **Clipboard.** `MediaIntentsHost.pasteImage()` accepts `uri`, a share-intent stream, a raw bitmap and
+  a `content://`/`file://` text; a quiet intake path keeps one paste from stacking error toasts.
+- **Super Resolution.** `AppStore.missingHeavyModel` is the planner's `wanted` entry in SUPER mode;
+  `startJob` refuses to run and starts the download, the CTA becomes that download, and the model card
+  shows the heavy model with a "Download first" badge.
+- **No file name on Config.** Only `width × height · size` remains under the preview.
+- **TTA.** `EnginePreferences.tta` → `-x` for `realsr-ncnn`, `waifu2x-ncnn`, `srmd-ncnn`,
+  `realcugan-ncnn` (all four declare `x` in their getopt string); `mnnsr-ncnn` has none and its row
+  says so.
+- **Compression.** `OutputPostProcessor.inputPolicy` implements Auto (>2 MB → 90 %) / Off / Custom;
+  `reencodeOutput` applies the JPEG/WebP quality slider after the exact-size pass, and metadata is
+  copied after that so the tags survive the re-encode.
+- Version 2.2.1 (58) → 2.2.2 (59).
+

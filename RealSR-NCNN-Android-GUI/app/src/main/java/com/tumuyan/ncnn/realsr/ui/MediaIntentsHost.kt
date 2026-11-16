@@ -1,9 +1,11 @@
 package com.tumuyan.ncnn.realsr.ui
 
 import android.Manifest
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import androidx.activity.ComponentActivity
@@ -11,6 +13,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.documentfile.provider.DocumentFile
 import com.tumuyan.ncnn.realsr.core.device.HapticKind
 import com.tumuyan.ncnn.realsr.ui.media.MediaLibrary
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
@@ -58,6 +61,19 @@ class MediaIntentsHost(
             result[Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED] == true
         store.onPermissionResult(photos = true, notifications = false, granted = full || limited, limited = limited)
         if (!full && !limited) store.toast("You can still pick single photos with the system picker")
+    }
+
+    /**
+     * Settings → Output → Save folder. `OpenDocumentTree` is the only picker that yields a tree the
+     * app can keep writing to after a reboot, provided the grant is persisted.
+     */
+    private val pickFolder = activity.registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        runCatching { activity.contentResolver.takePersistableUriPermission(uri, flags) }
+        val label = runCatching { DocumentFile.fromTreeUri(activity, uri)?.name }.getOrNull()
+            ?: uri.lastPathSegment?.substringAfterLast(':')?.takeIf { it.isNotBlank() }
+        store.onSaveFolderPicked(uri.toString(), label)
     }
 
     private val notificationPermission = activity.registerForActivityResult(
@@ -193,13 +209,66 @@ class MediaIntentsHost(
         return true
     }
 
+    /**
+     * Round-4, issue 7: "Paste from clipboard" only looked at `ClipData.Item.uri`, so the three
+     * shapes Android actually puts on the clipboard were all rejected — a `content://` uri from
+     * Gallery (works), a `share` intent from some browsers, and a raw bitmap (screenshots). All four
+     * shapes are handled now; the bitmap is written to the import cache and goes through the same
+     * intake as a shared photo.
+     */
     override fun pasteImage(): Boolean {
         val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return false
         val clip = clipboard.primaryClip ?: return false
         if (clip.itemCount == 0) return false
-        val uri = clip.getItemAt(0).uri ?: return false
-        return importUris(listOf(uri))
+        val item = clip.getItemAt(0)
+
+        item.uri?.let { uri -> if (importQuiet(listOf(uri))) return true }
+        clipStreamUri(item)?.let { uri -> if (importQuiet(listOf(uri))) return true }
+        clipboardBitmap(item)?.let { bitmap ->
+            val dir = File(activity.cacheDir, "imports").apply { mkdirs() }
+            val file = File(dir, "clipboard-${System.currentTimeMillis()}-${counter.incrementAndGet()}.png")
+            val written = runCatching {
+                file.outputStream().use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) }
+            }.getOrDefault(false)
+            bitmap.recycle()
+            if (written && file.length() > 0L) {
+                val photo = media.photoFromUri(Uri.fromFile(file))
+                if (photo != null) {
+                    store.onImportedPhoto(photo)
+                    store.haptic(HapticKind.Light)
+                    return true
+                }
+            }
+            file.delete()
+        }
+        item.text?.toString()?.trim()?.let { text ->
+            if (text.startsWith("content://") || text.startsWith("file://")) {
+                if (importQuiet(listOf(Uri.parse(text)))) return true
+            }
+        }
+        return false
     }
+
+    override fun pickSaveFolder() {
+        runCatching { pickFolder.launch(null) }.onFailure {
+            store.toast("No folder picker on this device")
+        }
+    }
+
+    /** A clip item may carry a share intent (Chrome, Files) whose stream is the image. */
+    private fun clipStreamUri(item: ClipData.Item): Uri? {
+        val intent = item.intent ?: return null
+        val stream: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
+        }
+        return stream ?: intent.data
+    }
+
+    private fun clipboardBitmap(item: ClipData.Item): Bitmap? =
+        runCatching { item.bitmap }.getOrNull()
 
     /** Import one image that arrived from another app. */
     fun importFromUri(uri: Uri): Boolean = importUris(listOf(uri))
@@ -209,12 +278,16 @@ class MediaIntentsHost(
      * the config screen once, for the first image of the batch.
      */
     fun importUris(uris: List<Uri>): Boolean {
+        val imported = importQuiet(uris)
+        if (!imported) store.toast("That image could not be opened")
+        return imported
+    }
+
+    /** Same intake without the failure toast, so a clipboard with four candidate shapes stays quiet. */
+    private fun importQuiet(uris: List<Uri>): Boolean {
         if (uris.isEmpty()) return false
         val imported = uris.mapNotNull { uri -> copyToCache(uri)?.let { media.photoFromUri(it) } }
-        if (imported.isEmpty()) {
-            store.toast("That image could not be opened")
-            return false
-        }
+        if (imported.isEmpty()) return false
         imported.forEachIndexed { index, photo ->
             if (index == 0) store.onImportedPhoto(photo) else store.addImportedPhoto(photo)
         }

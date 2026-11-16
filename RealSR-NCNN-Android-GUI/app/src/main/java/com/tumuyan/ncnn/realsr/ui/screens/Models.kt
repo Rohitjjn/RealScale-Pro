@@ -586,12 +586,12 @@ fun ModelDetailsSheet(
         Row(Modifier.padding(top = 16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (installed && !model.required) {
                 RsButton(
-                    onClick = {
-                        store.deleteModel(model.id)
-                        store.updatePrefs(ModeId.UPSCALE) { if (it.modelId == model.id) it.copy(modelId = "auto") else it }
-                        store.updatePrefs(ModeId.SUPER) { if (it.modelId == model.id) it.copy(modelId = "auto") else it }
-                        onDelete()
-                    },
+                    /*
+                     * Round-4, issue 5: this used to delete the weights and *then* open the
+                     * "Delete model?" sheet, so the confirmation arrived after the damage.
+                     * It now only arms the confirmation; ModelsScreen deletes on confirm.
+                     */
+                    onClick = onDelete,
                     variant = RsButtonVariant.Danger,
                     modifier = Modifier.weight(1f),
                     icon = LucideIcons.Trash2,
@@ -907,7 +907,7 @@ fun ModelPickerSheet(
                         com.tumuyan.ncnn.realsr.design.RadioMark(checked = selectedId == "auto")
                     }
                 }
-                list.filter { it.id != "anime4k-x2" || true }.forEachIndexed { index, model ->
+                list.forEachIndexed { index, model ->
                     Box(
                         Modifier.clickable(enabled = model.id !in state.installed && ModelCatalog.fit(model, store.device.tier).tone != "no") {
                             pending = model.id

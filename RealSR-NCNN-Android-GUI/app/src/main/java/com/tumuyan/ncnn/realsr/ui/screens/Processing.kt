@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -42,6 +43,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -193,14 +195,46 @@ fun ProcessingScreen(store: AppStore) {
     // this only makes sure a job that finished while the screen was off-stack still lands there.
     LaunchedEffect(job.status, job.resultId) {
         if (job.status == JobStatus.Done) {
-            val id = job.resultId
+            /*
+             * Round-4, issue 1: the old fallback sent the user Home whenever `resultId` was null,
+             * which is exactly the frame in which the engine's Completed and the Room flow cross.
+             * The id now comes from the job *or* from the store's last completed creation, and Home
+             * is only used when the app genuinely has no result to show.
+             */
+            val id = job.resultId ?: store.state.value.lastResultId
             store.acknowledgeJob()
             store.clearJob()
+            val route = store.state.value.route
             if (id != null) {
-                if (store.state.value.route !is Route.Result) store.replaceTop(Route.Result(id))
-            } else {
+                if (route !is Route.Result && route !is Route.ResultFull) store.replaceTop(Route.Result(id))
+            } else if (route is Route.Processing) {
+                store.toast("Saved · open My Upscales")
                 store.home()
             }
+        }
+    }
+
+    /*
+     * "Keep screen awake" (Settings → General). The pref reached the engine but nothing ever set the
+     * window flag, so the screen slept mid-job. Scoped to the live screen, released on the way out.
+     */
+    val keepAwake = state.settings.keepAwake
+    val view = LocalView.current
+    DisposableEffect(view, keepAwake, job.status) {
+        val previous = view.keepScreenOn
+        view.keepScreenOn = keepAwake && job.status == JobStatus.Running
+        onDispose { view.keepScreenOn = previous }
+    }
+
+    /*
+     * "Slow down when hot or low on battery": the banner used to be a guess based on the estimate.
+     * It now reads the same guard the engine uses.
+     */
+    var throttleReason by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(job.status) {
+        while (true) {
+            throttleReason = store.throttleReason()
+            delay(5_000)
         }
     }
 
@@ -219,7 +253,7 @@ fun ProcessingScreen(store: AppStore) {
     val doneCells = (tileProgress * cells).toInt()
     val active = if (tileProgress < 1f) doneCells else -1
     val left = plan.etaSec * (1 - p).toDouble()
-    val throttled = plan.etaSec > 90 && p > 0.5f && p < 0.7f
+    val throttled = throttleReason != null
     val aspect = (photo.width.toFloat() / photo.height).coerceIn(0.4f, 2.5f)
 
     Column(Modifier.fillMaxSize().background(c.canvas)) {
@@ -299,7 +333,11 @@ fun ProcessingScreen(store: AppStore) {
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Icon(LucideIcons.Thermometer, contentDescription = null, tint = c.ink, modifier = Modifier.size(20.dp))
-                    Text("Slowing down to keep your phone cool.", style = RsType.body(14f, lineHeightRatio = 1.35f), color = c.body)
+                    Text(
+                        "${throttleReason ?: "Phone is warm"} · slowing down with smaller tiles so the job can finish.",
+                        style = RsType.body(14f, lineHeightRatio = 1.35f),
+                        color = c.body,
+                    )
                 }
             }
 

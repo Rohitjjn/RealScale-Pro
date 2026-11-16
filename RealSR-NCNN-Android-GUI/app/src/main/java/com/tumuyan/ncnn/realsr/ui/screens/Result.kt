@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -32,6 +33,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -71,6 +73,7 @@ import com.tumuyan.ncnn.realsr.design.RsRow
 import com.tumuyan.ncnn.realsr.design.RsSheet
 import com.tumuyan.ncnn.realsr.design.RsTopBar
 import com.tumuyan.ncnn.realsr.design.RsType
+import com.tumuyan.ncnn.realsr.design.Skeleton
 import com.tumuyan.ncnn.realsr.design.icons.AppGlyphs
 import com.tumuyan.ncnn.realsr.design.icons.LucideIcons
 import com.tumuyan.ncnn.realsr.ui.state.AppStore
@@ -78,6 +81,7 @@ import com.tumuyan.ncnn.realsr.ui.state.PhotoItem
 import com.tumuyan.ncnn.realsr.ui.state.ResultItem
 import com.tumuyan.ncnn.realsr.ui.state.Route
 import com.tumuyan.ncnn.realsr.ui.state.rememberState
+import kotlinx.coroutines.delay
 
 /**
  * Before/after slider. The "before" side is the real source file, the "after" side is the real
@@ -292,6 +296,37 @@ fun ResultScreen(store: AppStore, resultId: String) {
     val result = state.results.firstOrNull { it.id == resultId }
     var sheet by remember { mutableStateOf<String?>(null) }
     val scroll = rememberScrollState()
+
+    /*
+     * Round-4, issue 1: the engine's Completed and the Room flow behind `state.results` are two
+     * different emitters. For one or two frames the creation exists but the list has not been
+     * re-emitted, and this screen used to greet the user with "no longer available" plus a
+     * "Back to Home" button — which is how a finished upscale ended on Home. While the id is the
+     * one the last job produced, wait for the row instead of declaring it deleted.
+     */
+    val settling = result == null && state.lastResultId == resultId
+    var waited by remember(resultId) { mutableStateOf(false) }
+    LaunchedEffect(resultId, settling) {
+        if (settling && !waited) {
+            delay(1_200)
+            waited = true
+        }
+    }
+    if (result == null && settling && !waited) {
+        Column(Modifier.fillMaxSize().background(c.canvas)) {
+            RsTopBar(title = "Result")
+            Column(
+                Modifier.fillMaxSize().padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Skeleton(Modifier.fillMaxWidth(0.6f).height(24.dp))
+                Spacer(Modifier.height(12.dp))
+                Text("Preparing your result…", style = RsType.body(14f), color = c.muted)
+            }
+        }
+        return
+    }
 
     if (result == null) {
         Column(Modifier.fillMaxSize().background(c.canvas)) {

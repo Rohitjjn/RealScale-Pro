@@ -276,7 +276,7 @@ class RealScaleSmokeInstrumentedTest {
             scenario.onActivity { activity -> activity.storeForTest().skipOnboardingForTest() }
 
             // Home is now the four import tiles: no hero buttons, no photo strip.
-            waitForText("Choose Another Image To Upscale", 12_000L)
+            waitForText("Choose An Image To Upscale", 12_000L)
             composeRule.onNodeWithText("Sharper, bigger photos. Nothing leaves your device.")
                 .assertIsDisplayed()
             composeRule.onNodeWithText("Gallery").assertIsDisplayed()
@@ -287,14 +287,16 @@ class RealScaleSmokeInstrumentedTest {
             // Settings: theme switch, planner rows, back to Home.
             composeRule.onNodeWithContentDescription("Settings").performClick()
             waitForText("Theme", 8_000L)
-            composeRule.onNodeWithText("Dynamic color").assertIsDisplayed()
+            // Round-4: "Dynamic color" was a dead pref and is gone; the Output group is checked
+            // through the Save folder row, which now really opens the folder picker.
+            composeRule.onNodeWithText("Save folder").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("Compute preference").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("Dark").performClick()
             composeRule.waitForIdle()
             captureComposeRootBitmap(context, "09_settings_dark.png")?.recycle()
             composeRule.onNodeWithText("System").performClick()
             composeRule.onNodeWithContentDescription("Back").performClick()
-            waitForText("Choose Another Image To Upscale", 8_000L)
+            waitForText("Choose An Image To Upscale", 8_000L)
 
             // Model Manager: storage card, packs and the update check.
             composeRule.onNodeWithContentDescription("Models").performClick()
@@ -307,7 +309,7 @@ class RealScaleSmokeInstrumentedTest {
             composeRule.waitForIdle()
             captureComposeRootBitmap(context, "10_models.png")?.recycle()
             composeRule.onNodeWithContentDescription("Back").performClick()
-            waitForText("Choose Another Image To Upscale", 8_000L)
+            waitForText("Choose An Image To Upscale", 8_000L)
         } finally {
             runCatching {
                 scenario.onActivity { it.finish() }
