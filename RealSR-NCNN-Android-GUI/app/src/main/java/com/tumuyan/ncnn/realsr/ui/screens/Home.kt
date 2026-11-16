@@ -227,9 +227,14 @@ fun HomeScreen(store: AppStore) {
                         .background(if (aiOn) c.inverse else c.canvas)
                         .border(1.dp, if (aiOn) c.inverse else c.hairline, RoundedCornerShape(RsRadius.md.dp))
                         .clickable(role = Role.RadioButton) {
-                            if (!aiOn) {
-                                store.setAiMode(true)
-                                if (!state.aiReady) store.toast("Add an API key to use AI upscaling")
+                            when {
+                                !aiOn -> {
+                                    store.setAiMode(true)
+                                    if (!state.aiReady) store.toast("Add an API key to use AI upscaling")
+                                }
+                                // Already the selected mode but nothing to run it with: the card is
+                                // then the shortcut to the key setup instead of a dead tap.
+                                !state.aiReady -> store.push(Route.AiKeys)
                             }
                         }
                         .padding(16.dp),

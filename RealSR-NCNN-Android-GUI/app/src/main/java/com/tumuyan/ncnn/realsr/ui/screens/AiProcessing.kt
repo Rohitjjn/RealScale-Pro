@@ -94,6 +94,18 @@ fun AiProcessingScreen(store: AppStore) {
         return
     }
 
+    /*
+     * The store already rewrites the stack on success; this is the fallback for the case where it
+     * could not (the app was not in the `App` phase). Never a `home()`: the whole point of the
+     * round-5 fix is that a finished job ends on its result.
+     */
+    LaunchedEffect(job.status, job.resultId) {
+        if (job.status == JobStatus.Done && job.resultId != null) {
+            val route = store.state.value.route
+            if (route is Route.AiProcessing) store.replaceTop(Route.Result(job.resultId))
+        }
+    }
+
     val photo = store.photoById(job.photoId)
     var confirm by remember { mutableStateOf(false) }
     var tip by remember { mutableStateOf(AI_TIPS.first()) }
