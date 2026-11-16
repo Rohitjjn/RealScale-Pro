@@ -1,15 +1,14 @@
-# RealScale-Pro Agent Notes
+# RealScale-Pro Engineering Decision Log
 
-Running architectural notes, verified upstream facts, and decision log.
+> **Note for contributors:** This file preserves historical migration decisions recorded while building RealScale-Pro `v2.0.0`–`v2.3.1` on top of upstream `tumuyan/RealSR-NCNN-Android` `v1.13.2`. For current `v2.3.1` architecture, build commands, and model specifications, start with **[ARCHITECTURE.md](ARCHITECTURE.md)**, **[BUILDING.md](BUILDING.md)**, and **[MODELS.md](MODELS.md)**.
 
 ---
 
 ## 1. Upstream Baseline (`tumuyan/RealSR-NCNN-Android` tag `1.13.2`)
 
 - **Upstream tag**: `1.13.2` (published `2026-05-30`, commit `0eb1676`).
-- **Working branch note**: Arena binds this session to branch `arena/a8f7a90d-realscale-pro` (branched from `main` `2f21a0cd`), and prohibits creating, renaming, or pushing to other branches. We imported `1.13.2` cleanly onto `arena/a8f7a90d-realscale-pro` (`git diff 1.13.2` = empty on baseline commit `17d1c92`), leaving `main` untouched (no force-push).
-- **Ponytail discipline**: Found `DietrichGebert/ponytail` on GitHub (`AGENTS.md` read and adopted): smallest complete change, zero speculative abstractions, reuse upstream engine classes directly, ship every non-trivial module with tests, and state verified vs unverified explicitly.
-- **Design source**: Official Claude `DESIGN.md` fetched from `VoltAgent/awesome-design-md` (`design-md/claude/DESIGN.md`, 589 lines) and cross-checked with `VoltAgent/awesome-claude-design`.
+- **Engineering discipline**: Smallest complete change, zero speculative abstractions, reuse upstream native engine runners cleanly, cover non-trivial logic with automated unit/instrumented tests, and state verified vs. unverified behavior explicitly.
+- **Design reference**: Editorial warm-alabaster / deep-obsidian design language adapted from `VoltAgent/awesome-design-md` into a custom token system (`design/Tokens.kt`, `Type.kt`, `Motion.kt`).
 
 ---
 

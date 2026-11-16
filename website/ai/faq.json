@@ -1,0 +1,31 @@
+{
+  "name": "RealScale-Pro Frequently Asked Questions",
+  "url": "https://rohitjjn.github.io/RealScale-Pro/#faq",
+  "last_updated": "2026-11-16",
+  "faqs": [
+    {
+      "question": "Is RealScale-Pro completely free and open source?",
+      "answer": "Yes. RealScale-Pro is free and published under the MIT License at github.com/Rohitjjn/RealScale-Pro with zero subscriptions, ads, watermarks, accounts, or paywalled resolutions."
+    },
+    {
+      "question": "Does RealScale-Pro upload photos to the cloud?",
+      "answer": "No. All image decoding, neural inference, resizing, EXIF copying, and saving run 100% locally on your Android device. The INTERNET permission is used only for optional on-demand AI model downloads from Hugging Face."
+    },
+    {
+      "question": "Which AI upscaling models run on Android in RealScale-Pro?",
+      "answer": "RealScale-Pro offers 14 SHA-256 verified models (Real-ESRGAN General v3, RealESRGAN Anime 6B, RealSR DF2K, RealSR DF2K JPEG, Remacri x4, UltraSharp x4, UltraMix Balanced x4, Nomos8kSC x4, Waifu2x Photo, Waifu2x Anime, Waifu2x CUnet, SRMD, AnimeSharp x4, and AnimeSharp Lite x4) plus a zero-download Anime4K engine."
+    },
+    {
+      "question": "What Android phones does RealScale-Pro support?",
+      "answer": "Any 64-bit ARM (arm64-v8a) device running Android 7.0 (API 24) or newer, including Snapdragon Adreno, Arm Mali/Immortalis, Samsung Xclipse, and Google Tensor devices, with automatic CPU fallback."
+    },
+    {
+      "question": "Why is the RealScale-Pro APK only 20.5 MB?",
+      "answer": "The APK bundles the Jetpack Compose UI and native Vulkan/MNN binaries without forcing 300+ MB of unused neural weights. Models download individually on demand (starting at 2.4 MB) with SHA-256 verification and pause/resume."
+    },
+    {
+      "question": "Can RealScale-Pro upscale animated GIFs and batch selections?",
+      "answer": "Yes. Multi-image batches run through a sequential single-job GPU queue with thermal monitoring, and animated GIFs are split, upscaled frame-by-frame, and reassembled with original frame delays preserved."
+    }
+  ]
+}

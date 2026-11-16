@@ -1,0 +1,5 @@
+• 100% on-device offline pipeline: zero cloud calls, zero telemetry, and streamlined Gallery, Files, and Camera import.
+• Reliable navigation straight to the Before/After Result screen after every completed upscale.
+• Fixed 9:16 portrait photo preview layout and grouped resolution/size/format details on Config.
+• Hardened single and batch URI import handling so unreadable items never abort a batch.
+• Fixed in-app Send Feedback message delivery and refreshed documentation.

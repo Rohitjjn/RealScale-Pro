@@ -1,0 +1,14 @@
+# /.well-known/ai.txt — RealScale-Pro AI & Answer-Engine Access Policy
+User-Agent: *
+Allow: /
+
+Site-Name: RealScale-Pro
+Summary: https://rohitjjn.github.io/RealScale-Pro/ai/summary.json
+FAQ: https://rohitjjn.github.io/RealScale-Pro/ai/faq.json
+Service: https://rohitjjn.github.io/RealScale-Pro/ai/service.json
+LLMs-Txt: https://rohitjjn.github.io/RealScale-Pro/llms.txt
+LLMs-Full-Txt: https://rohitjjn.github.io/RealScale-Pro/llms-full.txt
+Sitemap: https://rohitjjn.github.io/RealScale-Pro/sitemap.xml
+Repository: https://github.com/Rohitjjn/RealScale-Pro
+License: MIT
+Contact: mailto:userrohitai@gmail.com

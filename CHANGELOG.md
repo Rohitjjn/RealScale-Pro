@@ -1,8 +1,9 @@
 # Changelog
 
-All notable changes to **RealScale-Pro** are documented in this file.
+All notable changes to **RealScale-Pro** are documented in this file.  
+Download signed Android releases at <https://github.com/Rohitjjn/RealScale-Pro/releases>.
 
-## [2.3.1] - 2026-11-14
+## [2.3.1] - 2026-11-16
 
 Round 5 cleanup: no cloud anything. The app is fully on-device again, and the import screen is back to
 three ways in.
@@ -28,7 +29,7 @@ three ways in.
   multi-image import.
 - Version **2.3.1** (`61`).
 
-## [2.3.0] - 2026-11-14
+## [2.3.0] - 2026-11-16
 
 Round 5: the three reports that survived 2.2.2 were reproduced and fixed at their root, and **AI
 Upscale Mode** was added — bring your own model API and upscale with a cloud image model.
@@ -44,7 +45,7 @@ Upscale Mode** was added — bring your own model API and upscale with a cloud i
   It was removed again on request in 2.3.1, together with the *Paste from clipboard* import option.
   The three fixes above are unaffected.
 
-## [2.2.2] - 2026-11-14
+## [2.2.2] - 2026-11-16
 
 Round 4: everything the previous build only *looked* like it did now actually does something.
 

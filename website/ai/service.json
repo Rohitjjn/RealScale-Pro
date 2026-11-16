@@ -1,0 +1,30 @@
+{
+  "name": "RealScale-Pro",
+  "type": "MobileApplication",
+  "category": "Photography & Image Super-Resolution",
+  "url": "https://rohitjjn.github.io/RealScale-Pro/",
+  "download": "https://github.com/Rohitjjn/RealScale-Pro/releases/latest",
+  "source_code": "https://github.com/Rohitjjn/RealScale-Pro",
+  "pricing": {
+    "model": "free-open-source",
+    "price": 0,
+    "currency": "USD",
+    "license": "MIT"
+  },
+  "capabilities": [
+    "Offline 2x, 3x, 4x, and 5x AI image upscaling on Android",
+    "Photo restoration and JPEG compression artifact removal (Real-ESRGAN, RealSR, Remacri, UltraSharp, Nomos8kSC, SRMD)",
+    "Anime, manga, and illustration upscaling (Waifu2x, AnimeSharp, RealESRGAN Anime 6B, Anime4K)",
+    "512x512 instant preview crop before full-image execution",
+    "Sequential batch upscaling and multi-frame animated GIF upscaling",
+    "EXIF metadata preservation, SAF custom save folder, and thermal throttling guardrails",
+    "Android Share Sheet Quick Upscale and Jetpack Glance home-screen widgets"
+  ],
+  "requirements": {
+    "os": "Android 7.0+ (API 24+)",
+    "abi": "arm64-v8a",
+    "ram_minimum_gb": 4,
+    "ram_recommended_gb": 8,
+    "network_required_for_processing": false
+  }
+}

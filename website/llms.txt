@@ -1,0 +1,28 @@
+# RealScale-Pro
+
+> RealScale-Pro (`com.realscale.pro`) is a free, MIT-licensed, offline AI image upscaler for Android 7.0+ (`arm64-v8a`) that enlarges and restores photos, scans, anime, illustrations, and animated GIFs at exact 2x, 3x, 4x, and 5x resolution locally on device using Tencent ncnn (Vulkan GPU) and Alibaba MNN in a 20.5 MB Jetpack Compose APK with 14 SHA-256 verified on-demand models and zero cloud uploads.
+
+RealScale-Pro executes Real-ESRGAN, RealSR DF2K, Remacri, UltraSharp, UltraMix, Nomos8kSC, Waifu2x, SRMD, AnimeSharp, and Anime4K locally on mobile GPUs and CPUs. There are no accounts, ads, watermarks, subscriptions, or analytics SDKs. Latest release: v2.3.1 (versionCode 61, 20.50 MiB).
+
+## Pages & Downloads
+
+- [RealScale-Pro Home](https://rohitjjn.github.io/RealScale-Pro/): Overview, interactive before/after comparison, 4-step workflow, system requirements, and FAQ.
+- [Download Latest Android APK](https://github.com/Rohitjjn/RealScale-Pro/releases/latest): Official signed `arm64-v8a` APK (`RealScale-Pro-v2.3.1-arm64.apk`) with SHA-256 checksum.
+- [14 On-Device AI Models](https://rohitjjn.github.io/RealScale-Pro/models.html): Sizes, native scales, engines (`realsr-ncnn`, `waifu2x-ncnn`, `srmd-ncnn`, `mnnsr-ncnn`), device RAM tiers, and licenses.
+- [Android AI Upscaler Comparison](https://rohitjjn.github.io/RealScale-Pro/compare.html): Honest comparison against cloud upscalers (Remini), desktop Upscayl, and upstream RealSR-NCNN-Android.
+- [Privacy Policy](https://rohitjjn.github.io/RealScale-Pro/privacy.html): Zero-upload processing guarantee, permission list, and model mirror disclosure.
+- [Full Technical Reference](https://rohitjjn.github.io/RealScale-Pro/llms-full.txt): Complete single-file specification for AI assistants and developer tools.
+
+## Source Code & Documentation
+
+- [GitHub Repository](https://github.com/Rohitjjn/RealScale-Pro): Complete MIT-licensed Kotlin, Jetpack Compose, Java, and C++ codebase.
+- [User Guide](https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/USER_GUIDE.md): Complete Android manual including Quick Upscale Sheet, Glance widgets, TTA, EXIF preservation, and troubleshooting.
+- [Build from Source](https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/BUILDING.md): Reproducible APK and NDK build steps with JDK 21 and Gradle 9.8.
+- [Architecture](https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/ARCHITECTURE.md): Compose design system, PipelinePlanner, sequential Vulkan queue, ThermalGuard, and Room database.
+- [Security Policy](https://github.com/Rohitjjn/RealScale-Pro/blob/main/SECURITY.md): Vulnerability reporting, signing certificate SHA-256 fingerprint, and model integrity verification.
+
+## Optional
+
+- [Release Atom Feed](https://rohitjjn.github.io/RealScale-Pro/feed.xml): Machine-readable release history.
+- [Changelog](https://github.com/Rohitjjn/RealScale-Pro/blob/main/CHANGELOG.md): Detailed version history from v2.0.0 to v2.3.1.
+- [Roadmap](https://github.com/Rohitjjn/RealScale-Pro/blob/main/ROADMAP.md): Planned FOSS store submissions, reproducible NDK builds, and local model import.

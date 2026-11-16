@@ -1,0 +1,1 @@
+Free offline AI photo & anime upscaler. Real-ESRGAN, Waifu2x & SRMD on device.

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RealScale-Pro — Free Offline AI Image Upscaler for Android</title>
+  <meta name="description" content="Upscale photos, anime, scans &amp; GIFs 2x–5x offline on Android with Real-ESRGAN, Waifu2x, SRMD &amp; Anime4K on Vulkan GPU. 20.5 MB APK, zero uploads, MIT." />
+  <meta name="author" content="Rohit (Rohitjjn)" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+  <meta name="theme-color" content="#FAF8F3" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141311" media="(prefers-color-scheme: dark)" />
+  <link rel="canonical" href="https://rohitjjn.github.io/RealScale-Pro/" />
+  <link rel="icon" type="image/png" href="assets/icon-512.png" />
+  <link rel="apple-touch-icon" href="assets/icon-512.png" />
+  <link rel="alternate" type="application/atom+xml" title="RealScale-Pro Releases" href="https://rohitjjn.github.io/RealScale-Pro/feed.xml" />
+  <link rel="alternate" type="text/plain" title="LLMs.txt" href="https://rohitjjn.github.io/RealScale-Pro/llms.txt" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="RealScale-Pro" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content="RealScale-Pro — Free Offline AI Image Upscaler for Android" />
+  <meta property="og:description" content="Enlarge and restore photos, anime, and scans 2x–5x directly on your Android GPU with Real-ESRGAN, Waifu2x, SRMD &amp; Anime4K. 20.5 MB APK, zero cloud uploads, MIT license." />
+  <meta property="og:url" content="https://rohitjjn.github.io/RealScale-Pro/" />
+  <meta property="og:image" content="https://rohitjjn.github.io/RealScale-Pro/assets/social-preview.png" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="640" />
+  <meta property="og:image:alt" content="RealScale-Pro offline AI image upscaler for Android showing configuration, live tile upscaling, and before/after comparison screens." />
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="RealScale-Pro — Free Offline AI Image Upscaler for Android" />
+  <meta name="twitter:description" content="100% on-device Real-ESRGAN, Waifu2x, SRMD &amp; Anime4K upscaling for Android in a 20.5 MB Jetpack Compose APK. Zero uploads, zero ads, MIT open source." />
+  <meta name="twitter:image" content="https://rohitjjn.github.io/RealScale-Pro/assets/social-preview.png" />
+  <meta name="twitter:image:alt" content="RealScale-Pro Android app screens and before/after AI image upscaling preview." />
+
+  <!-- Schema.org JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://rohitjjn.github.io/RealScale-Pro/#organization",
+        "name": "RealScale-Pro",
+        "url": "https://rohitjjn.github.io/RealScale-Pro/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://rohitjjn.github.io/RealScale-Pro/assets/icon-512.png",
+          "width": 512,
+          "height": 512
+        },
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "email": "userrohitai@gmail.com",
+          "contactType": "technical support"
+        },
+        "sameAs": [
+          "https://github.com/Rohitjjn/RealScale-Pro",
+          "https://github.com/Rohitjjn",
+          "https://github.com/Rohitjjn/RealScale-Pro/releases"
+        ]
+      },
+      {
+        "@type": "Person",
+        "@id": "https://rohitjjn.github.io/RealScale-Pro/#author",
+        "name": "Rohit",
+        "alternateName": "Rohitjjn",
+        "url": "https://github.com/Rohitjjn",
+        "sameAs": [
+          "https://github.com/Rohitjjn",
+          "https://github.com/Rohitjjn/RealScale-Pro"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://rohitjjn.github.io/RealScale-Pro/#website",
+        "url": "https://rohitjjn.github.io/RealScale-Pro/",
+        "name": "RealScale-Pro",
+        "description": "Free, open-source, offline AI image upscaler for Android powered by Vulkan ncnn and MNN.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://rohitjjn.github.io/RealScale-Pro/#organization" }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://rohitjjn.github.io/RealScale-Pro/#webpage",
+        "url": "https://rohitjjn.github.io/RealScale-Pro/",
+        "name": "RealScale-Pro — Free Offline AI Image Upscaler for Android",
+        "description": "Upscale photos, anime, scans, and GIFs 2x–5x offline on Android with Real-ESRGAN, Waifu2x, SRMD & Anime4K via Vulkan GPU in a 20.5 MB APK.",
+        "isPartOf": { "@id": "https://rohitjjn.github.io/RealScale-Pro/#website" },
+        "author": { "@id": "https://rohitjjn.github.io/RealScale-Pro/#author" },
+        "datePublished": "2026-11-03",
+        "dateModified": "2026-11-16",
+        "inLanguage": "en",
+        "breadcrumb": {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "RealScale-Pro",
+              "item": "https://rohitjjn.github.io/RealScale-Pro/"
+            }
+          ]
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://rohitjjn.github.io/RealScale-Pro/#app",
+        "name": "RealScale-Pro",
+        "applicationCategory": "PhotographyApplication",
+        "operatingSystem": "Android 7.0+ (arm64-v8a)",
+        "softwareVersion": "2.3.1",
+        "fileSize": "20.5 MB",
+        "identifier": "com.realscale.pro",
+        "url": "https://rohitjjn.github.io/RealScale-Pro/",
+        "downloadUrl": "https://github.com/Rohitjjn/RealScale-Pro/releases/download/v2.3.1/RealScale-Pro-v2.3.1-arm64.apk",
+        "releaseNotes": "https://github.com/Rohitjjn/RealScale-Pro/releases/tag/v2.3.1",
+        "image": "https://rohitjjn.github.io/RealScale-Pro/assets/icon-512.png",
+        "screenshot": [
+          "https://rohitjjn.github.io/RealScale-Pro/assets/readme/before-after-showcase.png",
+          "https://rohitjjn.github.io/RealScale-Pro/assets/readme/app-walkthrough.png",
+          "https://rohitjjn.github.io/RealScale-Pro/assets/readme/light-dark-showcase.png"
+        ],
+        "license": "https://opensource.org/licenses/MIT",
+        "isAccessibleForFree": true,
+        "author": { "@id": "https://rohitjjn.github.io/RealScale-Pro/#author" },
+        "publisher": { "@id": "https://rohitjjn.github.io/RealScale-Pro/#organization" },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        },
+        "featureList": [
+          "100% offline on-device AI image super-resolution via Vulkan ncnn and MNN",
+          "14 SHA-256 verified models including Real-ESRGAN, Remacri, UltraSharp, RealSR DF2K, Waifu2x, SRMD, and AnimeSharp",
+          "Exact 2x, 3x, 4x, and 5x scaling with Lanczos avir-lancir post-pass",
+          "Instant 512x512 crop preview and interactive before/after split comparison",
+          "System Share and Open-with Quick Upscale Sheet plus Jetpack Glance home-screen widgets",
+          "Thermal and battery guard, EXIF metadata preservation, zero ads, and zero telemetry"
+        ]
+      },
+      {
+        "@type": "SoftwareSourceCode",
+        "@id": "https://rohitjjn.github.io/RealScale-Pro/#source",
+        "name": "RealScale-Pro",
+        "codeRepository": "https://github.com/Rohitjjn/RealScale-Pro",
+        "programmingLanguage": ["Kotlin", "Java", "C++"],
+        "runtimePlatform": "Android",
+        "version": "2.3.1",
+        "license": "https://opensource.org/licenses/MIT",
+        "author": { "@id": "https://rohitjjn.github.io/RealScale-Pro/#author" }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://rohitjjn.github.io/RealScale-Pro/#faq-schema",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Does RealScale-Pro upload photos to the cloud?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. RealScale-Pro runs 100% locally on your Android phone's Vulkan GPU, OpenCL backend, or CPU. Your images, crops, and EXIF metadata never leave your device, and there are zero accounts, ads, or analytics SDKs. Network access is used solely to download AI model weights on demand from Hugging Face."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why is the RealScale-Pro APK only 20.5 MB?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Upstream Android NCNN upscalers bundle roughly 440 MB of neural network weights inside a 475 MB APK. RealScale-Pro removes bundled weights, solid-compresses all 8 native arm64 engines into a 15.6 MiB binaries.tar.xz archive, and downloads only the models you choose starting with a 7.9 MB Starter Pack verified by SHA-256 checksums."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which AI models does RealScale-Pro support on Android?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "RealScale-Pro supports 14 verified on-demand models: Real-ESRGAN General v3, Waifu2x Anime, Waifu2x Photo, Waifu2x CUnet, SRMD (2x/3x/4x), RealSR DF2K, RealSR DF2K JPEG, Remacri x4, UltraMix Balanced x4, UltraSharp x4 (fp16), Nomos8kSC x4, AnimeSharp Lite x4, AnimeSharp x4, and RealESRGAN Anime 6B (MNN), plus bundled Anime4K shaders and classical Lanczos filters."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What Android devices can run RealScale-Pro?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Any 64-bit ARM (arm64-v8a) phone or tablet running Android 7.0 Nougat (API 24) or newer with at least 4 GB of RAM. A Vulkan 1.1+ GPU is recommended for fast upscaling, and a CPU fallback mode is built in for older GPU drivers."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do 3x and 5x scaling work with 2x and 4x AI models?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "RealScale-Pro runs each neural model at a native scale supported by its trained weights (such as 4x for Real-ESRGAN or 2x/3x/4x for SRMD), measures the rendered file, and applies a single high-precision avir-lancir Lanczos resize pass to produce exact planned dimensions."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is RealScale-Pro free and open source?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. RealScale-Pro costs $0, has no subscriptions, daily limits, ads, or watermarks, and its source code is published on GitHub under the MIT License."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="wrap nav-row">
+      <a class="brand" href="./">
+        <img src="assets/icon-512.png" width="34" height="34" alt="RealScale-Pro eagle logo" />
+        <span>RealScale-Pro</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#results">Results</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="models.html">Models (14)</a>
+        <a href="compare.html">Compare</a>
+        <a href="#faq">FAQ</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/Rohitjjn/RealScale-Pro" rel="noopener">GitHub</a>
+        <a class="btn btn-primary btn-sm" href="https://github.com/Rohitjjn/RealScale-Pro/releases/latest" rel="noopener">Download APK</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <article class="wrap">
+      <section class="hero">
+        <p class="eyebrow">Open-Source Android App · v2.3.1 · MIT License</p>
+        <h1>Free, Offline AI Image Upscaler for Android</h1>
+        <p class="lead">
+          <strong>RealScale-Pro</strong> (<code>com.realscale.pro</code>) is a free, open-source Android application that upscales and restores blurry photos, compressed JPEGs, scans, anime, illustrations, and animated GIFs at exact <strong>2×, 3×, 4×, and 5×</strong> resolution directly on your phone's GPU using <a href="https://github.com/Tencent/ncnn" rel="noopener">Tencent ncnn</a> (Vulkan) and <a href="https://github.com/alibaba/MNN" rel="noopener">Alibaba MNN</a> — with zero cloud uploads, zero ads, and zero telemetry.
+        </p>
+
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/Rohitjjn/RealScale-Pro/releases/download/v2.3.1/RealScale-Pro-v2.3.1-arm64.apk" rel="noopener">Download APK v2.3.1 (20.5 MB)</a>
+          <a class="btn btn-secondary" href="https://github.com/Rohitjjn/RealScale-Pro" rel="noopener">Star on GitHub</a>
+          <a class="btn btn-secondary" href="compare.html">Compare vs. Cloud Upscalers</a>
+        </div>
+
+        <div class="meta-strip" role="list" aria-label="Key technical specifications">
+          <span class="pill pill-ok" role="listitem">100% On-Device &amp; Offline</span>
+          <span class="pill" role="listitem">Android 7.0+ (arm64-v8a)</span>
+          <span class="pill" role="listitem">14 SHA-256 Verified Models</span>
+          <span class="pill" role="listitem">20.50 MiB Signed APK</span>
+          <span class="pill" role="listitem">$0 · No Ads · No Watermarks</span>
+        </div>
+
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="assets/readme/hero-banner-dark.png" />
+          <img class="showcase-img" src="assets/readme/hero-banner.png" width="1600" height="640" alt="RealScale-Pro Android interface showing Upscale Mode smart plan, live tile GPU progress, and interactive before/after split result screen." />
+        </picture>
+
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-num">20.5 MB</div>
+            <div class="stat-label">Release APK size — 95.7% smaller than upstream's 475 MB bundle</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num">14 Models</div>
+            <div class="stat-label">61 files verified by SHA-256 checksum with HTTP Range resume</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num">2× – 5×</div>
+            <div class="stat-label">Exact pixel scaling across photos, scans, anime &amp; GIFs</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num">0 Bytes</div>
+            <div class="stat-label">Image data uploaded to servers — works in airplane mode</div>
+          </div>
+        </div>
+
+        <p class="byline">
+          Maintained by <a href="https://github.com/Rohitjjn" rel="author noopener">Rohit (@Rohitjjn)</a> · Built on <a href="https://github.com/tumuyan/RealSR-NCNN-Android" rel="noopener">RealSR-NCNN-Android</a> &amp; <a href="https://github.com/nihui/realsr-ncnn-vulkan" rel="noopener">realsr-ncnn-vulkan</a> · Last updated <time datetime="2026-11-16">November 16, 2026</time>
+        </p>
+      </section>
+
+      <section class="section" id="results">
+        <p class="eyebrow">Before &amp; After Quality</p>
+        <h2>How Much Detail Can On-Device Super-Resolution Recover?</h2>
+        <p>
+          RealScale-Pro runs peer-reviewed blind super-resolution networks — including <a href="https://arxiv.org/abs/2107.10833" rel="noopener">Real-ESRGAN (Wang et al., ICCVW 2021)</a>, <a href="https://arxiv.org/abs/1712.06116" rel="noopener">SRMD (Zhang et al., CVPR 2018)</a>, <a href="https://github.com/nagadomi/waifu2x" rel="noopener">Waifu2x</a>, and <a href="https://github.com/TianZerL/Anime4KCPP" rel="noopener">Anime4KCPP</a> — tiled across your mobile Vulkan GPU. Drag the comparison slider below to inspect the exact in-app onboarding photo pair at identical framing.
+        </p>
+
+        <div class="ba-layout">
+          <div class="ba-slider" id="demo-slider">
+            <img src="assets/demo_after.webp" width="600" height="800" alt="Enhanced sharp photo showing crisp monstera leaf veins, terracotta pot texture, speckled coffee mug, and vintage book bindings." />
+            <img class="ba-before" src="assets/demo_before.webp" width="600" height="800" alt="Original soft low-resolution photo before upscaling." />
+            <div class="ba-divider" aria-hidden="true"></div>
+            <span class="ba-tag ba-tag-l">Before</span>
+            <span class="ba-tag ba-tag-r">After</span>
+            <input class="ba-range" type="range" min="5" max="95" value="50" aria-label="Before and after image comparison slider" />
+          </div>
+          <div>
+            <h3>Test Any Model in Seconds with 512×512 Preview Crop</h3>
+            <p>
+              Real-world upscaling quality depends on source compression, lighting, and model choice. Instead of waiting 60 seconds on a 12-megapixel camera photo, tap any region (eyes, leaves, fabric, manga ink, or small text) to run the exact neural pipeline on a <code>512×512</code> patch first.
+            </p>
+            <ul>
+              <li><strong>Everyday photos:</strong> <em>Real-ESRGAN General v3</em> (2.4 MB, Starter Pack) sharpens portraits and snapshots in seconds.</li>
+              <li><strong>Fine textures &amp; prints:</strong> <em>Remacri x4</em> (33.6 MB) and <em>RealSR DF2K</em> (33.5 MB) reconstruct foliage, stone, and fabric in Super Resolution Mode.</li>
+              <li><strong>Compressed JPEGs &amp; scans:</strong> <em>RealSR DF2K JPEG</em> (33.5 MB) and <em>SRMD</em> (18.4 MB, native 2×/3×/4×) clean up 8×8 JPEG block noise.</li>
+              <li><strong>Anime, manga &amp; UI screenshots:</strong> <em>Waifu2x Anime</em> (5.5 MB), <em>AnimeSharp x4</em> (33.5 MB), and <em>UltraSharp x4</em> (33.6 MB) keep edges crisp without ringing.</li>
+            </ul>
+            <blockquote class="cite-box">
+              "ncnn is a high-performance neural network inference computing framework optimized for mobile platforms, with cross-platform Vulkan GPU acceleration and zero third-party dependencies."
+              <footer>— Tencent ncnn Engineering Documentation, <a href="https://github.com/Tencent/ncnn" rel="noopener">github.com/Tencent/ncnn</a></footer>
+            </blockquote>
+          </div>
+        </div>
+
+        <img class="showcase-img" src="assets/readme/before-after-showcase.png" width="1600" height="800" loading="lazy" alt="Side-by-side 2.5x magnified crops comparing foliage veins, ceramic glaze speckles, and vintage leather book textures before and after restoration." />
+      </section>
+
+      <section class="section" id="how-it-works">
+        <p class="eyebrow">How to Use RealScale-Pro</p>
+        <h2>How Do You Upscale a Photo Offline on Android?</h2>
+        <p>
+          RealScale-Pro replaces command-line tile calculations with an automatic deterministic planner (<code>PipelinePlanner</code>) that adapts to 4 GB budget phones and 16 GB flagships alike.
+        </p>
+
+        <img class="showcase-img" src="assets/readme/app-walkthrough.png" width="1600" height="840" loading="lazy" alt="Four-step Android workflow: 01 Hardware Check, 02 Smart Pipeline Plan, 03 Live Tile Upscale, and 04 Compare and Export." />
+
+        <div class="grid-3">
+          <div class="card">
+            <h3>1. Hardware Check &amp; Starter Pack</h3>
+            <p>On first launch, RealScale-Pro profiles your RAM, CPU cores, and Vulkan GPU into <em>Light</em>, <em>Standard</em>, or <em>Powerful</em> and downloads the 7.9 MB Starter Pack with HTTP Range pause/resume.</p>
+          </div>
+          <div class="card">
+            <h3>2. Import, Share, or Widget</h3>
+            <p>Pick images via the Android system Gallery picker, Files (SD cards &amp; cloud drives), Camera, the system-wide <strong>Share / Open-with Quick Sheet</strong>, or the 2×/3×/5× home-screen widget.</p>
+          </div>
+          <div class="card">
+            <h3>3. Upscale Safely &amp; Compare</h3>
+            <p>Watch live tiles resolve with rolling ETA, continue in the background while <code>ThermalGuard</code> keeps your phone cool, compare on the split slider, and save with EXIF metadata intact.</p>
+          </div>
+        </div>
+
+        <img class="showcase-img" src="assets/readme/light-dark-showcase.png" width="1600" height="820" loading="lazy" alt="RealScale-Pro Warm Editorial Light (#FAF9F5) and Obsidian Dark (#141311) interface screens showing Manual Config, Preview Crop, Model Manager, and Settings." />
+      </section>
+
+      <section class="section" id="comparison">
+        <p class="eyebrow">At-a-Glance Comparison</p>
+        <h2>Why Choose RealScale-Pro Over Cloud Upscalers?</h2>
+        <p>
+          Most mobile photo enhancers require uploading private family photos to remote servers and charge weekly subscriptions. RealScale-Pro delivers desktop-class NCNN and MNN models locally for free. See the <a href="compare.html">full Android AI upscaler comparison</a> for details.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Feature</th>
+                <th scope="col">RealScale-Pro v2.3.1</th>
+                <th scope="col">Cloud Upscaler Apps</th>
+                <th scope="col">Upstream RealSR-NCNN 1.13.2</th>
+                <th scope="col">Desktop Upscayl</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Privacy &amp; Offline</strong></td>
+                <td><strong>100% offline, zero uploads</strong></td>
+                <td>Uploads images to cloud servers</td>
+                <td>100% offline</td>
+                <td>Offline on desktop</td>
+              </tr>
+              <tr>
+                <td><strong>Cost &amp; Ads</strong></td>
+                <td><strong>Free ($0), no ads, no watermark</strong></td>
+                <td>Paid subscription / daily limits / ads</td>
+                <td>Free, no ads</td>
+                <td>Free desktop / paid cloud</td>
+              </tr>
+              <tr>
+                <td><strong>Installer Size</strong></td>
+                <td><strong>20.5 MB APK</strong> (on-demand models)</td>
+                <td>80–180 MB APK</td>
+                <td>~475 MB APK (models bundled)</td>
+                <td>250–600 MB desktop installer</td>
+              </tr>
+              <tr>
+                <td><strong>Output Scales</strong></td>
+                <td><strong>Exact 2×, 3×, 4×, 5×</strong></td>
+                <td>Usually 2× or 4×</td>
+                <td>2× / 4× + manual CLI flags</td>
+                <td>2× / 3× / 4× + custom</td>
+              </tr>
+              <tr>
+                <td><strong>Android Integration</strong></td>
+                <td><strong>Quick Sheet, 2×/3×/5× Widgets, Thermal Guard</strong></td>
+                <td>Full app share only</td>
+                <td>Share intent + CLI console</td>
+                <td>Windows / macOS / Linux only</td>
+              </tr>
+              <tr>
+                <td><strong>License</strong></td>
+                <td><strong>MIT Open Source</strong></td>
+                <td>Proprietary</td>
+                <td>MIT Open Source</td>
+                <td>AGPL-3.0 Open Source</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section" id="download">
+        <p class="eyebrow">Download &amp; Verify</p>
+        <h2>Install RealScale-Pro on Android</h2>
+        <p>
+          Requires <strong>Android 7.0+ (API 24)</strong> on a 64-bit ARM (<code>arm64-v8a</code>) device. Every official release includes a <code>.sha256</code> file and is signed with the same update certificate so future releases install cleanly over your existing copy.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/Rohitjjn/RealScale-Pro/releases/download/v2.3.1/RealScale-Pro-v2.3.1-arm64.apk" rel="noopener">Download RealScale-Pro v2.3.1 APK</a>
+          <a class="btn btn-secondary" href="https://github.com/Rohitjjn/RealScale-Pro/releases/download/v2.3.1/RealScale-Pro-v2.3.1-arm64.apk.sha256" rel="noopener">SHA-256 Checksum</a>
+          <a class="btn btn-secondary" href="https://github.com/Rohitjjn/RealScale-Pro/releases" rel="noopener">All Releases &amp; Changelog</a>
+        </div>
+        <pre><code># Verify APK integrity &amp; stable update signing certificate
+sha256sum -c RealScale-Pro-v2.3.1-arm64.apk.sha256
+# Signing cert SHA-256: 45:C3:D0:AA:1E:31:53:AC:4C:C6:18:54:36:EB:9C:1C:F0:5C:18:2B:D1:7A:78:CE:5D:07:83:9E:3B:F8:C7:BD</code></pre>
+        <p>
+          <strong>Auto-updates with Obtainium:</strong> Open <a href="https://github.com/ImranR98/Obtainium" rel="noopener">Obtainium</a>, tap <em>Add App</em>, and paste <code>https://github.com/Rohitjjn/RealScale-Pro</code>.
+        </p>
+      </section>
+
+      <section class="section" id="faq">
+        <p class="eyebrow">Frequently Asked Questions</p>
+        <h2>Common Questions About RealScale-Pro</h2>
+        <div class="faq-list">
+          <details class="faq-item" open>
+            <summary>Does RealScale-Pro upload photos to the cloud?</summary>
+            <p>No. RealScale-Pro processes every image locally on your Android phone's Vulkan GPU, OpenCL backend, or CPU. Your images, crops, and EXIF metadata never leave your device, and there are zero user accounts, ads, or analytics SDKs. Network access is used solely to download AI model weights on demand from Hugging Face.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Why is the RealScale-Pro APK only 20.5 MB?</summary>
+            <p>Traditional Android NCNN apps bundle roughly 440 MB of neural network weights inside a 475 MB APK. RealScale-Pro removes bundled weights, solid-compresses all 8 native arm64 engines into a 15.6 MiB <code>binaries.tar.xz</code> archive unpacked once on first run, and lets you download only the models you use — starting with a 7.9 MB Starter Pack verified by SHA-256 checksums.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Which AI models does RealScale-Pro support on Android?</summary>
+            <p>RealScale-Pro includes 14 SHA-256 verified models in its Model Manager: Real-ESRGAN General v3, Waifu2x Anime, Waifu2x Photo, Waifu2x CUnet, SRMD (2×/3×/4×), RealSR DF2K, RealSR DF2K JPEG, Remacri x4, UltraMix Balanced x4, UltraSharp x4 (fp16), Nomos8kSC x4, AnimeSharp Lite x4, AnimeSharp x4, and RealESRGAN Anime 6B (MNN), plus bundled Anime4K shaders. Browse full specs on the <a href="models.html">Models page</a>.</p>
+          </details>
+          <details class="faq-item">
+            <summary>What Android devices can run RealScale-Pro?</summary>
+            <p>Any 64-bit ARM (<code>arm64-v8a</code>) phone or tablet running Android 7.0 (API 24) or later with 4 GB+ RAM. A Vulkan 1.1+ GPU (Adreno, Mali, Xclipse, or Tensor) provides the fastest processing; a CPU fallback mode is available in Settings and Advanced config for older drivers.</p>
+          </details>
+          <details class="faq-item">
+            <summary>How do 3× and 5× scaling work with 2× and 4× AI models?</summary>
+            <p>RealScale-Pro runs each neural network at a native scale its weights support (4× for Real-ESRGAN/Remacri/UltraSharp, 2× for Waifu2x, or native 2×/3×/4× for SRMD), measures the rendered image, and runs one high-precision <code>avir-lancir</code> Lanczos pass to match your target resolution to the pixel.</p>
+          </details>
+          <details class="faq-item">
+            <summary>Is RealScale-Pro completely free and open source?</summary>
+            <p>Yes. RealScale-Pro costs $0, includes zero ads, watermarks, or subscriptions, and is released under the <a href="https://github.com/Rohitjjn/RealScale-Pro/blob/main/LICENSE" rel="noopener">MIT License</a>. Inspect, build, fork, or contribute on <a href="https://github.com/Rohitjjn/RealScale-Pro" rel="noopener">GitHub</a>.</p>
+          </details>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div>
+        <strong>RealScale-Pro</strong> · Free, offline AI image upscaler for Android (<code>com.realscale.pro</code>).<br />
+        Released under the MIT License · Contact: <a href="mailto:userrohitai@gmail.com">userrohitai@gmail.com</a>
+      </div>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="./">Home</a>
+        <a href="models.html">Models</a>
+        <a href="compare.html">Comparison</a>
+        <a href="about.html">About</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="llms.txt">llms.txt</a>
+        <a href="feed.xml">Release Feed</a>
+        <a href="https://github.com/Rohitjjn/RealScale-Pro" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var box = document.getElementById("demo-slider");
+      if (!box) return;
+      var input = box.querySelector(".ba-range");
+      if (!input) return;
+      input.addEventListener("input", function () {
+        box.style.setProperty("--pos", input.value + "%");
+      });
+    })();
+  </script>
+</body>
+</html>

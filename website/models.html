@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>14 On-Device AI Upscaling Models for Android — RealScale-Pro</title>
+  <meta name="description" content="Complete guide to RealScale-Pro's 14 SHA-256 verified Android AI upscaling models: Real-ESRGAN, Remacri, UltraSharp, RealSR DF2K, Waifu2x, SRMD &amp; AnimeSharp." />
+  <meta name="author" content="Rohit (Rohitjjn)" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+  <link rel="canonical" href="https://rohitjjn.github.io/RealScale-Pro/models.html" />
+  <link rel="icon" type="image/png" href="assets/icon-512.png" />
+  <link rel="alternate" type="application/atom+xml" title="RealScale-Pro Releases" href="https://rohitjjn.github.io/RealScale-Pro/feed.xml" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="RealScale-Pro" />
+  <meta property="og:title" content="14 On-Device AI Upscaling Models for Android — RealScale-Pro" />
+  <meta property="og:description" content="Compare file size, native scale, Vulkan NCNN vs MNN runtime, device RAM tier, speed, and license for every RealScale-Pro model." />
+  <meta property="og:url" content="https://rohitjjn.github.io/RealScale-Pro/models.html" />
+  <meta property="og:image" content="https://rohitjjn.github.io/RealScale-Pro/assets/social-preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="14 On-Device AI Upscaling Models for Android — RealScale-Pro" />
+  <meta name="twitter:description" content="Real-ESRGAN, Remacri, UltraSharp, RealSR DF2K, Waifu2x, SRMD &amp; AnimeSharp compared for Android GPUs." />
+  <meta name="twitter:image" content="https://rohitjjn.github.io/RealScale-Pro/assets/social-preview.png" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "headline": "14 On-Device AI Upscaling Models for Android: Real-ESRGAN, Remacri, UltraSharp, Waifu2x & SRMD Guide",
+        "description": "Reference catalog of the 14 SHA-256 verified NCNN and MNN super-resolution models available in RealScale-Pro for Android.",
+        "datePublished": "2026-11-16",
+        "dateModified": "2026-11-16",
+        "inLanguage": "en",
+        "author": { "@type": "Person", "name": "Rohit", "url": "https://github.com/Rohitjjn" },
+        "publisher": {
+          "@type": "Organization",
+          "name": "RealScale-Pro",
+          "url": "https://rohitjjn.github.io/RealScale-Pro/",
+          "logo": { "@type": "ImageObject", "url": "https://rohitjjn.github.io/RealScale-Pro/assets/icon-512.png" }
+        },
+        "mainEntityOfPage": "https://rohitjjn.github.io/RealScale-Pro/models.html"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "RealScale-Pro", "item": "https://rohitjjn.github.io/RealScale-Pro/" },
+          { "@type": "ListItem", "position": 2, "name": "AI Models", "item": "https://rohitjjn.github.io/RealScale-Pro/models.html" }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <div class="wrap nav-row">
+      <a class="brand" href="./">
+        <img src="assets/icon-512.png" width="34" height="34" alt="RealScale-Pro eagle logo" />
+        <span>RealScale-Pro</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="./">Home</a>
+        <a href="models.html" aria-current="page">Models (14)</a>
+        <a href="compare.html">Compare</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/Rohitjjn/RealScale-Pro" rel="noopener">GitHub</a>
+        <a class="btn btn-primary btn-sm" href="https://github.com/Rohitjjn/RealScale-Pro/releases/latest" rel="noopener">Download APK</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <article class="wrap">
+      <section class="hero">
+        <p class="eyebrow">SHA-256 Verified Model Hub · 61 Files · NCNN &amp; MNN</p>
+        <h1>14 On-Device AI Upscaling Models for Android</h1>
+        <p class="lead">
+          RealScale-Pro installs only a <strong>7.9 MB two-model Starter Pack</strong> on first launch and streams optional models on demand from <a href="https://huggingface.co/tumuyan2/realsr-models" rel="noopener">huggingface.co/tumuyan2/realsr-models</a> with HTTP <code>Range</code> pause/resume and full SHA-256 checksum verification before installation.
+        </p>
+        <p class="byline">Maintained by <a href="https://github.com/Rohitjjn" rel="author noopener">Rohit (@Rohitjjn)</a> · Catalog verified <time datetime="2026-11-16">November 16, 2026</time> · <a href="about.html">About the project</a></p>
+      </section>
+
+      <section class="section">
+        <h2>Which Model Should You Choose?</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Model</th>
+                <th scope="col">Type</th>
+                <th scope="col">Size</th>
+                <th scope="col">Native Scale</th>
+                <th scope="col">Engine</th>
+                <th scope="col">Min Tier</th>
+                <th scope="col">License</th>
+                <th scope="col">Best Use Case</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Real-ESRGAN General v3</strong></td><td>Photo (Starter)</td><td>2.4 MB</td><td>4×</td><td><code>realsr-ncnn</code></td><td>Light</td><td>BSD-3-Clause</td><td>Fast everyday phone photos and portraits</td></tr>
+              <tr><td><strong>Waifu2x Anime</strong></td><td>Anime (Starter)</td><td>5.5 MB</td><td>2× + denoise</td><td><code>waifu2x-ncnn</code></td><td>Light</td><td>MIT</td><td>Anime, manga, comics, and flat illustrations</td></tr>
+              <tr><td><strong>Waifu2x Photo</strong></td><td>Photo</td><td>5.5 MB</td><td>2× + denoise</td><td><code>waifu2x-ncnn</code></td><td>Light</td><td>MIT</td><td>Gentle 2× photo upscale retaining natural grain</td></tr>
+              <tr><td><strong>SRMD</strong></td><td>Photo / Scan</td><td>18.4 MB</td><td>2×, 3×, 4×</td><td><code>srmd-ncnn</code></td><td>Light</td><td>MIT</td><td>Scans and noisy photos needing native 3× or denoise</td></tr>
+              <tr><td><strong>RealSR DF2K</strong></td><td>Photo</td><td>33.5 MB</td><td>4×</td><td><code>realsr-ncnn</code></td><td>Light</td><td>MIT</td><td>Classic DF2K photographic detail reconstruction</td></tr>
+              <tr><td><strong>RealSR DF2K JPEG</strong></td><td>Photo / JPEG</td><td>33.5 MB</td><td>4×</td><td><code>realsr-ncnn</code></td><td>Light</td><td>MIT</td><td>Heavily compressed camera and messaging JPEGs</td></tr>
+              <tr><td><strong>Remacri x4</strong></td><td>Photo</td><td>33.6 MB</td><td>4×</td><td><code>realsr-ncnn</code></td><td>Standard</td><td>CC-BY-NC-SA-4.0</td><td>Landscapes, foliage, skin, and fabric (Super Mode)</td></tr>
+              <tr><td><strong>UltraMix Balanced x4</strong></td><td>Photo</td><td>33.6 MB</td><td>4×</td><td><code>realsr-ncnn</code></td><td>Standard</td><td>CC-BY-NC-SA-4.0</td><td>Balanced texture enhancement with natural colors</td></tr>
+              <tr><td><strong>UltraSharp x4 (fp16)</strong></td><td>Photo / UI</td><td>33.6 MB</td><td>4×</td><td><code>realsr-ncnn</code></td><td>Standard</td><td>CC-BY-NC-SA-4.0</td><td>Sharp edges on screenshots, signs, and product shots</td></tr>
+              <tr><td><strong>Nomos8kSC x4</strong></td><td>Photo</td><td>33.5 MB</td><td>4×</td><td><code>realsr-ncnn</code></td><td>Powerful</td><td>CC-BY-NC-SA-4.0</td><td>Maximum photographic density on 12 GB+ flagships</td></tr>
+              <tr><td><strong>Waifu2x CUnet</strong></td><td>Anime</td><td>13.9 MB</td><td>2× + denoise</td><td><code>waifu2x-ncnn</code></td><td>Light</td><td>MIT</td><td>Stronger JPEG cleanup on older anime frames at 2×</td></tr>
+              <tr><td><strong>AnimeSharp Lite x4</strong></td><td>Anime</td><td>20.1 MB</td><td>4×</td><td><code>realsr-ncnn</code></td><td>Light</td><td>CC-BY-NC-SA-4.0</td><td>Fast 4× anime and line-art upscaling on mid-range GPUs</td></tr>
+              <tr><td><strong>AnimeSharp x4</strong></td><td>Anime</td><td>33.5 MB</td><td>4×</td><td><code>realsr-ncnn</code></td><td>Standard</td><td>CC-BY-NC-SA-4.0</td><td>High-precision 4× anime, digital art, and wallpapers</td></tr>
+              <tr><td><strong>RealESRGAN Anime 6B</strong></td><td>Anime (MNN)</td><td>17.9 MB</td><td>4×</td><td><code>mnnsr-ncnn</code></td><td>Light</td><td>BSD-3-Clause</td><td>Compact 6-block anime network via Alibaba MNN</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>Commercial licensing note:</strong> RealScale-Pro's codebase is MIT-licensed. Models licensed under <code>MIT</code> and <code>BSD-3-Clause</code> permit commercial output and redistribution; community models under <code>CC-BY-NC-SA-4.0</code> are limited to personal, academic, and non-commercial use. For PyTorch <code>.pth</code> and ONNX conversion steps, read <a href="https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/MODELS.md" rel="noopener">docs/MODELS.md on GitHub</a>.
+        </p>
+      </section>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div><strong>RealScale-Pro</strong> · MIT Open Source · <a href="https://github.com/Rohitjjn/RealScale-Pro" rel="noopener">github.com/Rohitjjn/RealScale-Pro</a></div>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="./">Home</a>
+        <a href="models.html">Models</a>
+        <a href="compare.html">Comparison</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="llms.txt">llms.txt</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

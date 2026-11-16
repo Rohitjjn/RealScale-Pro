@@ -1,0 +1,50 @@
+name: AI Model Request
+description: Suggest a new NCNN or MNN super-resolution / denoising model for the Model Manager.
+title: "[Model]: "
+labels: ["enhancement", "models"]
+body:
+  - type: input
+    id: model_name
+    attributes:
+      label: Model Name & Author
+      placeholder: "4x-Nomos8kDAT / Real-CUGAN Pro 2x by ..."
+    validations:
+      required: true
+
+  - type: input
+    id: source_url
+    attributes:
+      label: Official Source / OpenModelDB / Hugging Face URL
+      placeholder: "https://openmodeldb.info/models/..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Primary Image Type
+      options:
+        - Photo / General Restoration
+        - Compressed JPEG / Denoising
+        - Anime / Manga / Line Art
+        - Scans / Documents / Text
+        - Pixel Art / Game Textures
+    validations:
+      required: true
+
+  - type: input
+    id: specs
+    attributes:
+      label: Format, Native Scale & License
+      description: Note whether NCNN (`.param`/`.bin`) or MNN (`.mnn`) weights exist and the model's license.
+      placeholder: "NCNN (realsr-ncnn compatible) · 4× · MIT / BSD-3-Clause / CC-BY-NC-SA-4.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why should this model be added?
+      description: How does it improve on the existing 14 catalog models (quality, speed, file size, or license)?
+    validations:
+      required: true

@@ -33,11 +33,12 @@ android {
      */
     signingConfigs {
         create("realscale") {
-            storeFile = rootProject.file("keystore/realscale.p12")
-            storeType = "PKCS12"
-            storePassword = "realscale2026"
-            keyAlias = "realscale"
-            keyPassword = "realscale2026"
+            storeFile = System.getenv("REALSCALE_STORE_FILE")?.takeIf { it.isNotBlank() }?.let(::file)
+                ?: rootProject.file("keystore/realscale.p12")
+            storeType = System.getenv("REALSCALE_STORE_TYPE")?.takeIf { it.isNotBlank() } ?: "PKCS12"
+            storePassword = System.getenv("REALSCALE_STORE_PASSWORD")?.takeIf { it.isNotBlank() } ?: "realscale2026"
+            keyAlias = System.getenv("REALSCALE_KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "realscale"
+            keyPassword = System.getenv("REALSCALE_KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: "realscale2026"
         }
     }
 

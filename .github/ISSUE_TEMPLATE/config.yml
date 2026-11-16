@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: User Guide & Troubleshooting
+    url: https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/USER_GUIDE.md
+    about: Step-by-step usage guide, model selection tips, and quick fixes for common Android issues.
+  - name: AI Models & Custom Conversion
+    url: https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/MODELS.md
+    about: Compare all 14 verified models and learn how to convert PyTorch/ONNX models to NCNN or MNN.
+  - name: Report a Security Vulnerability
+    url: https://github.com/Rohitjjn/RealScale-Pro/security/advisories/new
+    about: Privately report security vulnerabilities without creating a public issue.

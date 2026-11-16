@@ -1,0 +1,36 @@
+# RealScale-Pro
+
+> RealScale-Pro (`com.realscale.pro`) is a free, MIT-licensed, offline AI image upscaler for Android 7.0+ (`arm64-v8a`) that enlarges and restores photos, scans, anime, illustrations, and animated GIFs at exact 2x, 3x, 4x, and 5x resolution locally on device using Tencent ncnn (Vulkan GPU) and Alibaba MNN in a 20.5 MB Jetpack Compose APK with 14 SHA-256 verified on-demand models and zero cloud uploads.
+
+RealScale-Pro runs Real-ESRGAN, RealSR DF2K, Remacri, UltraSharp, UltraMix, Nomos8kSC, Waifu2x, SRMD, AnimeSharp, and Anime4K completely offline after one-time model download. There are no subscriptions, accounts, ads, watermarks, or analytics SDKs. Current release: v2.3.1 (versionCode 61).
+
+## Download & Project Links
+
+- [Official Website](https://rohitjjn.github.io/RealScale-Pro/): Product overview, interactive before/after demo, model selector, and installation guide.
+- [GitHub Repository](https://github.com/Rohitjjn/RealScale-Pro): Complete MIT-licensed Kotlin, Jetpack Compose, Java, and C++ source code.
+- [Latest Android APK Release (v2.3.1)](https://github.com/Rohitjjn/RealScale-Pro/releases/latest): Signed 20.5 MB `arm64-v8a` APK (`RealScale-Pro-v2.3.1-arm64.apk`) and `.sha256` checksum.
+- [Android AI Upscaler Comparison](https://rohitjjn.github.io/RealScale-Pro/compare.html): Factual comparison of RealScale-Pro vs Remini, Upscayl, Waifu2x, and upstream RealSR-NCNN-Android.
+- [On-Device AI Models Guide](https://rohitjjn.github.io/RealScale-Pro/models.html): Detailed specs, sizes, scales, and licenses for all 14 supported NCNN and MNN super-resolution models.
+
+## Documentation
+
+- [README](https://github.com/Rohitjjn/RealScale-Pro/blob/main/README.md): Overview, before/after results, download options, feature highlights, comparison table, and FAQ.
+- [User Guide](https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/USER_GUIDE.md): Step-by-step Android usage instructions, Upscale vs Super Resolution Mode, Manual/Advanced controls, Quick Upscale Sheet, widgets, GIFs, and troubleshooting.
+- [AI Models & Custom Conversion](https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/MODELS.md): Full 14-model catalog, SHA-256 manifest structure, and PyTorch `.pth` / ONNX to NCNN and MNN conversion steps.
+- [Building from Source](https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/BUILDING.md): Reproducible local and CI build steps with JDK 21, Gradle 9.8, Android SDK/NDK, and custom signing keys.
+- [Architecture](https://github.com/Rohitjjn/RealScale-Pro/blob/main/docs/ARCHITECTURE.md): Compose UI stack, AppStore StateFlow, PipelinePlanner, native Vulkan execution queue, ThermalGuard, and Room database.
+- [Full Technical Reference (llms-full.txt)](https://rohitjjn.github.io/RealScale-Pro/llms-full.txt): Single-file structured reference covering every feature, model, requirement, permission, and FAQ.
+
+## Governance, Privacy & Legal
+
+- [Privacy Policy](https://rohitjjn.github.io/RealScale-Pro/privacy.html): Zero-upload processing guarantee, permission breakdown, and on-demand model download disclosures.
+- [Security Policy](https://github.com/Rohitjjn/RealScale-Pro/blob/main/SECURITY.md): Vulnerability reporting, APK certificate SHA-256 fingerprint, model SHA-256 checks, and `targetSdk = 28` rationale.
+- [Contributing Guide](https://github.com/Rohitjjn/RealScale-Pro/blob/main/CONTRIBUTING.md): Developer workflow, testing gates, design-system conventions, and model contribution rules.
+- [MIT License](https://github.com/Rohitjjn/RealScale-Pro/blob/main/LICENSE): Permissive open-source software license.
+- [Third-Party Notices](https://github.com/Rohitjjn/RealScale-Pro/blob/main/THIRD_PARTY_NOTICES.md): Upstream attributions for RealSR-NCNN-Android, ncnn, MNN, Real-ESRGAN, Waifu2x, SRMD, Anime4KCPP, ImageMagick, and model licenses.
+
+## Optional
+
+- [Changelog](https://github.com/Rohitjjn/RealScale-Pro/blob/main/CHANGELOG.md): Complete release notes from v2.0.0 through v2.3.1.
+- [Roadmap](https://github.com/Rohitjjn/RealScale-Pro/blob/main/ROADMAP.md): Upcoming milestones including IzzyOnDroid/F-Droid distribution, `jniLibs` packaging, and local model import UI.
+- [Simplified Chinese README](https://github.com/Rohitjjn/RealScale-Pro/blob/main/README_CHS.md): Overview and installation guide in Simplified Chinese.

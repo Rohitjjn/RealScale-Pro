@@ -1,0 +1,57 @@
+name: Deploy Website
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'website/**'
+      - 'assets/**'
+      - 'RealSR-NCNN-Android-GUI/app/src/main/res/drawable-nodpi/demo_*.webp'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publish SEO/AEO Site to GitHub Pages
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Assemble static site bundle
+        run: |
+          rm -rf _site
+          mkdir -p _site/assets/readme _site/.well-known _site/ai
+          cp -r website/* _site/
+          cp -r website/.well-known/* _site/.well-known/
+          cp -r website/ai/* _site/ai/
+          cp assets/icon-512.png assets/social-preview.png _site/assets/
+          cp assets/readme/*.png _site/assets/readme/
+          cp RealSR-NCNN-Android-GUI/app/src/main/res/drawable-nodpi/demo_before.webp _site/assets/
+          cp RealSR-NCNN-Android-GUI/app/src/main/res/drawable-nodpi/demo_after.webp _site/assets/
+          touch _site/.nojekyll
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

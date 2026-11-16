@@ -1,0 +1,29 @@
+RealScale-Pro is a free, open-source, 100% offline AI image upscaler and photo enhancer for Android. Enlarge, sharpen, and denoise old photos, compressed JPEGs, scans, screenshots, anime, manga, digital art, and animated GIFs at exact 2x, 3x, 4x, and 5x resolution — directly on your phone's GPU.
+
+Nothing ever leaves your device. No cloud uploads, no account, no ads, no watermarks, no subscriptions, and zero analytics or tracking SDKs.
+
+WHY REALSCALE-PRO
+• Private & offline-first: Every upscale runs locally on Vulkan GPU, OpenCL, or CPU via Tencent ncnn and Alibaba MNN. Works in airplane mode once models are installed.
+• Slim 20.5 MB APK: Zero bloated weights bundled in the installer. Start with a fast 7.9 MB two-model Starter Pack and download heavy 33 MB Super Resolution models only when you want them.
+• SHA-256 verified Model Manager: 14 curated models with HTTP Range pause/resume, live storage breakdown, hardware-fit indicators, and one-tap cleanup.
+• Exact 2x, 3x, 4x, and 5x output: Combines native neural super-resolution with precision Lanczos resampling so outputs hit planned dimensions to the pixel.
+
+14 ON-DEVICE AI MODELS
+• Starter Pack: Real-ESRGAN General v3 (photos) & Waifu2x Anime (illustrations).
+• Photos & Restoration: Remacri x4, UltraSharp x4 (fp16), UltraMix Balanced x4, Nomos8kSC x4, RealSR DF2K, RealSR DF2K JPEG, SRMD (2x/3x/4x + denoise), Waifu2x Photo.
+• Anime, Manga & Art: AnimeSharp x4, AnimeSharp Lite x4, Waifu2x CUnet, RealESRGAN Anime 6B (MNN), plus bundled Anime4K shaders.
+
+BUILT FOR EVERYDAY USE & POWER USERS
+• Two modes: Upscale Mode for fast everyday photos on any arm64 phone, and Super Resolution Mode for uncompressed maximum-detail restoration.
+• Three control tiers: Default (automatic photo/anime detection & safe tile sizing), Manual (model, scale, format), and Advanced (128/256/384 px or custom tiles, GPU/CPU toggle, threads, denoise strength, 8-way TTA quality boost, JPEG/WebP quality, and EXIF metadata preservation).
+• Instant 512x512 Preview Crop: Tap any region of your image to preview your exact model and settings in seconds before committing to a full upscale.
+• Interactive Before/After comparison: Drag the split slider or open the full-screen OOM-safe region viewer to inspect 48+ MP outputs at crisp 1:1 pixel zoom.
+• Share & Open-with Quick Sheet: Upscale straight from Google Photos, Samsung Gallery, Fossify Gallery, or any file manager without leaving your current app.
+• Home-screen widgets: Enhance widget with instant 2x, 3x, and 5x chips plus a Recent Creations widget.
+• Hardware-safe by design: Profiles RAM, cores, and Vulkan GPU on first launch, runs a sequential GPU queue to avoid driver crashes, and automatically throttles tiles and threads when your phone runs warm or low on battery.
+
+FORMATS & REQUIREMENTS
+• Supports JPEG, PNG, WebP, BMP, HEIF/AVIF, multi-image batches, and multi-frame animated GIFs.
+• Saves to Pictures/RealScale-Pro or any custom folder with optional EXIF metadata preserved.
+• Requires Android 7.0+ (arm64-v8a). Vulkan 1.1+ GPU recommended; CPU fallback included.
+• Open source under the MIT License: https://github.com/Rohitjjn/RealScale-Pro

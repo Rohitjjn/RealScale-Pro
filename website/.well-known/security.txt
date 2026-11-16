@@ -1,0 +1,6 @@
+Contact: mailto:userrohitai@gmail.com
+Contact: https://github.com/Rohitjjn/RealScale-Pro/security/advisories/new
+Expires: 2027-11-16T00:00:00.000Z
+Preferred-Languages: en, hi
+Canonical: https://rohitjjn.github.io/RealScale-Pro/.well-known/security.txt
+Policy: https://github.com/Rohitjjn/RealScale-Pro/blob/main/SECURITY.md

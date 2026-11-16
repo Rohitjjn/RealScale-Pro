@@ -1,36 +1,54 @@
-/3rdparty/*/*/*
-/3rdparty/tests/*
-/.idea/
+# IDE & local environment
+**/.idea/
+*.iml
+**/local.properties
+.gradle/
+**/.gradle/
+.DS_Store
+Thumbs.db
+
+# Android & C++ build outputs
 *.apk
-*.zip
-3rdparty/libwebp/*
-3rdparty/OpenCV-android-sdk/*
+*.aab
+*.ap_
+*.dex
+*.log
 /*/*/build
 /*/*/.cxx
+/RealSR-NCNN-Android-GUI/build
+/RealSR-NCNN-Android-GUI/app/build
 /RealSR-NCNN-Android-GUI/app/debug
-*.log
+/RealSR-NCNN-Android-GUI/app/src/main/assets/realsr/
+/RealSR-NCNN-Android-CLI/build
+/RealSR-NCNN-Android-CLI/*/release
 /RealSR-NCNN-Android-CLI/*/src/main/jni/.vs
 /RealSR-NCNN-Android-CLI/*/src/main/jni/out
-RealSR-NCNN-Android-GUI/.idea/CopilotChatHistory.xml
-RealSR-NCNN-Android-GUI/.idea/easycode.ignore
-RealSR-NCNN-Android-GUI/.idea/misc.xml
-RealSR-NCNN-Android-GUI/.idea/easycode/codebase-v2.xml
-/RealSR-NCNN-Android-GUI/.idea/easycode
-/RealSR-NCNN-Android-CLI/*/release
+RealSR-NCNN-Android-CLI/*/src/main/jni/CMakeSettings.json
+RealSR-NCNN-Android-CLI/MNN-SR/src/main/jni/build/*
+RealSR-NCNN-Android-CLI/MNN-SR/src/main/jni/my_app/*
+/RealSR-NCNN-Android-CLI/assets/Win-x64
+/RealSR-NCNN-Android-CLI/assets/Linux-x64/
+/RealSR-NCNN-Android-CLI/assets/output
+/RealSR-NCNN-Android-CLI/assets/report
+
+# Custom private signing keys (official sideload update key is kept intentionally)
+*.jks
+*.keystore
+*.p12
+!RealSR-NCNN-Android-GUI/keystore/realscale.p12
+
+# Archives & third-party SDK downloads
+*.zip
+/3rdparty/*/*/*
+/3rdparty/tests/*
+3rdparty/libwebp/*
+3rdparty/OpenCV-android-sdk/*
 3rdparty/*.mnn
 3rdparty/*
 !3rdparty/setup.sh
-RealSR-NCNN-Android-CLI/MNN-SR/src/main/jni/build/*
-RealSR-NCNN-Android-CLI/MNN-SR/src/main/jni/my_app/*
-/RealSR-NCNN-Android-CLI/build
-RealSR-NCNN-Android-GUI/optimization_plan.md
-RealSR-NCNN-Android-CLI/*/src/main/jni/CMakeSettings.json
-/RealSR-NCNN-Android-CLI/assets/Win-x64
-/RealSR-NCNN-Android-CLI/assets/output
-/RealSR-NCNN-Android-CLI/assets/report
-RealSR-NCNN-Android-CLI/assets/Linux-x64/
 
-# Node tooling (tools/*): regenerate with `npm ci` — see docs/ui-reference/README.md
+# Node & Python tooling (regenerate with `npm ci` — see docs/BUILDING.md)
 node_modules/
 __pycache__/
 *.pyc
+.venv/

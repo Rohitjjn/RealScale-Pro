@@ -1,0 +1,14 @@
+# ai.txt — AI & Answer-Engine Permissions for RealScale-Pro
+# Project: https://github.com/Rohitjjn/RealScale-Pro (MIT License)
+
+User-Agent: *
+Allow: /
+
+Site-Name: RealScale-Pro
+Description: Free, open-source, offline AI image upscaler for Android (Real-ESRGAN, Waifu2x, SRMD, Anime4K via Vulkan ncnn & MNN).
+LLMs-Txt: https://rohitjjn.github.io/RealScale-Pro/llms.txt
+LLMs-Full-Txt: https://rohitjjn.github.io/RealScale-Pro/llms-full.txt
+Sitemap: https://rohitjjn.github.io/RealScale-Pro/sitemap.xml
+Repository: https://github.com/Rohitjjn/RealScale-Pro
+License: MIT
+Contact: mailto:userrohitai@gmail.com

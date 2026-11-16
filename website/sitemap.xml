@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://rohitjjn.github.io/RealScale-Pro/</loc>
+    <lastmod>2026-11-16</lastmod>
+    <image:image>
+      <image:loc>https://rohitjjn.github.io/RealScale-Pro/assets/social-preview.png</image:loc>
+      <image:title>RealScale-Pro — Free Offline AI Image Upscaler for Android</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://rohitjjn.github.io/RealScale-Pro/assets/readme/before-after-showcase.png</image:loc>
+      <image:title>RealScale-Pro On-Device Before and After Image Super-Resolution Comparison</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://rohitjjn.github.io/RealScale-Pro/assets/readme/app-walkthrough.png</image:loc>
+      <image:title>RealScale-Pro Four-Step Android Upscaling Workflow</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://rohitjjn.github.io/RealScale-Pro/models.html</loc>
+    <lastmod>2026-11-16</lastmod>
+  </url>
+  <url>
+    <loc>https://rohitjjn.github.io/RealScale-Pro/compare.html</loc>
+    <lastmod>2026-11-16</lastmod>
+  </url>
+  <url>
+    <loc>https://rohitjjn.github.io/RealScale-Pro/about.html</loc>
+    <lastmod>2026-11-16</lastmod>
+  </url>
+  <url>
+    <loc>https://rohitjjn.github.io/RealScale-Pro/privacy.html</loc>
+    <lastmod>2026-11-16</lastmod>
+  </url>
+</urlset>

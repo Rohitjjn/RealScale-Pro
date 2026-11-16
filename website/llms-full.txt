@@ -1,0 +1,57 @@
+# RealScale-Pro — Complete Technical & Product Reference
+
+> Free, open-source (MIT), 100% offline AI image upscaler for Android 7.0+ (`arm64-v8a`), built with Kotlin and Jetpack Compose on top of Tencent ncnn (Vulkan) and Alibaba MNN.
+
+## Key Facts
+
+- **Name:** RealScale-Pro
+- **Android Application ID:** `com.realscale.pro` (debug: `com.realscale.pro.debug`)
+- **Latest Version:** `2.3.1` (`versionCode = 61`, released November 16, 2026)
+- **Release APK Size:** `20.50 MiB` (`21,496,114` bytes), zero bundled AI model weights
+- **License:** MIT License (`SPDX-License-Identifier: MIT`)
+- **Cost:** Free ($0) — no subscriptions, no in-app purchases, no ads, no watermarks
+- **Privacy:** 100% offline on-device image processing; zero photo uploads, zero accounts, zero analytics or crash-reporting SDKs
+- **Repository:** https://github.com/Rohitjjn/RealScale-Pro
+- **Website:** https://rohitjjn.github.io/RealScale-Pro/
+- **Direct APK Download:** https://github.com/Rohitjjn/RealScale-Pro/releases/latest
+- **Obtainium Source URL:** https://github.com/Rohitjjn/RealScale-Pro
+- **Signing Certificate SHA-256:** `45:C3:D0:AA:1E:31:53:AC:4C:C6:18:54:36:EB:9C:1C:F0:5C:18:2B:D1:7A:78:CE:5D:07:83:9E:3B:F8:C7:BD`
+- **Maintainer:** Rohit (`@Rohitjjn`, userrohitai@gmail.com)
+- **Upstream Native Foundation:** `tumuyan/RealSR-NCNN-Android` (v1.13.2) and `nihui/realsr-ncnn-vulkan`
+
+## System Requirements
+
+- **OS:** Android 7.0 Nougat (API 24) or newer (`compileSdk = 37`, `minSdk = 24`, `targetSdk = 28` retained for SELinux `execve()` compatibility of native CLI engines)
+- **ABI:** `arm64-v8a` (64-bit ARM)
+- **Compute:** Vulkan 1.1+ or OpenCL GPU recommended; built-in CPU fallback (`-g -1` / `-b 0`) for all tools except GPU-only SRMD
+- **RAM:** 4 GB minimum (*Light* tier, 128 px Safe tiles); 8 GB+ recommended (*Standard* / *Powerful* tier)
+
+## Core Features
+
+1. **Two Processing Modes:** *Upscale Mode* (fast everyday photos, memory-safe) and *Super Resolution Mode* (uncompressed original + heavy 33 MB models).
+2. **Three Configuration Levels:** *Default* (automatic Photo vs Anime detection + deterministic `PipelinePlanner`), *Manual* (model, exact 2x/3x/4x/5x scale, format), and *Advanced* (tile size 128/256/384 px or custom, GPU/CPU toggle, threads, denoise strength, 8-way TTA `-x`, input compression policy, JPEG/WebP quality, EXIF metadata copy).
+3. **Instant 512x512 Preview Crop:** Runs the full neural pipeline on a user-selected 512x512 patch in seconds before full-image processing.
+4. **System-Wide Share & Open-with Quick Sheet:** Translucent `QuickUpscaleActivity` bottom sheet launches over Google Photos, Samsung Gallery, or file managers.
+5. **Jetpack Glance Home-Screen Widgets:** *Enhance* widget (with one-tap 2x, 3x, and 5x chips) and *Recent creations* widget.
+6. **Hardware Safety:** Sequential single-job GPU queue, pre-flight megapixel/storage guardrails (16,384 px ceiling), and automatic `ThermalGuard` throttling on high temperature or low battery.
+7. **OOM-Safe Result Inspection:** Interactive Before/After split slider plus full-screen pinch-zoom viewer backed by `BitmapRegionDecoder`.
+8. **Supported Formats:** JPEG, PNG, WebP, BMP, HEIF/AVIF, multi-image batches, and multi-frame animated GIFs (frame extraction and delay-preserving reassembly via ImageMagick).
+
+## All 14 Verified On-Demand AI Models
+
+Hosted at `https://huggingface.co/tumuyan2/realsr-models` with 61 SHA-256 verified files and HTTP `Range` pause/resume:
+
+1. **Real-ESRGAN General v3** (`realsr-ncnn`, 2.4 MB, 4x, Photo, Starter, BSD-3-Clause)
+2. **Waifu2x Anime** (`waifu2x-ncnn`, 5.5 MB, 2x + denoise, Anime, Starter, MIT)
+3. **Waifu2x Photo** (`waifu2x-ncnn`, 5.5 MB, 2x + denoise, Photo, MIT)
+4. **SRMD** (`srmd-ncnn`, 18.4 MB, 2x/3x/4x + denoise, Photo & Scans, MIT)
+5. **RealSR DF2K** (`realsr-ncnn`, 33.5 MB, 4x, Photo, MIT)
+6. **RealSR DF2K JPEG** (`realsr-ncnn`, 33.5 MB, 4x, Compressed JPEG, MIT)
+7. **Remacri x4** (`realsr-ncnn`, 33.6 MB, 4x, Photo / Texture, CC-BY-NC-SA-4.0)
+8. **UltraMix Balanced x4** (`realsr-ncnn`, 33.6 MB, 4x, Photo / Natural, CC-BY-NC-SA-4.0)
+9. **UltraSharp x4 fp16** (`realsr-ncnn`, 33.6 MB, 4x, Photo / Sharp Edges, CC-BY-NC-SA-4.0)
+10. **Nomos8kSC x4** (`realsr-ncnn`, 33.5 MB, 4x, Flagship Photo Detail, CC-BY-NC-SA-4.0)
+11. **Waifu2x CUnet** (`waifu2x-ncnn`, 13.9 MB, 2x + denoise, Anime, MIT)
+12. **AnimeSharp Lite x4** (`realsr-ncnn`, 20.1 MB, 4x, Anime & Art, CC-BY-NC-SA-4.0)
+13. **AnimeSharp x4** (`realsr-ncnn`, 33.5 MB, 4x, Anime & Art, CC-BY-NC-SA-4.0)
+14. **RealESRGAN Anime 6B** (`mnnsr-ncnn`, 17.9 MB, 4x, Anime via Alibaba MNN, BSD-3-Clause)

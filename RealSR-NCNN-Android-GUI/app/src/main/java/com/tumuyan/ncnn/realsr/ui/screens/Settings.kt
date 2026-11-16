@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.tumuyan.ncnn.realsr.BuildConfig
 import com.tumuyan.ncnn.realsr.core.plan.ModeId
 import com.tumuyan.ncnn.realsr.core.plan.fmtMB
 import com.tumuyan.ncnn.realsr.design.EyebrowLabel
@@ -530,7 +531,7 @@ fun AboutScreen(store: AppStore) {
             Column(Modifier.padding(top = 16.dp)) {
                 Mark(size = 80.dp)
                 Text("RealScale-Pro", style = RsType.display(36f), color = c.ink, modifier = Modifier.padding(top = 16.dp))
-                Text("Version 2.3 · Image upscaling", style = RsType.body(14f), color = c.muted, modifier = Modifier.padding(top = 6.dp))
+                Text("Version ${BuildConfig.VERSION_NAME} · Image upscaling", style = RsType.body(14f), color = c.muted, modifier = Modifier.padding(top = 6.dp))
                 Text(
                     "An offline, on-device AI image upscaler. Pick a photo, tap Upscale and get a sharper, bigger image with no account and no upload.",
                     style = RsType.body(15f, lineHeightRatio = 1.6f),
@@ -595,7 +596,7 @@ fun AboutScreen(store: AppStore) {
             } else {
                 Text("Images are processed on your device and are never uploaded.", style = RsType.body(15f, lineHeightRatio = 1.6f), color = LocalRsColors.current.body)
                 Text(
-                    "The network is used only to download models and to check for model updates. Analytics and crash reports are off unless you turn them on.",
+                    "The network is used only to download models on demand and verify updates. RealScale-Pro contains zero analytics, crash reporters, ads, or user accounts.",
                     style = RsType.body(15f, lineHeightRatio = 1.6f),
                     color = LocalRsColors.current.body,
                 )

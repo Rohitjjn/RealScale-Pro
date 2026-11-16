@@ -1,0 +1,11 @@
+RealScale-Pro एंड्रॉइड के लिए एक मुफ़्त, ओपन-सोर्स और 100% ऑफ़लाइन AI इमेज अपस्केलर ऐप है। पुरानी या धुंधली फ़ोटो, कंप्रेस्ड JPEG, स्कैन, स्क्रीनशॉट, एनीमे और GIF को सीधे अपने फ़ोन के Vulkan GPU पर 2x, 3x, 4x और 5x तक साफ़ और बड़ा करें।
+
+आपकी कोई भी फ़ोटो कभी फ़ोन से बाहर अपलोड नहीं होती — न अकाउंट, न विज्ञापन, न वॉटरमार्क, न सब्सक्रिप्शन और न ही कोई ट्रैकिंग।
+
+मुख्य विशेषताएँ:
+• केवल 20.5 MB का हल्का APK और SHA-256 सत्यापित मॉडल मैनेजर (HTTP Range पॉज़/रिज़्यूम के साथ)।
+• 14 ऑन-डिवाइस AI मॉडल: Real-ESRGAN General v3, Remacri x4, UltraSharp x4, UltraMix, Nomos8kSC, RealSR DF2K, SRMD, Waifu2x Anime/Photo/CUnet, AnimeSharp x4 और RealESRGAN Anime 6B (MNN)।
+• Upscale Mode (तेज़ रोज़मर्रा उपयोग) और Super Resolution Mode (अधिकतम क्वालिटी), साथ में Default, Manual और Advanced कंट्रोल।
+• 512x512 प्रीव्यू क्रॉप, इंटरैक्टिव Before/After स्लाइडर, EXIF मेटाडेटा सुरक्षा और गर्म होने या कम बैटरी पर ऑटोमैटिक थर्मल सुरक्षा।
+• गैलरी से सीधे Share / Open-with क्विक शीट और 2x/3x/5x होम-स्क्रीन विजेट।
+• MIT लाइसेंस के तहत ओपन-सोर्स: https://github.com/Rohitjjn/RealScale-Pro

@@ -1,0 +1,74 @@
+name: Bug Report
+description: Report a crash, upscaling failure, UI bug, or device/GPU compatibility issue.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue! Remember **never** to attach personal photos unless you want them visible on a public GitHub issue.
+
+  - type: input
+    id: version
+    attributes:
+      label: RealScale-Pro Version
+      description: Found in Settings → About (for example, `v2.3.1`).
+      placeholder: "v2.3.1"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device, Chipset/GPU & Android Version
+      description: Include phone model, SoC/GPU if known, RAM, and Android version.
+      placeholder: "Pixel 8 Pro · Tensor G3 (Mali-G715) · 12 GB RAM · Android 15"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Upscaling / Native Engine (GPU or CPU)
+        - Model Manager / Download
+        - Import / Share / Open-with Quick Sheet
+        - Result Viewer / Saving / EXIF
+        - Home-Screen Widgets
+        - UI / Layout / Theme
+        - Installation / APK Update
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: pipeline
+    attributes:
+      label: Mode, Model, Scale & Image Size (if applicable)
+      placeholder: "Super Resolution · Remacri x4 · 4× · 3024×4032 JPEG · Fast tiles (384 px)"
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Open RealScale-Pro and select a 12 MP JPEG via Gallery
+        2. Switch to Manual → select UltraSharp x4 → 4×
+        3. Tap Upscale
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What Happened vs. What You Expected
+      description: Describe the error, visual defect, or unexpected behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or Screenshots (Optional)
+      description: Paste any copied error text, `adb logcat` snippet, or non-private screenshot.

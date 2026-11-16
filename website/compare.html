@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RealScale-Pro vs Remini, Upscayl &amp; RealSR on Android</title>
+  <meta name="description" content="Technical comparison of RealScale-Pro vs Remini, desktop Upscayl, Waifu2x &amp; RealSR-NCNN-Android across privacy, APK size, offline AI models &amp; pricing." />
+  <meta name="author" content="Rohit (Rohitjjn)" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+  <link rel="canonical" href="https://rohitjjn.github.io/RealScale-Pro/compare.html" />
+  <link rel="icon" type="image/png" href="assets/icon-512.png" />
+  <link rel="alternate" type="application/atom+xml" title="RealScale-Pro Releases" href="https://rohitjjn.github.io/RealScale-Pro/feed.xml" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="RealScale-Pro" />
+  <meta property="og:title" content="RealScale-Pro vs Remini, Upscayl &amp; RealSR-NCNN-Android (2026)" />
+  <meta property="og:description" content="Compare privacy, offline support, APK size, AI models, scale factors, and licensing across Android and open-source AI image upscalers." />
+  <meta property="og:url" content="https://rohitjjn.github.io/RealScale-Pro/compare.html" />
+  <meta property="og:image" content="https://rohitjjn.github.io/RealScale-Pro/assets/social-preview.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="RealScale-Pro vs Remini, Upscayl &amp; RealSR-NCNN-Android" />
+  <meta name="twitter:description" content="Factual comparison of offline and cloud AI image upscalers for Android." />
+  <meta name="twitter:image" content="https://rohitjjn.github.io/RealScale-Pro/assets/social-preview.png" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "headline": "RealScale-Pro vs Remini, Upscayl, Waifu2x, and RealSR-NCNN-Android: Offline Android AI Upscaler Comparison",
+        "description": "Technical comparison of privacy, offline execution, APK size, supported neural models, scaling modes, and licenses across AI image upscalers.",
+        "datePublished": "2026-11-16",
+        "dateModified": "2026-11-16",
+        "inLanguage": "en",
+        "author": {
+          "@type": "Person",
+          "name": "Rohit",
+          "url": "https://github.com/Rohitjjn"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "RealScale-Pro",
+          "url": "https://rohitjjn.github.io/RealScale-Pro/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://rohitjjn.github.io/RealScale-Pro/assets/icon-512.png"
+          }
+        },
+        "mainEntityOfPage": "https://rohitjjn.github.io/RealScale-Pro/compare.html",
+        "image": "https://rohitjjn.github.io/RealScale-Pro/assets/social-preview.png"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "RealScale-Pro", "item": "https://rohitjjn.github.io/RealScale-Pro/" },
+          { "@type": "ListItem", "position": 2, "name": "Comparison", "item": "https://rohitjjn.github.io/RealScale-Pro/compare.html" }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <div class="wrap nav-row">
+      <a class="brand" href="./">
+        <img src="assets/icon-512.png" width="34" height="34" alt="RealScale-Pro eagle logo" />
+        <span>RealScale-Pro</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="./">Home</a>
+        <a href="models.html">Models (14)</a>
+        <a href="compare.html" aria-current="page">Compare</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/Rohitjjn/RealScale-Pro" rel="noopener">GitHub</a>
+        <a class="btn btn-primary btn-sm" href="https://github.com/Rohitjjn/RealScale-Pro/releases/latest" rel="noopener">Download APK</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <article class="wrap">
+      <section class="hero">
+        <p class="eyebrow">Android AI Upscaler Comparison · Updated November 2026</p>
+        <h1>RealScale-Pro vs. Remini, Upscayl &amp; RealSR-NCNN-Android</h1>
+        <p class="lead">
+          Choosing an AI image upscaler comes down to three trade-offs: <strong>where your photos are processed</strong> (on your phone vs. a remote server), <strong>which models you can run</strong> (general restoration, face hallucination, or anime line-art), and <strong>what hardware you have</strong> (an Android phone vs. a desktop GPU). Here is an honest breakdown including where competing tools win.
+        </p>
+        <p class="byline">By <a href="https://github.com/Rohitjjn" rel="author noopener">Rohit (@Rohitjjn)</a> · Last verified <time datetime="2026-11-16">November 16, 2026</time> · <a href="about.html">About the project</a></p>
+      </section>
+
+      <section class="section">
+        <h2>Side-by-Side Specification Matrix</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Criteria</th>
+                <th scope="col">RealScale-Pro (v2.3.1)</th>
+                <th scope="col">Cloud AI Apps (Remini, Let's Enhance)</th>
+                <th scope="col">RealSR-NCNN-Android (v1.13.2)</th>
+                <th scope="col">Upscayl (Desktop)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Target Platform</strong></td>
+                <td>Android 7.0+ (<code>arm64-v8a</code>)</td>
+                <td>Android, iOS, Web</td>
+                <td>Android 7.0+ (<code>arm64-v8a</code>)</td>
+                <td>Windows, macOS, Linux (Cloud Web)</td>
+              </tr>
+              <tr>
+                <td><strong>Photo Privacy</strong></td>
+                <td>100% local; zero uploads or telemetry</td>
+                <td>Uploads every image to cloud servers</td>
+                <td>100% local; zero uploads</td>
+                <td>100% local on desktop app</td>
+              </tr>
+              <tr>
+                <td><strong>Pricing Model</strong></td>
+                <td>Free ($0), no ads, no watermarks</td>
+                <td>Freemium with ads, watermarks, or weekly fees</td>
+                <td>Free ($0), no ads</td>
+                <td>Free desktop app; paid Upscayl Cloud</td>
+              </tr>
+              <tr>
+                <td><strong>App Download Size</strong></td>
+                <td>20.5 MB APK + 7.9 MB Starter Pack</td>
+                <td>80–180 MB APK + active data connection</td>
+                <td>~475 MB APK (weights pre-bundled)</td>
+                <td>~250–600 MB desktop package</td>
+              </tr>
+              <tr>
+                <td><strong>Inference Engines</strong></td>
+                <td>Tencent ncnn (Vulkan), Alibaba MNN, Anime4KCPP, resize-ncnn, ImageMagick</td>
+                <td>Cloud datacenter GPUs</td>
+                <td>Tencent ncnn, Alibaba MNN, Anime4KCPP, resize-ncnn, ImageMagick</td>
+                <td>ncnn-vulkan (desktop GPU)</td>
+              </tr>
+              <tr>
+                <td><strong>Scale Factors</strong></td>
+                <td>Exact 2×, 3×, 4×, 5×</td>
+                <td>Typically 2× or 4×</td>
+                <td>Model native (2×/3×/4×) + custom CLI</td>
+                <td>2×, 3×, 4× + custom digital scale</td>
+              </tr>
+              <tr>
+                <td><strong>Pre-Upscale Crop Preview</strong></td>
+                <td>Yes — 512×512 live patch preview</td>
+                <td>No (must process whole photo)</td>
+                <td>No</td>
+                <td>No</td>
+              </tr>
+              <tr>
+                <td><strong>Thermal &amp; Memory Guard</strong></td>
+                <td>Automatic tile/thread throttling &amp; OOM checks</td>
+                <td>None needed (cloud GPU)</td>
+                <td>Manual <code>-t</code> and <code>-j</code> parameters</td>
+                <td>Manual tile setting</td>
+              </tr>
+              <tr>
+                <td><strong>System Integration</strong></td>
+                <td>Share &amp; Open-with Quick Sheet, 2×/3×/5× widgets, EXIF copy</td>
+                <td>Share sheet into main app</td>
+                <td>Share intent + folder mode + raw shell</td>
+                <td>Desktop drag-and-drop &amp; batch folder</td>
+              </tr>
+              <tr>
+                <td><strong>Open-Source License</strong></td>
+                <td>MIT License</td>
+                <td>Proprietary / Closed Source</td>
+                <td>MIT License</td>
+                <td>AGPL-3.0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>When Should You Pick Each Tool?</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Pick RealScale-Pro when...</h3>
+            <p>You want to upscale photos, scans, screenshots, anime, or GIFs directly on an Android phone with complete offline privacy, zero subscriptions, a small 20.5 MB install, quick Share/Open-with access, and curated models like Remacri, UltraSharp, Real-ESRGAN, Waifu2x, and SRMD.</p>
+          </div>
+          <div class="card">
+            <h3>Pick Desktop Upscayl or chaiNNer when...</h3>
+            <p>You are batch-upscaling hundreds of 24-megapixel RAW exports on a desktop NVIDIA, AMD, or Apple Silicon GPU where 150 W+ graphics cards finish 10–30× faster than a mobile SoC.</p>
+          </div>
+          <div class="card">
+            <h3>Pick Upstream RealSR-NCNN-Android when...</h3>
+            <p>You specifically want a single offline 475 MB APK with every model pre-installed out of the box, or you routinely type raw <code>./realsr-ncnn</code> and <code>./magick</code> shell pipelines inside an in-app terminal.</p>
+          </div>
+          <div class="card">
+            <h3>Pick a Cloud Face Enhancer when...</h3>
+            <p>You need heavy generative face hallucination (GFPGAN / CodeFormer / diffusion) on severely motion-blurred portraits and you are comfortable uploading the photo and paying for server compute.</p>
+          </div>
+        </div>
+
+        <div class="cta-row" style="margin-top: 28px;">
+          <a class="btn btn-primary" href="https://github.com/Rohitjjn/RealScale-Pro/releases/latest" rel="noopener">Download RealScale-Pro APK</a>
+          <a class="btn btn-secondary" href="models.html">Explore All 14 On-Device Models</a>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div><strong>RealScale-Pro</strong> · MIT Open Source · <a href="https://github.com/Rohitjjn/RealScale-Pro" rel="noopener">github.com/Rohitjjn/RealScale-Pro</a></div>
+      <nav class="footer-links" aria-label="Footer navigation">
+        <a href="./">Home</a>
+        <a href="models.html">Models</a>
+        <a href="compare.html">Comparison</a>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="llms.txt">llms.txt</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

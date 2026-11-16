@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+title: "RealScale-Pro: Private, Offline AI Image Upscaler for Android"
+message: "If you use or reference RealScale-Pro in software, benchmarks, or writing, please cite it using the metadata below."
+type: software
+authors:
+  - name: "Rohit"
+    alias: "Rohitjjn"
+    email: "userrohitai@gmail.com"
+repository-code: "https://github.com/Rohitjjn/RealScale-Pro"
+url: "https://rohitjjn.github.io/RealScale-Pro/"
+repository-artifact: "https://github.com/Rohitjjn/RealScale-Pro/releases/latest"
+abstract: >-
+  RealScale-Pro is a free, open-source Android application (com.realscale.pro) for offline,
+  on-device image super-resolution and denoising. Built with Kotlin and Jetpack Compose,
+  it pairs a hardware-aware pipeline planner and SHA-256 verified on-demand model manager
+  with native Vulkan ncnn and Alibaba MNN inference engines (Real-ESRGAN, RealSR, Waifu2x,
+  SRMD, and Anime4K) in a 20.5 MB APK with zero cloud uploads or telemetry.
+keywords:
+  - android
+  - image-upscaler
+  - super-resolution
+  - real-esrgan
+  - waifu2x
+  - srmd
+  - anime4k
+  - ncnn
+  - mnn
+  - vulkan
+  - on-device-ai
+  - jetpack-compose
+  - offline-first
+license: MIT
+version: "2.3.1"
+date-released: "2026-11-16"

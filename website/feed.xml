@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>RealScale-Pro Releases</title>
+  <subtitle>Free, open-source, offline AI image upscaler for Android (Vulkan ncnn &amp; MNN)</subtitle>
+  <link href="https://rohitjjn.github.io/RealScale-Pro/feed.xml" rel="self" type="application/atom+xml" />
+  <link href="https://rohitjjn.github.io/RealScale-Pro/" rel="alternate" type="text/html" />
+  <id>https://rohitjjn.github.io/RealScale-Pro/</id>
+  <updated>2026-11-16T09:49:51Z</updated>
+  <author>
+    <name>Rohit (Rohitjjn)</name>
+    <uri>https://github.com/Rohitjjn/RealScale-Pro</uri>
+  </author>
+
+  <entry>
+    <title>RealScale-Pro v2.3.1 — Strict 100% Offline Release</title>
+    <link href="https://github.com/Rohitjjn/RealScale-Pro/releases/tag/v2.3.1" rel="alternate" />
+    <id>https://github.com/Rohitjjn/RealScale-Pro/releases/tag/v2.3.1</id>
+    <updated>2026-11-16T09:49:51Z</updated>
+    <summary>Strictly on-device offline architecture (20.50 MiB arm64 APK), reliable Result screen arrival after every upscale, stable 9:16 portrait preview on Config, and resilient single/batch URI import.</summary>
+  </entry>
+
+  <entry>
+    <title>RealScale-Pro v2.2.2 — Thermal Guard, EXIF Metadata &amp; TTA</title>
+    <link href="https://github.com/Rohitjjn/RealScale-Pro/releases/tag/v2.2.2" rel="alternate" />
+    <id>https://github.com/Rohitjjn/RealScale-Pro/releases/tag/v2.2.2</id>
+    <updated>2026-11-16T05:04:07Z</updated>
+    <summary>Added platform ThermalGuard throttling, EXIF metadata preservation, SAF custom save folder, 8-way TTA quality switch, input/output compression controls, and stable update signing.</summary>
+  </entry>
+</feed>

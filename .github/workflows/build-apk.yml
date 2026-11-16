@@ -107,7 +107,7 @@ jobs:
       # The agent sandbox cannot read Actions logs or artifacts (blob storage is egress-blocked), so
       # build and test failures are relayed in full to the CI bridge issue.
       - name: Relay build/test failure to the CI bridge issue
-        if: failure()
+        if: failure() && github.repository == 'Rohitjjn/RealScale-Pro' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/relay-ci-failure.py
@@ -335,14 +335,14 @@ jobs:
           echo "::notice title=InstrumentationPassed::Emulator smoke tests passed: ${SUMMARY}"
 
       - name: Relay instrumentation failure to the CI bridge issue
-        if: failure()
+        if: failure() && github.repository == 'Rohitjjn/RealScale-Pro' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/relay-ci-failure.py
 
       # Green runs are invisible to the agent sandbox too, so always report what actually ran.
       - name: Relay instrumentation summary to the CI bridge issue
-        if: always()
+        if: always() && github.repository == 'Rohitjjn/RealScale-Pro' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/relay-ci-summary.py

@@ -1,0 +1,24 @@
+{
+  "name": "RealScale-Pro",
+  "description": "Free, MIT-licensed, 100% offline AI image upscaler for Android 7.0+ (arm64-v8a) that enlarges and restores photos, scans, anime, illustrations, and animated GIFs at exact 2x, 3x, 4x, and 5x resolution locally on device via Tencent ncnn (Vulkan) and Alibaba MNN.",
+  "url": "https://rohitjjn.github.io/RealScale-Pro/",
+  "repository": "https://github.com/Rohitjjn/RealScale-Pro",
+  "download_url": "https://github.com/Rohitjjn/RealScale-Pro/releases/latest",
+  "package_id": "com.realscale.pro",
+  "version": "2.3.1",
+  "apk_size_mib": 20.5,
+  "license": "MIT",
+  "platform": "Android 7.0+ (API 24+, arm64-v8a)",
+  "price": "0 USD",
+  "offline": true,
+  "models_count": 14,
+  "scales": ["2x", "3x", "4x", "5x"],
+  "engines": ["Tencent ncnn (Vulkan)", "Alibaba MNN", "Real-ESRGAN", "RealSR", "Waifu2x", "SRMD", "Anime4K", "ImageMagick"],
+  "languages": ["en", "hi", "zh"],
+  "last_updated": "2026-11-16",
+  "maintainer": {
+    "name": "Rohit",
+    "github": "https://github.com/Rohitjjn",
+    "email": "userrohitai@gmail.com"
+  }
+}

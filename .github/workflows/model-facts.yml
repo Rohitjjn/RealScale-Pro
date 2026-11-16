@@ -59,7 +59,7 @@ jobs:
         run: python3 .github/scripts/check-model-manifest.py
 
       - name: Relay the facts to the CI bridge issue
-        if: always()
+        if: always() && github.repository == 'Rohitjjn/RealScale-Pro' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/relay-model-facts.py

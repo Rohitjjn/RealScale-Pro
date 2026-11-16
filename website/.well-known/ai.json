@@ -1,0 +1,21 @@
+{
+  "name": "RealScale-Pro",
+  "summary": "Free, open-source, offline AI image upscaler for Android 7.0+ (arm64-v8a) powered by Vulkan ncnn and Alibaba MNN.",
+  "version": "2.3.1",
+  "license": "MIT",
+  "url": "https://rohitjjn.github.io/RealScale-Pro/",
+  "repository": "https://github.com/Rohitjjn/RealScale-Pro",
+  "download": "https://github.com/Rohitjjn/RealScale-Pro/releases/latest",
+  "documentation": "https://rohitjjn.github.io/RealScale-Pro/llms.txt",
+  "full_reference": "https://rohitjjn.github.io/RealScale-Pro/llms-full.txt",
+  "capabilities": [
+    "offline-image-upscaling",
+    "super-resolution-2x-3x-4x-5x",
+    "real-esrgan-android",
+    "waifu2x-android",
+    "srmd-denoising",
+    "anime4k-android",
+    "animated-gif-upscaling"
+  ],
+  "contact": "mailto:userrohitai@gmail.com"
+}

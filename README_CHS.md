@@ -1,252 +1,116 @@
-# RealSR-NCNN-Android
+<!--
+  RealScale-Pro (com.realscale.pro)：免费、开源、完全离线的 Android AI 图像超分辨率与画质增强应用。
+  内置 Tencent ncnn (Vulkan) 与 Alibaba MNN 推理引擎，支持 Real-ESRGAN、RealSR DF2K、Remacri、UltraSharp、Waifu2x、SRMD、Anime4K。
+-->
 
-[English](https://github.com/tumuyan/RealSR-NCNN-Android/blob/master/README.md)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/readme/hero-banner-dark.png" />
+    <source media="(prefers-color-scheme: light)" srcset="assets/readme/hero-banner.png" />
+    <img src="assets/readme/hero-banner.png" width="100%" alt="RealScale-Pro：免费开源的 Android 本地离线 AI 图片放大与超分辨率应用" />
+  </picture>
+</p>
 
-超分辨率是指将低质量压缩图片恢复成高分辨率图片的过程，用更常见的讲法就是放大图片并降噪。  
-随着移动互联网的快速发展，智能设备逐渐普及到生活的每个角落。随之而来的是大量的图像数据。有的图片本身分辨率就比较低，难以看清楚细节；有的在存储和传输的过程中被反复压缩和劣化，最终不再清晰。  
-为了获得更加高质量的视觉体验，或者出于更为基本的目的看清楚图片，图像恢复/超分辨率算法应运而生。而手机作为目前我们生活中最常使用的智能设备，显然有使用这一技术的迫切需求。  
+<h1 align="center">RealScale-Pro</h1>
 
-这个仓库正是为安卓设备构建的一个图像超分辨率的应用。具有如下特点：
-  ✅ 内置超分算法和模型多。最初使用了[RealSR-NCNN](https://github.com/nihui/realsr-ncnn-vulkan)和[Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)的成果，后来又添加了[SRMD-NCNN](https://github.com/nihui/srmd-ncnn-vulkan)和[RealCUGAN-NCNN](https://github.com/nihui/realcugan-ncnn-vulkan), [Anime4KCPP](https://github.com/TianZerL/Anime4KCPP)。同时也内置了[waifu2x-ncnn](https://github.com/nihui/waifu2x-ncnn-vulkan)（但是没有内置模型和预设命令，如有需求自行下载并添加）  
-  ✅ 兼顾传统插值算法。包括常见的nearest、bilinear、bicubic算法，以及imagemagick的二十多种filter。  
-  ✅ 内置缩小算法。除使用用户指定倍率和算法的缩小方式外，resize-ncnn设计了一种自动缩小的算法de-nearest。参见[笔记](https://note.youdao.com/s/6XlIFbWt)  
-  ✅ 支持图形界面和命令行两种操作方式使用。  
-  ✅ 转换结果先预览，满意再导出，不浪费存储空间。  
-  ✅ 导出文件自动按照模型和时间命名，方便管理。  
-  ✅ 自定义优先选用的超分算法和模型。    
-  ✅ 自定义预设命令。  
-  ✅ 图片处理过程完全在本地运行，无需担心隐私泄漏、服务器排队、服务收费；处理耗时取于决选择的模型、图片大小以及设备的性能。  
+<p align="center">
+  <b>免费、开源、100% 本地离线的 Android AI 图片超分辨率应用。</b><br />
+  在手机端通过 Vulkan GPU 实现 2×–5× 照片修复与动漫无损放大 — 无需上传云端、无账号、无广告、无水印。
+</p>
 
-### 下载地址
+<p align="center">
+  <a href="README.md">English</a> ·
+  <a href="#下载与安装">下载 APK</a> ·
+  <a href="#效果对比">效果对比</a> ·
+  <a href="#使用指南">使用指南</a> ·
+  <a href="#支持的-ai-模型">AI 模型 (14)</a> ·
+  <a href="#从源码构建">源码构建</a> ·
+  <a href="#致谢与开源协议">开源协议</a>
+</p>
 
-[Github Release](https://github.com/tumuyan/RealSR-NCNN-Android/releases)  
+<p align="center">
+  <a href="https://github.com/Rohitjjn/RealScale-Pro/releases/latest"><img src="https://img.shields.io/github/v/release/Rohitjjn/RealScale-Pro?label=Release&color=BD4707" alt="最新版本" /></a>
+  <a href="https://github.com/Rohitjjn/RealScale-Pro/actions/workflows/build-apk.yml"><img src="https://github.com/Rohitjjn/RealScale-Pro/actions/workflows/build-apk.yml/badge.svg" alt="构建状态" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-BD4707" alt="MIT 开源协议" /></a>
+  <img src="https://img.shields.io/badge/Android-7.0%2B%20(arm64)-3DDC84?logo=android&logoColor=white" alt="Android 7.0+ arm64-v8a" />
+  <img src="https://img.shields.io/badge/APK-20.5%20MB-4A4741" alt="20.5 MB 精简安装包" />
+</p>
 
-### 仓库结构
+---
 
-1. RealSR-NCNN-Android-CLI 包含RealSR、MNNSR、RealCUGAN、SRMD、Waifu2x、Resize和Animk4k共7个模块，可以分别编译出对应的命令行程序，编译结果可以在安卓设备的Termux等虚拟终端中使用。其中:
-   - RealSR 可以使用ncnn格式的RealSR和Real-ESRGAN的模型。
-   - MNN-SR 可以使用 mnn 格式的模型。
-   - Resize 可以使用了`nearest/最邻近`、`bilinear/两次线性`、`bicubic/两次立方`三种经典放大（interpolation/插值）算法，以及Lanczos插值算法相似的`avir/lancir`。特别的，nearest和bilinear可以通过`-n`参数，不使用ncnn进行运算，得到点对点放大的结果;当不使用`-n`。参数时，`-s`参数可以使用小数。
-2. RealSR-NCNN-Android-GUI 可以编译出APK文件，这样用户可以在图形环境下操作。（不过他的本质就是在给上述命令行程序套壳，而不是通过JNI调用库文件）
-3. Resize-CLI 可以编译出resize命令行程序，包含`nearest/最邻近`、`bilinear/两次线性`两种算法，不需要ncnn，编译体积较大。此工程除Android使用外，也可使用VS2019编译，在PC端快速验证。
+**RealScale-Pro**（包名 `com.realscale.pro`）是一款基于 [`tumuyan/RealSR-NCNN-Android`](https://github.com/tumuyan/RealSR-NCNN-Android) 原生引擎生态、使用 Kotlin 与 Jetpack Compose 全新重构的 Android 离线图像超分辨率工具。
 
-## 如何使用 RealSR-NCNN-Android-GUI
+- **完全本地运行，零隐私泄露**：所有超分计算均在手机 GPU（Vulkan / OpenCL）或 CPU 上完成，模型下载后可完全断网使用，无任何统计埋点或云端上传。
+- **20.5 MB 超精简安装包**：相比上游约 475 MB 的全量安装包体积缩减 95%。8 个原生 CLI 引擎通过 `binaries.tar.xz` 固实压缩内置，14 款 AI 模型支持按需下载、HTTP `Range` 断点续传与 SHA-256 完整性校验。
+- **支持 2× / 3× / 4× / 5× 精准倍率**：神经网络以原生倍率推理后，自动结合 `resize-ncnn` Lanczos（`avir-lancir`）重采样输出精确目标分辨率。
+- **硬件自适应与温控保护**：首次启动自动检测内存、CPU 核心与 Vulkan 性能分级，支持 `512×512` 局部快速预览、TTA（`-x`）增强、EXIF 信息保留、过热/低电量自动降载、系统“分享/打开方式”快捷浮窗与桌面小组件。
 
-支持两种选择文件的方式：
+---
 
-1. 从其他应用（比如图库）分享一个或多个图片到本应用
-2. 在本应用中，点击`选图`选择图片
+## 效果对比
 
-支持两种操作方式:
+<p align="center">
+  <img src="assets/readme/before-after-showcase.png" width="100%" alt="RealScale-Pro 前后画质对比与 2.5 倍局部细节放大" />
+</p>
 
-1. 点击`放大`（视图片大小和设备性能需要等待不同时间——毕竟原项目是使用电脑显卡运行的）- 查看放大效果是否满意，如果满意点击`导出`保存到相册。也可以在运行前切换使用的模型。切换模型后无需重新选择图片。运行过程中点击右上角进度可以终止运行；运行过程中切换模型并点击运行，或者直接输入命令并回车，可以终止上次任务并开始执行新的任务。
-2. 直接在输入框内输入命令完成调用(可以输入help查看更多信息)
+---
 
-应用依赖于vulkan API，所以对设备有如下要求（几年前游戏《光遇》上架时，很多人已经对vulkan有所了解了吧？）：
+## 下载与安装
 
-1. 使用了比较新的SOC。经过实际测试，骁龙853（GPU Adreno510）可以处理较小的图片
-2. 系统支持vulkan。（Google在Android7.0中增加了vulkan的集成，但是您的设备厂商不一定提供了这项支持）
+前往 [**GitHub Releases**](https://github.com/Rohitjjn/RealScale-Pro/releases/latest) 下载最新 `arm64-v8a` 签名版 APK：
 
-![](ScreenshotCHS.jpg)
+- **最新版本 (`v2.3.1`)**：[`RealScale-Pro-v2.3.1-arm64.apk`](https://github.com/Rohitjjn/RealScale-Pro/releases/download/v2.3.1/RealScale-Pro-v2.3.1-arm64.apk)（`20.50 MiB`）
+- **SHA-256 校验文件**：[`RealScale-Pro-v2.3.1-arm64.apk.sha256`](https://github.com/Rohitjjn/RealScale-Pro/releases/download/v2.3.1/RealScale-Pro-v2.3.1-arm64.apk.sha256)
+- **Obtainium 自动更新**：在 Obtainium 中直接添加仓库地址 `https://github.com/Rohitjjn/RealScale-Pro` 即可追踪新版本。
+- **系统要求**：Android 7.0+（API 24+）、64 位 `arm64-v8a` 处理器，推荐支持 Vulkan 1.1+ 的 GPU（无 Vulkan 时可切换 CPU 模式）。
 
-## 为 RealSR-NCNN-Android-GUI 增加更多mnn模型
+---
 
-✨ ver 1.11 或者更高版本支持  [mnn](https://github.com/alibaba/MNN)  模型。 ver 1.12 可以通过`-c`参数或者模型文件名来指定模型的色彩空间（支持单通道模型、支持使用单通道模型输出真·彩色图片，原理见 [LLSR](https://github.com/tumuyan/LLSR?tab=readme-ov-file#%E5%AE%9E%E9%AA%8C)）。
-转换模型的方法可以参考 https://mnn-docs.readthedocs.io/en/latest/tools/convert.html 模型转换工具能够将其他格式的模型（如：ONNX, TFLITE, TorchScript, Tensorflow等）转换为MNN模型
+## 使用指南
 
-1. （首先确认你已经安装了Python环境）`pip install mnn`
-2. （举例转换onnx模型到mnn格式）直接输入命令 `MNNConvert -f ONNX  --modelFile "{onnx_path}" --MNNModel "{mnn_path}"  --bizCode biz --fp16  --info  --detectSparseSpeedUp`
-3. 修改mnn模型文件名，使包含缩放倍率信息，如：`4xabcdefg.mnn`或者`abc-x4-def.mnn`或者者`abc_4x_def.mnn`，并复制mnn模型到设置的自定义模型目录中。如果文件名包含关键字`Grayscale` `Gray2YCbCr` `Gray2YUV` `YCbCr` `YUV`则应用相应的色彩空间。
+<p align="center">
+  <img src="assets/readme/app-walkthrough.png" width="100%" alt="RealScale-Pro 四步使用流程：硬件检测、智能参数规划、分块实时超分、前后滑动对比导出" />
+</p>
 
-## 在线/脚本快速转换 mnn 模型
-1. 你可以通过如下网址在线转换mnn模型。输入pth/onnx模型文件，点击按钮并等待即可得到mnn文件。下载转换好的mnn模型并复制到自定义模型目录中即可。  
-https://huggingface.co/spaces/tumuyan2/model2mnn
-2. 这个仓库同时也提供了Windows版本的bat，这需要一些Python的使用经验。简单讲打包下载仓库文件，在python环境中安装必要的依赖，然后打开`pth2onnx.bat`并拖入pth文件即可转换pth到onnx，同理可以用`onnx2mnn.bat`转换onnx到mnn。
+1. **首次引导与入门模型包**：自动完成设备性能检测，并下载共 **7.9 MB** 的两款入门模型（*Real-ESRGAN General v3* 照片模型 + *Waifu2x Anime* 动漫插画模型）。
+2. **导入图片**：支持首页 **相册（系统选图器）**、**文件（任意目录/SD 卡/网盘）**、**相机**，以及从任意图库/文件管理器通过 **分享** 或 **打开方式** 呼出快捷超分面板，或通过桌面小组件一键发起 `2× / 3× / 5×` 放大。
+3. **模式与参数调节**：提供 **Upscale Mode**（日常快速）与 **Super Resolution Mode**（无压缩原图 + 33 MB 高精度模型），支持 **默认 / 手动 / 高级** 三档控制与 `512×512` 局部效果预览。
+4. **对比与保存**：支持后台队列运行、分块实时显影、滑动前后对比、防 OOM 高清区域缩放查看，结果默认保存至 `Pictures/RealScale-Pro`（可自定义保存目录并保留 EXIF）。
 
-## 为 RealSR-NCNN-Android-GUI 增加更多ncnn模型
+<p align="center">
+  <img src="assets/readme/light-dark-showcase.png" width="100%" alt="RealScale-Pro 浅色与深色主题界面展示" />
+</p>
 
-RealSR-NCNN-Android-GUI 在 ver 1.7.6 以上的版本可以自动加载自定义模型。
-你可以从 https://huggingface.co/tumuyan2/realsr-models 下载更多模型：
+---
 
-1. 在文件管理器里新建一个目录
-2. 在App的设置中，自定义模型路径的选项里填入刚才新建目录的路径，点击保存
-3. 下载模型并复制到刚才新建的目录里
-4. 返回App，可以看到下拉菜单增加了新的模型
+## 支持的 AI 模型
 
-![目录结构](Screenshot_models.jpg)
+所有 14 款内置目录模型均托管于 [`huggingface.co/tumuyan2/realsr-models`](https://huggingface.co/tumuyan2/realsr-models)，下载时自动进行 SHA-256 校验：
 
-你自己也可以把pth格式的ESRGAN模型转换为本应用可用的ncnn模型。
+- **入门模型（7.9 MB）**：Real-ESRGAN General v3（照片 4×）、Waifu2x Anime（动漫 2× + 降噪）
+- **照片与修复**：Waifu2x Photo、SRMD（2×/3×/4× + 降噪）、RealSR DF2K、RealSR DF2K JPEG、Remacri x4、UltraMix Balanced x4、UltraSharp x4 (fp16)、Nomos8kSC x4
+- **动漫与插画**：Waifu2x CUnet、AnimeSharp Lite x4、AnimeSharp x4、RealESRGAN Anime 6B (MNN)
 
-1. 从 [OpenModelDB](https://openmodeldb.info/) 下载模型
+完整模型说明与自定义 `.pth` / `.onnx` 转 NCNN/MNN 教程请参阅 [`docs/MODELS.md`](docs/MODELS.md)。
 
-2. 下载  [cupscale](https://github.com/n00mkrad/cupscale) 并解压
+---
 
-3. 打开 CupscaleData\bin\pth2ncnn, 用 pth2ncnn.exe 转换 pth 文件为 ncnn 模型文件
+## 从源码构建
 
-4. 重命名文件，举例：
-   
-   ```
-   models-Real-ESRGAN-AnimeSharp  // 目录需要用 models- 开头
-   ├─x4.bin                       // 模型名称为 x[n], n 是放大倍率
-   ├─x4.param
-   ```
-   
-   另一种转换模型的方式可以转换更多种类的模型，但是更加复杂
+需要 JDK 21 与 Android SDK（已配置 `ANDROID_HOME`）：
 
-5. 从 [OpenModelDB](https://openmodeldb.info/) 下载模型
-
-6. 下载 [chaiNNer](https://chainner.app/) 并安装（这需要很好的网络）
-
-7. 打开 chaiNNer，链接节点或者使用我提供的已经链接好的工程 https://github.com/tumuyan/RealSR-NCNN-Android/raw/main/chainner-pth2ncnn.chn
-
-8. 把模型拖到最左侧的节点上，点击运行按钮，等待 chaiNNer 转换模型为 ncnn 模型。需要注意的是，并非每一个模型都能够转换为ncnn模型。
-
-9. 重命名文件（与上一种方式相同）。如果使用了我提供的工程文件，无需此步骤。
-
-实际上只要你使用过 chaiNNer ，就会被 chaiNNer 的强大所吸引 —— 一方面是他支持了太多的模型（当然不是、也不可能是所有的优秀模型）和传统图像的处理方法，链接节点就像堆积木一样实现各种各样的功能。
-
-![](chainner-pth2ncnn.png)
-
-## 如何编译 RealSR-NCNN-Android-GUI
-
-从 github release 页面下载 `assets.zip` , 其中包含了模型和CLI程序, 解压并放置到如下路径, 然后使用 Android Studio 进行编译。
-当前版本的下载连接为 https://github.com/tumuyan/RealSR-NCNN-Android/releases/download/1.11.1/assets.zip
-
-```
-RealSR-NCNN-Android-GUI\app\src\main\assets\
-└─realsr
-    │  Anime4k
-    │  colors.xml
-    │  delegates.xml
-    │  libc++_shared.so
-    │  libncnn.so
-    │  libomp.so
-    │  magick
-    │  realcugan-ncnn
-    │  realsr-ncnn
-    │  resize-ncnn
-    │  srmd-ncnn
-    │  waifu2x-ncnn
-    │  
-    ├─models-nose
-    │      up2x-no-denoise.bin
-    │      up2x-no-denoise.param
-    │      
-    ├─models-pro
-    │      up2x-conservative.bin
-    │      up2x-conservative.param
-    │      up2x-denoise3x.bin
-    │      up2x-denoise3x.param
-    │      up2x-no-denoise.bin
-    │      up2x-no-denoise.param
-    │      up3x-conservative.bin
-    │      up3x-conservative.param
-    │      up3x-denoise3x.bin
-    │      up3x-denoise3x.param
-    │      up3x-no-denoise.bin
-    │      up3x-no-denoise.param
-    │      
-    ├─models-Real-ESRGAN
-    │      x4.bin
-    │      x4.param
-    │      
-    ├─models-Real-ESRGAN-anime
-    │      x4.bin
-    │      x4.param
-    │      
-    ├─models-Real-ESRGANv2-anime
-    │      x2.bin
-    │      x2.param
-    │      x4.bin
-    │      x4.param
-    │      
-    ├─models-Real-ESRGANv3-anime
-    │      x2.bin
-    │      x2.param
-    │      x3.bin
-    │      x3.param
-    │      x4.bin
-    │      x4.param
-    │      
-    ├─models-ESRGAN-Nomos8kSC
-    │      x4.bin
-    │      x4.param
-    |
-    └─models-se
-           up2x-conservative.bin
-           up2x-conservative.param
-           up2x-denoise1x.bin
-           up2x-denoise1x.param
-           up2x-denoise2x.bin
-           up2x-denoise2x.param
-           up2x-denoise3x.bin
-           up2x-denoise3x.param
-           up2x-no-denoise.bin
-           up2x-no-denoise.param
-           up3x-conservative.bin
-           up3x-conservative.param
-           up3x-denoise3x.bin
-           up3x-denoise3x.param
-           up3x-no-denoise.bin
-           up3x-no-denoise.param
-           up4x-conservative.bin
-           up4x-conservative.param
-           up4x-denoise3x.bin
-           up4x-denoise3x.param
-           up4x-no-denoise.bin
-           up4x-no-denoise.param
+```bash
+git clone https://github.com/Rohitjjn/RealScale-Pro.git
+cd RealScale-Pro
+./scripts/prepare-engine-assets.sh
+cd RealSR-NCNN-Android-GUI
+./gradlew testDebugUnitTest assembleDebug assembleRelease
 ```
 
-## 局限
+详细编译与签名说明请参阅 [`docs/BUILDING.md`](docs/BUILDING.md)，参与贡献请参阅 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
-这是一个非常简易的工具，在灵活和强大的同时，存在如下缺陷（并且没有计划去完善）：
+---
 
-### 关于批量处理
+## 致谢与开源协议
 
-1. 可以通过打开相册-选择多个图片-分享-realsr来加载多个图片，不能在应用内选多个图片
-2. 加载多个图片后，只能预览1个图片，不会显示图片列表，也无法切换显示不同图片
-3. 处理结束后不会预览处理结果，会直接保存到相册
-4. Magick（包含右上方快捷菜单）不支持多图处理
-
-### 关于gif动图
-
-1. 仅当打开1张动图时，才能以动图的方式进行处理；否则只能处理1帧
-2. 无法预览动图
-3. 处理结束后不会预览处理结果，会直接保存到相册
-4. Magick（包含右上方快捷菜单）不支持动图处理
-
-## 感谢
-
-### 原始超分辨率项目
-
-- https://github.com/xinntao/Real-ESRGAN
-- https://github.com/jixiaozhong/RealSR
-- https://github.com/cszn/SRMD
-- https://github.com/bilibili/ailab/tree/main/Real-CUGAN
-- https://github.com/bloc97/Anime4K
-
-### ncnn项目以及模型
-
-大部分C代码都来自nihui。由于Android直接编译比较困难，必须对项目目录做调整，因此破坏了原有Git。  
-
-- https://github.com/nihui/realsr-ncnn-vulkan 
-- https://github.com/nihui/srmd-ncnn-vulkan
-- https://github.com/nihui/waifu2x-ncnn-vulkan
-- https://github.com/nihui/realcugan-ncnn-vulkan
-- https://github.com/TianZerL/Anime4KCPP
-
-## 使用的其他开源项目
-
-- [https://github.com/Tencent/ncnn](https://github.com/Tencent/ncnn)  for fast neural network inference on ALL PLATFORMS
-- [https://github.com/alibaba/MNN](https://github.com/alibaba/MNN) A lightweight deep learning framework, battle-tested by business-critical use cases in Alibaba.  
-- [https://github.com/nothings/stb](https://github.com/nothings/stb)  for decoding and encoding image on Linux / MacOS
-- [https://github.com/tronkko/dirent](https://github.com/tronkko/dirent)  for listing files in directory on Windows
-- [https://github.com/webmproject/libwebp](https://github.com/webmproject/libwebp) for encoding and decoding Webp images on ALL PLATFORMS
-- [https://github.com/avaneev/avir](https://github.com/avaneev/avir) AVIR image resizing algorithm designed by Aleksey Vaneev
-- [https://github.com/ImageMagick/ImageMagick6](https://github.com/ImageMagick/ImageMagick6) Use ImageMagick® to resize/convert images.
-- [https://github.com/MolotovCherry/Android-ImageMagick7](https://github.com/MolotovCherry/Android-ImageMagick7) I also have use this fork [https://github.com/Miseryset/Android-ImageMagick7](https://github.com/Miseryset/Android-ImageMagick7)
-
-## 使用的其他模型
-
-- Real-ESRGAN 模型 [Nomos8kSC](https://github.com/Phhofm/models/tree/main/4xNomos8kSC), 由 Phhofm 训练的一个适合处理相片的模型.
-- Real-ESRGAN 模型 [MoeSR](https://github.com/TeamMoeAI/MoeSR/releases/download/v1.0.0/MoeSR.models.RealESRGAN.7z) , 由luoyily训练的一个适合处理动漫图片的模型.
+RealScale-Pro 基于 [**MIT License**](LICENSE) 开源，第三方组件与模型版权声明详见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。衷心感谢 [tumuyan/RealSR-NCNN-Android](https://github.com/tumuyan/RealSR-NCNN-Android)、[nihui](https://github.com/nihui) / [Tencent ncnn](https://github.com/Tencent/ncnn)、[xinntao/Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)、[nagadomi/waifu2x](https://github.com/nagadomi/waifu2x)、[cszn/SRMD](https://github.com/cszn/SRMD)、[TianZerL/Anime4KCPP](https://github.com/TianZerL/Anime4KCPP)、[Alibaba MNN](https://github.com/alibaba/MNN) 与 [ImageMagick](https://github.com/ImageMagick/ImageMagick)。
